@@ -410,9 +410,23 @@ function cmPrepararDupla_(ss,source,p){
   const f=ss.getSheetById(CM.fichasId);
   if(!cmBlocoSemDados_(f,source))throw new Error('A dupla-modelo foi preenchida durante a ampliação. Dados preservados; escolha um novo modelo antes de retomar.');
   if(!cmBlocoSemDados_(f,p))throw new Error('Há conteúdo na nova dupla '+(p+1)+'. Não vou sobrescrevê-lo.');
-  const start=4+822*p,src=4+822*source, sid=CM.fichasId,req=[];
-  // Os arrays dos IDs de responsáveis J e U não entram na cópia.
-  [[0,9],[11,20]].forEach(([c1,c2])=>req.push({copyPaste:{source:cmRange_(sid,src,src+822,c1,c2),destination:cmRange_(sid,start,start+822,c1,c2),pasteType:'PASTE_NORMAL'}}));
+  const start=4+822*p,src=4+822*source, sid=CM.fichasId;
+  const tentar=(req,rotulo)=>{
+    for(let t=1;;t++){
+      try{return cmBatch_(req);}
+      catch(e){
+        if(t>=3||!/unavailable|indispon|internal|backend|timed? ?out/i.test(String(e&&e.message||e)))throw e;
+        console.log('Google ocupado em '+rotulo+'; nova tentativa '+(t+1)+'/3.');Utilities.sleep(4000*t);
+      }
+    }
+  };
+  // Os arrays dos IDs de responsáveis J e U continuam fora da cópia.
+  const trechos=[[0,34],[34,215],[215,417],[417,619],[619,822]];
+  [[0,9],[11,20]].forEach(([c1,c2])=>trechos.forEach(([a,b])=>{
+    tentar([{copyPaste:{source:cmRange_(sid,src+a,src+b,c1,c2),destination:cmRange_(sid,start+a,start+b,c1,c2),pasteType:'PASTE_NORMAL'}}],
+      'dupla '+(p+1)+' · linhas '+a+'-'+b+' · colunas '+c1+'-'+c2);
+  }));
+  const req=[];
   const h=(a,b,size)=>req.push({updateDimensionProperties:{range:{sheetId:sid,dimension:'ROWS',startIndex:start+a,endIndex:start+b},properties:{pixelSize:size},fields:'pixelSize'}});
   h(0,822,29);h(0,1,38);h(1,10,32);h(9,10,96);h(10,11,12);
   [11,33,215,417,619].forEach((x,i)=>h(x,x+1,i===1?48:44));
@@ -429,9 +443,9 @@ function cmPrepararDupla_(ss,source,p){
   [[34,214],[215,416],[417,618],[619,820]].forEach(([a,b])=>add(a,b,2));
   for(let n=1;n<=5;n++){const r=cmEndereco_(2*p+1,n).row-1;add(r-start+2,r-start+4,2);}
   req.push({updateSheetProperties:{properties:{sheetId:sid,gridProperties:{rowGroupControlAfter:false}},fields:'gridProperties.rowGroupControlAfter'}});
-  // O marcador é gravado no MESMO batch: em timeout, a retomada consulta antes de recopiá-lo.
+  // O marcador vai no MESMO batch final: sem ele, a retomada refaz a cópia (que é segura).
   req.push({addNamedRange:{namedRange:{name:marker,range:cmRange_(sid,start,start+1,0,1)}}});
-  cmBatch_(req);
+  tentar(req,'dupla '+(p+1)+' · alturas, grupos e marcador');
 }
 function cmAmpliarFormulas_(ss){
   const sid=CM.fichasId,check=ss.getSheetByName(CM.checagem).getSheetId(),req=[];
