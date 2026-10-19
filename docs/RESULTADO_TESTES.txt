@@ -1,0 +1,77 @@
+RESULTADO LOCAL — ARQUIVISTA DO CICLO 0.2.0
+26 testes Python aprovados; 1 teste de carregamento real do discord.py pulado.
+27 testes JavaScript aprovados, com Google Apps Script/Sheets simulados.
+TOTAL: 53 aprovados, 1 pulado, nenhuma falha nos testes executados.
+Sintaxe Python (compileall/AST) e JavaScript (node --check) verificada.
+NÃO HOUVE implantação, login Discord nem execução de código no Google.
+Python local: 3.13.5
+Node local: 22.16.0
+
+--- PYTHON ---
+test_commands_and_views_construct (test_core.DiscordImportTests.test_commands_and_views_construct) ... skipped 'discord.py não disponível neste ambiente; executar também na CI/hospedagem'
+test_all_aliases (test_core.DomainTests.test_all_aliases) ... ok
+test_attachment_magic (test_core.DomainTests.test_attachment_magic) ... ok
+test_attachment_max_size (test_core.DomainTests.test_attachment_max_size) ... ok
+test_mentions_and_spaces (test_core.DomainTests.test_mentions_and_spaces) ... ok
+test_non_commands_ignored (test_core.DomainTests.test_non_commands_ignored) ... ok
+test_normalization (test_core.DomainTests.test_normalization) ... ok
+test_permissions (test_core.DomainTests.test_permissions) ... ok
+test_prefix_variations (test_core.DomainTests.test_prefix_variations) ... ok
+test_public_projection (test_core.DomainTests.test_public_projection) ... ok
+test_safe_urls (test_core.DomainTests.test_safe_urls) ... ok
+test_search_ambiguous_preserved (test_core.DomainTests.test_search_ambiguous_preserved) ... ok
+test_search_small_typo (test_core.DomainTests.test_search_small_typo) ... ok
+test_signing (test_core.DomainTests.test_signing) ... ok
+test_unsafe_urls (test_core.DomainTests.test_unsafe_urls) ... ok
+test_env_not_overwrite_and_no_execution (test_core.FilesTests.test_env_not_overwrite_and_no_execution) ... ok
+test_python_syntax (test_core.FilesTests.test_python_syntax) ... ok
+test_secret_not_hardcoded (test_core.FilesTests.test_secret_not_hardcoded) ... ok
+test_shared_lock_migration (test_core.FilesTests.test_shared_lock_migration) ... ok
+test_slash_prefix_parity_ast (test_core.FilesTests.test_slash_prefix_parity_ast) ... ok
+test_setup_preserves_secret_and_private_file (test_core.SetupTests.test_setup_preserves_secret_and_private_file) ... ok
+test_setup_rejects_newline_injection (test_core.SetupTests.test_setup_rejects_newline_injection) ... ok
+test_interrupted_attempt_survives_restart (test_core.StoreTests.test_interrupted_attempt_survives_restart) ... ok
+test_messages (test_core.StoreTests.test_messages) ... ok
+test_no_duplicate_event (test_core.StoreTests.test_no_duplicate_event) ... ok
+test_retry_and_delivery (test_core.StoreTests.test_retry_and_delivery) ... ok
+test_settings_persist (test_core.StoreTests.test_settings_persist) ... ok
+
+----------------------------------------------------------------------
+Ran 27 tests in 0.131s
+
+OK (skipped=1)
+
+--- JAVASCRIPT ---
+OK 20.000 coordenadas únicas, 200 por membro
+OK registro cria membro, mapa, ID, data, snapshot e evento juntos
+OK duplicata não cria membro nem deixa escrita parcial
+OK membro não cadastra em nome de outra pessoa
+OK membro não altera identidade original
+OK membro não altera o cadastro de outro
+OK edição permitida preserva ID/data e exige revisão atual
+OK mesmo pedido repetido não duplica cadastro/evento
+OK reuso do pedido com outro conteúdo é negado
+OK Arquivado continua ocupando
+OK Liberado permite novo uso; não é uma morte automática
+OK membro não libera/remova/transfere por payload
+OK projeções públicas não vazam situação, justificativa ou nome interno
+OK transferência preserva ID/data e limpa apenas a ficha antiga
+OK remoção guarda auditoria e não reutiliza ID
+OK entrada de fórmula é gravada como texto, não executada
+OK gatilho manual registra mudança significativa, não recálculo/visor
+OK reconciliação detecta alteração manual não capturada
+OK estado de ampliação impede gravações
+ARQUIVISTA: AUTH
+OK HMAC inválido não acessa registros nem adquire lock
+OK HMAC válido processa pedido e libera lock
+ARQUIVISTA: AUTH
+ARQUIVISTA: AUTH
+OK assinatura vencida e servidor diferente são rejeitados
+OK URLs perigosas e campos extras são rejeitados
+OK chaves Unicode compatíveis com o Sheets
+OK limpar imagem nativa restaura a fórmula mesmo sem link
+OK histórico e detalhes de terceiros exigem staff
+ARQUIVISTA: BUSY
+OK outro escritor recebe BUSY antes de qualquer alteração
+
+27 testes JavaScript aprovados. Serviços Google simulados, não executados remotamente.

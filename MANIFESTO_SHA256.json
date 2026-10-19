@@ -1,0 +1,40 @@
+{
+  "project": "Arquivista do Ciclo",
+  "version": "0.2.0",
+  "tested_locally": {
+    "passed": 53,
+    "skipped": 1
+  },
+  "live_deployment": false,
+  "files": {
+    ".discloudignore": "8ae0c317fa9974a090899773c4764f3470119d5491415eba0290f3b823db4b1c",
+    ".env.example": "997002bba548d96393bda77e29908fe0317c47c5c835a1f8a39839edcc98acfe",
+    ".github/workflows/testes.yml": "025f84fab09000cea658753de43f70e71f9d0adc37156d367dc47b9d09461c8d",
+    ".gitignore": "b62a86775eed6ddf671e7db092151d3c52453473c6320c0adf43ed8ee954e5ee",
+    "README.md": "315c3d828efdd7606bb0cec0c5479e97e54c7ec8977bb1b2a793b6c117858d70",
+    "apps_script/Aparencias.gs": "81fada44a670e066017a6f4808ec5616940604c46f721aae1add76abe6f1b050",
+    "apps_script/Arquivista.gs": "36a21741f97d05c5a75a399076c4c720ea9ecc5f3344a9e14bd07d30b2ea37ec",
+    "assets/amiya.png": "ead1584952f7bcbf0bfc979cce1a141b74bf5e98094552e075fb3153832be8d0",
+    "configurar.py": "56f2f664490e6eab4fad9234f6c4cb5a390d627442757e8ef73cc9d58839b719",
+    "discloud.config": "9889ab170a61b9bd1874852fc1d0b696dcc98d233a5dbeebe3b7fba222560bbe",
+    "docs/COMANDOS.md": "68b38fe1b4db87c5203c4a14fcae991b06e26baff40e109ab477a148d6bec0f0",
+    "docs/INSTALACAO.md": "5d4ce74efa7ff82c2b3b4d909ef1e295bbb8f39f008181c589e084359d91d7e6",
+    "docs/RESULTADO_TESTES.txt": "1a86a96ce701e77b4c9a520282243893d49d12578e7e25967071f5e34fb30115",
+    "docs/SEGURANCA_E_LIMITES.md": "6052261ce2eafcb8ea0b142d75e2de676c34c90ce305158ef98402fb4f7d86ce",
+    "docs/TESTES.md": "861878a3542a941adc94d35cab6dc3f803649f515d53ada74d68368cc93477c0",
+    "iniciar.py": "da9301a997fb9f7fb606a36785dca3ff84fa8a1e50afa120838a349dc2a16e22",
+    "requirements.txt": "3f8f6acbcdfd6e16f3da6151a22336359b26c99471f423681ec12716cdcecd91",
+    "src/arquivista/__init__.py": "679cd5ea48717d3c4ffcb0df7663c65560378e48ab709aa5778e5a9e3aea93d8",
+    "src/arquivista/bot.py": "0c6e1cc007319defd7db1416c0e8e4b87b7516766d266d0e0a8fdb15d920a760",
+    "src/arquivista/bridge.py": "45a17c677b147a2ba68ad1a96e4d27fc9a086d407f3ef092f6d684557daf0f24",
+    "src/arquivista/config.py": "2999563adefe87a9d23b53ce135a59d3e8ee5286a6807dba308c3654e0b7927c",
+    "src/arquivista/domain.py": "ae155d9181dc66a93da1b6259407976cd93ec7f24673bb9da63815f63e3f367f",
+    "src/arquivista/media.py": "6739d7785c4c1854968bc833f8a6b0a948325951915576e063abadabf1ae796c",
+    "src/arquivista/store.py": "c1ba4644307218a9e17396ee28bd847771d9ba96ba8183f4fe80266a1de432c7",
+    "src/arquivista/transport.py": "0b703b17b5c6eaaf424b09966f1f39429952ea20ed92a969b388469e967f1bd4",
+    "src/arquivista/views.py": "39e027e5ceba558a34fe9177f5af689d890de3e3a0c41b961bbd99372dc0f271",
+    "tests/test_bridge.js": "40d819068146428642c37ca3c1b7a082dbf29986b23a668076bb3b3e49e407ff",
+    "tests/test_core.py": "2af32b351024b7ecd93b074787a2a0f06f119c4dcf35599ff50d706e3f214730",
+    "verificar.py": "cd78c0b8b0a0e7c3ff881a85c9c29e11a5a1a8db2bede0f2d9be9ddf21640f63"
+  }
+}

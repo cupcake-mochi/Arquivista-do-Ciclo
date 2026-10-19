@@ -1,0 +1,385 @@
+from __future__ import annotations
+import asyncio
+import hashlib
+import json
+import logging
+import time
+from datetime import datetime
+
+import aiohttp
+import discord
+from discord import app_commands
+from discord.ext import commands, tasks
+
+from .bridge import Bridge
+from .config import Config, ROOT
+from .domain import Actor, UserError, STAFF_ACTIONS, parse_prefix, ranked, public_record
+from .media import Images
+from .store import Store
+from .transport import Carteiro, MENTIONS
+from .views import Gate, FormLauncher, Picker, Paginator, private_reply, card, clean
+
+log = logging.getLogger(__name__)
+PUBLIC = frozenset(("ajuda", "aparencias", "minhas", "galeria", "consultar"))
+
+HELP = """**Consultar o arquivo**
+`AC:aparencias [@membro]` — lista paginada.
+`AC:minhas` — suas aparências.
+`AC:galeria [nome] [@membro]` — uma imagem por página.
+`AC:consultar nome` — busca aproximada; refine com a obra.
+
+**Seu cadastro**
+`AC:registrar` — abrir formulário, revisar e confirmar.
+`AC:editar nome` — editar nome no servidor e imagem.
+Pode anexar uma imagem à mensagem de registrar/editar, após a staff configurar o canal de imagens.
+
+Também existem comandos de barra `/`. `ac:` e espaços depois de `AC:` são aceitos.
+Não publique situação ou justificativa como argumentos: use o painel privado."""
+STAFF_HELP = """
+
+**Staff**
+`AC:registrar @membro` — cadastrar para outra pessoa.
+`AC:situacao nome` — situação e justificativa internas.
+`AC:transferir nome @membro` — preservar identidade e data.
+`AC:remover nome` — remoção com confirmação e auditoria.
+`AC:historico nome` — histórico privado, inclusive removidos.
+`AC:registrarhistorico` / `AC:desativarhistorico` — canal de notificações.
+`AC:registrarimagens` / `AC:desativarimagens` — canal para preservar anexos.
+`AC:status` — diagnóstico privado da integração.
+"""
+
+class Arquivista(commands.Bot):
+    def __init__(self, config: Config):
+        intents = discord.Intents.default()
+        intents.message_content = True
+        # Sem Presence Intent ou lista completa de membros: resolução é sob demanda.
+        super().__init__(command_prefix="AC:", intents=intents, help_command=None,
+                         allowed_mentions=MENTIONS, max_messages=300)
+        self.config = config
+        self.store = Store(config.db_path)
+        self.carteiro = Carteiro(self)
+        self.images = Images(self)
+        self.session: aiohttp.ClientSession | None = None
+        self.bridge: Bridge | None = None
+        self.last_use: dict[int, float] = {}
+        self.last_mention: dict[int, float] = {}
+        self.last_sync: str | None = None
+        self.sync_problem: str | None = None
+        self.avatar_checked = False
+        install_slash_commands(self)
+    async def setup_hook(self):
+        self.session = aiohttp.ClientSession(headers={"User-Agent":"ArquivistaDoCiclo/0.2"})
+        self.bridge = Bridge(self.session, self.config.bridge_url, self.config.bridge_secret, self.config.guild_id)
+        guild = discord.Object(id=self.config.guild_id)
+        self.tree.copy_global_to(guild=guild)
+        await self.tree.sync(guild=guild)
+        self.worker.change_interval(seconds=self.config.poll_seconds)
+        self.worker.start()
+    async def on_ready(self):
+        log.info("Arquivista conectado; servidor autorizado %s.", self.config.guild_id)
+        if self.avatar_checked:
+            return
+        self.avatar_checked = True
+        if self.config.configure_avatar:
+            data = (ROOT / "assets" / "amiya.png").read_bytes()
+            digest = hashlib.sha256(data).hexdigest()
+            if self.store.get("avatar_hash") != digest:
+                try:
+                    await self.user.edit(avatar=data)
+                    self.store.set("avatar_hash", digest)
+                except discord.HTTPException:
+                    log.warning("Não foi possível atualizar o avatar automaticamente. Ajuste-o no Developer Portal.")
+        await self.change_presence(activity=discord.Game(name="AC:ajuda · arquivos do Ciclo"))
+    def is_staff_member(self, member) -> bool:
+        guild = getattr(member, "guild", None)
+        if not guild or guild.id != self.config.guild_id:
+            return False
+        return (member.id == guild.owner_id or member.guild_permissions.administrator
+                or any(role.id in self.config.staff_roles for role in member.roles))
+    async def actor(self, user_id: int | str) -> Actor:
+        guild = self.get_guild(self.config.guild_id)
+        if not guild:
+            raise UserError("Ainda não encontrei o servidor configurado. Confira o convite do bot.")
+        try:
+            # Revalida no Discord em vez de confiar em um painel aberto antes da remoção de um cargo.
+            member = await guild.fetch_member(int(user_id))
+        except (discord.NotFound, ValueError, TypeError):
+            raise UserError("Essa pessoa não foi encontrada neste servidor.") from None
+        return Actor(str(member.id), member.display_name, self.is_staff_member(member))
+    def service_actor(self) -> Actor:
+        return Actor(str(self.user.id), "Arquivista · sincronização", True)
+    async def on_message(self, message: discord.Message):
+        if message.author.bot or message.webhook_id or not message.guild or message.guild.id != self.config.guild_id:
+            return
+        parsed = parse_prefix(message.content)
+        if parsed:
+            action, query, member_id = parsed
+            attachment = message.attachments[0] if message.attachments else None
+            await self.dispatch(message, action, query, member_id, attachment)
+            return
+        is_reply = message.reference and message.reference.message_id and self.store.is_ours(message.reference.message_id)
+        if any(user.id == self.user.id for user in message.mentions) or is_reply:
+            now = time.monotonic()
+            if now-self.last_mention.get(message.author.id, -1000) < 8:
+                return
+            self.last_mention[message.author.id] = now
+            await self.carteiro.send(message.channel, embed=card("Amiya · Arquivista do Ciclo",
+                "Estou aqui. Posso consultar as aparências do arquivo ou ajudar com seu cadastro.\n\n"
+                "Use **AC:ajuda**, **AC:galeria** ou **AC:registrar**. Você também pode usar os comandos de barra."))
+    async def reply_public(self, source, *, embed, view=None):
+        interaction = source if isinstance(source, discord.Interaction) else None
+        if interaction and not interaction.response.is_done():
+            await interaction.response.defer(ephemeral=True, thinking=True)
+        result = await self.carteiro.send(source.channel, embed=embed, view=view)
+        if interaction:
+            await interaction.edit_original_response(content="Apresentei o arquivo pela Amiya neste canal.", allowed_mentions=MENTIONS)
+        return result
+    async def failure(self, source, error):
+        text = str(error) if isinstance(error,UserError) else "Não consegui concluir essa etapa. A staff pode conferir o diagnóstico; não presuma que uma gravação foi confirmada."
+        if isinstance(source,discord.Interaction):
+            await private_reply(source,content=text)
+        else:
+            await self.carteiro.send(source.channel,embed=card("Amiya · Atenção",text))
+        if not isinstance(error,UserError):
+            log.warning("Falha de comando: %s",type(error).__name__)
+    async def dispatch(self, source, action, query="", member_id=None, attachment=None):
+        user = source.user if isinstance(source,discord.Interaction) else source.author
+        gid = source.guild_id if isinstance(source,discord.Interaction) else source.guild.id
+        if gid != self.config.guild_id:
+            return
+        try:
+            now=time.monotonic()
+            if now-self.last_use.get(user.id,-1000)<2:
+                raise UserError("Aguarde dois segundos antes de abrir outro comando.")
+            self.last_use[user.id]=now
+            if action=="unknown":
+                raise UserError("Não reconheci esse comando. Use AC:ajuda para abrir o índice.")
+            if isinstance(source,discord.Interaction) and not source.response.is_done():
+                await source.response.defer(ephemeral=True,thinking=True)
+            actor=await self.actor(user.id)
+            if action in STAFF_ACTIONS and not actor.staff:
+                raise UserError("Esse comando é exclusivo da staff.")
+            if action not in PUBLIC:
+                if action=="transferir" and not member_id:
+                    raise UserError("Use AC:transferir nome da aparência @responsável.")
+                if action in ("editar","situacao","transferir","remover") and not query.strip():
+                    raise UserError("Informe o nome da aparência depois do comando. O bot apresentará opções quando houver mais de uma.")
+                if isinstance(source,discord.Interaction):
+                    await self.open_private(source,action,query,member_id,attachment)
+                else:
+                    gate=Gate(self,user.id,action,query,member_id,attachment)
+                    await self.reply_public(source,embed=card("Amiya · Atendimento", "Abra o painel para continuar. As informações internas não serão publicadas neste canal."),view=gate)
+                return
+            if action=="ajuda":
+                await self.reply_public(source,embed=card("Índice do Arquivista",HELP+(STAFF_HELP if actor.staff else "")))
+                return
+            owner_id=str(user.id) if action=="minhas" else (str(member_id) if member_id else "")
+            # Consultar mostra somente registros ocupados. Ausência não prova nome não padronizado.
+            data=await self.bridge.call("list",actor,{"owner_id":owner_id,"include_released":False})
+            records=ranked([public_record(r) for r in data["records"]],query)
+            mode="gallery" if action in ("galeria","consultar") else "list"
+            view=Paginator(self,user.id,records,mode,actor=actor)
+            await self.reply_public(source,embed=await view.embed(),view=view if records else None)
+        except Exception as exc:
+            await self.failure(source,exc)
+    async def open_private(self, i, action, query="", member_id=None, attachment=None):
+        try:
+            actor=await self.actor(i.user.id)
+            if action in STAFF_ACTIONS and not actor.staff:
+                raise UserError("Esse comando é exclusivo da staff.")
+            if action=="registrar":
+                owner=await self.actor(member_id) if member_id else actor
+                if owner.id!=actor.id and not actor.staff:
+                    raise UserError("Você pode cadastrar para si. Apenas a staff cadastra para terceiros.")
+                v=FormLauncher(self,i.user.id,"create",owner={"id":owner.id,"name":owner.name},attachment=attachment)
+                await private_reply(i,embed=self.carteiro.decorate(card("Nova aparência",f"Responsável: <@{owner.id}>.\nPreencha os dados, revise e confirme. Vou conferir a disponibilidade antes de salvar.")),view=v)
+            elif action in ("editar","situacao","transferir","remover"):
+                data=await self.bridge.call("list",actor,{"owner_id":"" if actor.staff else actor.id,"include_released":True})
+                records=ranked(data["records"],query,limit=250)
+                if not records:
+                    raise UserError("Não encontrei um cadastro correspondente que você possa gerenciar.")
+                v=Picker(self,i.user.id,records,action,member_id,attachment)
+                await private_reply(i,content=f"Encontrei {len(records)} opção(ões). Selecione pela aparência e obra; nenhuma alteração foi feita.",view=v)
+            elif action=="historico":
+                data=await self.bridge.call("history",actor,{"query":query})
+                v=Paginator(self,i.user.id,data["events"],"history",actor=actor)
+                await private_reply(i,content="Exibindo os eventos mais recentes; a auditoria original foi preservada." if data.get("truncated") else None,embed=await v.embed(),view=v if data["events"] else None)
+            elif action=="status":
+                data=await self.bridge.call("status",actor)
+                body=f"**Ponte:** {data['version']}\n**Grupos preparados:** {data['capacity']}\n**Base histórica pronta:** {'sim' if data['ready'] else 'não'}\n**Manutenção pendente:** {'sim' if data['maintenance'] else 'não'}\n**Última sincronização do bot:** {self.last_sync or 'ainda não realizada'}\n**Situação operacional:** {self.sync_problem or 'sem erro registrado nesta sessão'}"
+                await private_reply(i,embed=self.carteiro.decorate(card("Diagnóstico privado",body)))
+            elif action in ("registrar_historico","registrar_imagens"):
+                channel=i.channel
+                if not isinstance(channel,(discord.TextChannel,discord.Thread)):
+                    raise UserError("Use um canal de texto ou um tópico deste servidor.")
+                perms=channel.permissions_for(channel.guild.me)
+                required=perms.view_channel and perms.embed_links and perms.read_message_history
+                required=required and (perms.send_messages_in_threads if isinstance(channel,discord.Thread) else perms.send_messages)
+                if action=="registrar_imagens":
+                    required=required and perms.attach_files
+                if not required:
+                    raise UserError("Faltam permissões de ver/enviar, incorporar links, ler histórico ou anexar arquivos neste canal.")
+                if action=="registrar_historico":
+                    status=await self.bridge.call("status",actor)
+                    self.store.set("log_channel",str(channel.id))
+                    self.store.set("log_from_seq",status["events_last_seq"])
+                    message="Este canal receberá os próximos cadastros e alterações. Situação, justificativa e nome interno não aparecem nas notificações públicas. Não vou republicar o passado."
+                else:
+                    self.store.set("image_channel",str(channel.id))
+                    message="Este canal preservará as imagens anexadas nos futuros cadastros. Não apague essas mensagens: elas são a fonte recuperável dos arquivos."
+                await private_reply(i,embed=self.carteiro.decorate(card("Canal configurado",message)))
+            elif action in ("desativar_historico","desativar_imagens"):
+                self.store.set("log_channel" if action=="desativar_historico" else "image_channel",None)
+                await private_reply(i,content="Configuração desativada. Nenhum registro histórico ou arquivo antigo foi apagado.")
+            else:
+                raise UserError("Operação não reconhecida.")
+        except Exception as exc:
+            await self.failure(i,exc)
+    @tasks.loop(seconds=90)
+    async def worker(self):
+        try:
+            actor=self.service_actor()
+            status=await self.bridge.call("status",actor)
+            if not status["ready"] or status["maintenance"]:
+                self.sync_problem="Aguardando preparação/revisão da planilha."
+                return
+            if self.store.get("cursor") is None:
+                self.store.set("cursor",status["events_last_seq"])
+            await self.bridge.call("reconcile",actor)
+            # Consome até 500 eventos por ciclo, sem perder os seguintes.
+            for _ in range(5):
+                cursor=self.store.get("cursor",0)
+                data=await self.bridge.call("events",actor,{"after":cursor})
+                self.store.ingest(data["events"],data["cursor"])
+                if len(data["events"])<100:
+                    break
+            await self.deliver_events()
+            self.last_sync=datetime.now().astimezone().isoformat(timespec="seconds")
+            self.sync_problem=None
+        except UserError as exc:
+            self.sync_problem=str(exc)
+            log.warning("Sincronização pausada: %s",type(exc).__name__)
+        except Exception as exc:
+            self.sync_problem="Falha operacional de sincronização; verifique os registros da hospedagem."
+            log.warning("Falha de sincronização: %s",type(exc).__name__)
+    @worker.before_loop
+    async def before_worker(self):
+        await self.wait_until_ready()
+    async def deliver_events(self):
+        channel_id=self.store.get("log_channel")
+        cutoff=self.store.get("log_from_seq",0)
+        for row in self.store.pending():
+            event=json.loads(row["data"])
+            if not channel_id or event["seq"]<=cutoff:
+                self.store.delivered(event["event_id"])
+                continue
+            try:
+                self.store.attempt(event["event_id"])
+                channel=self.get_channel(int(channel_id)) or await self.fetch_channel(int(channel_id))
+                if not getattr(channel,"guild",None) or channel.guild.id!=self.config.guild_id:
+                    raise UserError("Canal de histórico fora do servidor autorizado.")
+                # Recuperação do pequeno intervalo entre Discord aceitar e SQLite confirmar.
+                found=None
+                if row["tries"]:
+                    try:
+                        await self.carteiro.webhook(channel.parent if isinstance(channel,discord.Thread) else channel)
+                    except (discord.HTTPException,AttributeError):
+                        pass
+                    async for old in channel.history(limit=100):
+                        if (old.author.id==self.user.id or self.store.is_ours(old.id) or
+                            (old.webhook_id and old.webhook_id in {w.id for w in self.carteiro.cache.values()})):
+                            if any(str(e.footer.text or "")==f"Evento {event['event_id']}" for e in old.embeds):
+                                found=old
+                                break
+                if found is None:
+                    titles={"created":"Aparência registrada","removed":"Cadastro removido","transferred":"Responsável alterado","updated":"Cadastro atualizado"}
+                    actor=f"<@{event['actor_id']}>" if event.get("actor_id") else "Planilha; autor não identificado"
+                    e=card(titles.get(event["kind"],"Cadastro atualizado"),
+                        f"**Aparência:** {clean(event['appearance'],200)}\n**Obra:** {clean(event['work'],200)}\n**Responsável:** <@{event['owner_id']}>\n**Registro da alteração:** {actor}")
+                    e.set_footer(text=f"Evento {event['event_id']}")
+                    try:e.timestamp=datetime.fromisoformat(event["at"].replace("Z","+00:00"))
+                    except ValueError:pass
+                    found=await self.carteiro.send(channel,embed=e)
+                self.store.delivered(event["event_id"],str(found.id),str(channel.id))
+            except Exception as exc:
+                self.store.failed(event["event_id"],row["tries"])
+                log.warning("Notificação pendente %s: %s",event["event_id"],type(exc).__name__)
+    async def close(self):
+        self.worker.cancel()
+        if self.session:
+            await self.session.close()
+        self.store.close()
+        await super().close()
+
+
+def install_slash_commands(bot):
+    """As duas entradas usam o mesmo dispatch e as mesmas permissões."""
+    @bot.tree.command(name="ajuda",description="Abra o índice de comandos da Amiya.")
+    @app_commands.guild_only()
+    async def ajuda(i:discord.Interaction):await bot.dispatch(i,"ajuda")
+    @bot.tree.command(name="aparencias",description="Lista paginada de aparência e responsável.")
+    @app_commands.guild_only()
+    async def aparencias(i:discord.Interaction,membro:discord.Member|None=None):await bot.dispatch(i,"aparencias",member_id=membro.id if membro else None)
+    @bot.tree.command(name="minhas",description="Consulte suas próprias aparências.")
+    @app_commands.guild_only()
+    async def minhas(i:discord.Interaction):await bot.dispatch(i,"minhas")
+    @bot.tree.command(name="galeria",description="Veja as imagens; filtre por pessoa ou nome aproximado.")
+    @app_commands.guild_only()
+    async def galeria(i:discord.Interaction,nome:str="",membro:discord.Member|None=None):await bot.dispatch(i,"galeria",nome,membro.id if membro else None)
+    @bot.tree.command(name="consultar",description="Procure uma aparência ocupada pelo nome e pela obra.")
+    @app_commands.guild_only()
+    async def consultar(i:discord.Interaction,nome:str,obra:str=""):await bot.dispatch(i,"consultar",f"{nome} {obra}".strip())
+    @bot.tree.command(name="registrar",description="Cadastre uma aparência para si; staff também cadastra para terceiros.")
+    @app_commands.guild_only()
+    async def registrar(i:discord.Interaction,membro:discord.Member|None=None,imagem:discord.Attachment|None=None):await bot.dispatch(i,"registrar",member_id=membro.id if membro else None,attachment=imagem)
+    @bot.tree.command(name="editar",description="Altere um cadastro permitido em formulário privado.")
+    @app_commands.guild_only()
+    async def editar(i:discord.Interaction,personagem:str,imagem:discord.Attachment|None=None):await bot.dispatch(i,"editar",personagem,attachment=imagem)
+    @bot.tree.command(name="situacao",description="Staff: altere situação e justificativa internas.")
+    @app_commands.guild_only()
+    async def situacao(i:discord.Interaction,personagem:str):await bot.dispatch(i,"situacao",personagem)
+    @bot.tree.command(name="transferir",description="Staff: transfira a aparência preservando ID e data.")
+    @app_commands.guild_only()
+    async def transferir(i:discord.Interaction,personagem:str,membro:discord.Member):await bot.dispatch(i,"transferir",personagem,membro.id)
+    @bot.tree.command(name="remover",description="Staff: remova o cadastro com confirmação e auditoria.")
+    @app_commands.guild_only()
+    async def remover(i:discord.Interaction,personagem:str):await bot.dispatch(i,"remover",personagem)
+    @bot.tree.command(name="historico",description="Staff: consulte o histórico detalhado em privado.")
+    @app_commands.guild_only()
+    async def historico(i:discord.Interaction,personagem:str=""):await bot.dispatch(i,"historico",personagem)
+    @bot.tree.command(name="registrar_historico",description="Staff: use este canal para futuras notificações públicas.")
+    @app_commands.guild_only()
+    async def registrar_historico(i:discord.Interaction):await bot.dispatch(i,"registrar_historico")
+    @bot.tree.command(name="desativar_historico",description="Staff: desative notificações sem apagar a auditoria.")
+    @app_commands.guild_only()
+    async def desativar_historico(i:discord.Interaction):await bot.dispatch(i,"desativar_historico")
+    @bot.tree.command(name="registrar_imagens",description="Staff: preserve neste canal as imagens anexadas ao cadastro.")
+    @app_commands.guild_only()
+    async def registrar_imagens(i:discord.Interaction):await bot.dispatch(i,"registrar_imagens")
+    @bot.tree.command(name="desativar_imagens",description="Staff: pare novos uploads sem apagar os arquivos existentes.")
+    @app_commands.guild_only()
+    async def desativar_imagens(i:discord.Interaction):await bot.dispatch(i,"desativar_imagens")
+    @bot.tree.command(name="status",description="Staff: diagnóstico privado da ponte e do histórico.")
+    @app_commands.guild_only()
+    async def status(i:discord.Interaction):await bot.dispatch(i,"status")
+    @bot.tree.error
+    async def error(i:discord.Interaction,error:app_commands.AppCommandError):
+        await bot.failure(i,error)
+
+class Redact(logging.Filter):
+    def __init__(self,*secrets):
+        super().__init__();self.secrets=[x for x in secrets if x]
+    def filter(self,record):
+        msg=record.getMessage()
+        for value in self.secrets:msg=msg.replace(value,"[SEGREDO OCULTO]")
+        record.msg,record.args=msg,()
+        return True
+
+def main():
+    try:config=Config.load()
+    except (ValueError,OSError) as exc:raise SystemExit(str(exc)) from None
+    handler=logging.StreamHandler()
+    handler.addFilter(Redact(config.token,config.bridge_secret))
+    handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s"))
+    logging.basicConfig(level=logging.INFO,handlers=[handler])
+    Arquivista(config).run(config.token,log_handler=None)
