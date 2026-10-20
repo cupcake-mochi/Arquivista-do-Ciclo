@@ -17,15 +17,16 @@ from . import backup
 from .archive import Archive
 from .config import Config, ROOT
 from .domain import Actor, UserError, STAFF_ACTIONS, find_work, parse_prefix, ranked, public_record, search_text, work_groups, work_key
+from .importer import apply, check
 from .media import Images
 from .sheet import SheetSync
 from .store import Store
 from .transport import Carteiro, MENTIONS
-from .views import Confirm, Gate, Guide, Picker, Paginator, RecordModal, Settings, backup_problem, private_reply, card, clean
+from .views import Confirm, Gate, Guide, RestoreConfirm, Picker, Paginator, RecordModal, Settings, backup_problem, private_reply, card, clean
 
 log = logging.getLogger(__name__)
 PUBLIC = frozenset(("ajuda", "guia", "aparencias", "minhas", "galeria", "consultar", "obra"))
-SLASH = ("ajuda", "guia", "aparencias", "obra", "registrar", "editar", "situacao", "transferir", "remover", "limpar", "apelido", "historico", "configurar", "diagnostico")
+SLASH = ("ajuda", "guia", "aparencias", "obra", "registrar", "editar", "situacao", "transferir", "remover", "limpar", "apelido", "historico", "configurar", "restaurar", "diagnostico")
 
 HELP = """**Consultar o arquivo**
 `/aparencias` ou `AC:ap [aparência] [@membro]` — lista; o botão do resultado troca para galeria.
@@ -54,6 +55,7 @@ STAFF_HELP = """
 
 **Gerência do servidor**
 `/configurar` ou `AC:cfg` — cargos de staff, canais de histórico e imagens, planilha.
+`/restaurar` ou `AC:restaurar` com o .json do backup anexado — volta o arquivo para o backup, com confirmação.
 """
 
 # Guia em páginas (AC:guia). As duas últimas só aparecem para a staff.
@@ -126,6 +128,7 @@ class Arquivista(commands.Bot):
         self.sync_problem: str | None = None
         self.avatar_checked = False
         self.background: set[asyncio.Task] = set()
+        self.add_listener(self.expired_panel, "on_interaction")
         install_slash_commands(self)
     async def setup_hook(self):
         self.session = aiohttp.ClientSession(headers={"User-Agent":"ArquivistaDoCiclo/0.2"})
@@ -155,6 +158,19 @@ class Arquivista(commands.Bot):
                 except discord.HTTPException:
                     log.warning("Não foi possível atualizar o avatar automaticamente. Ajuste-o no Developer Portal.")
         await self.change_presence(activity=discord.Game(name="AC:ajuda · arquivos do Ciclo"))
+    async def expired_panel(self, i: discord.Interaction):
+        """Botão de um painel aberto antes do bot reiniciar: ninguém mais escuta, e o Discord mostraria
+        "Esta interação falhou". Se nada respondeu em 2,5 s, avisa para abrir o comando de novo."""
+        if i.type != discord.InteractionType.component:
+            return
+        await asyncio.sleep(2.5)
+        if i.response.is_done():
+            return
+        try:
+            await i.response.send_message("Esse painel expirou (o bot foi atualizado ou ficou muito tempo parado). Abra o comando de novo.",
+                                          ephemeral=True)
+        except discord.HTTPException:
+            pass  # o painel respondeu no meio tempo
     def archive(self, guild_id: int) -> Archive:
         if not guild_id:
             raise UserError("Use este comando dentro de um servidor.")
@@ -308,6 +324,34 @@ class Arquivista(commands.Bot):
         uploads=bool(i.guild_id and self.store.guild(i.guild_id).get("image_channel"))
         await i.response.send_modal(RecordModal(self,i.user.id,"create",staff=staff,owner={"id":oid,"name":name},
             attachment=attachment,uploads=uploads))
+    async def open_restore(self, i, attachment) -> None:
+        """Confere o .json do backup e mostra o que vai mudar; grava só na confirmação."""
+        if attachment is None or not attachment.filename.lower().endswith(".json"):
+            raise UserError("Anexe o arquivo .json do backup ao comando.")
+        if attachment.size > 25*1024*1024:
+            raise UserError("Arquivo grande demais para um backup do Arquivista.")
+        try:
+            data=json.loads(await attachment.read())
+        except (ValueError,discord.HTTPException):
+            raise UserError("Não consegui ler o arquivo. Use o .json que o backup mandou, sem editar.") from None
+        records,errors,warnings=check(data)
+        if errors:
+            raise UserError("O arquivo tem problema, nada foi mudado:\n"+"\n".join("• "+clean(e,180) for e in errors[:8])+
+                            (f"\n… e mais {len(errors)-8}" if len(errors)>8 else ""))
+        current=len(self.store.records(i.guild_id))
+        other=str(data.get("guild_id") or "")!=str(i.guild_id)
+        when=clean(str(data.get("exported_at") or "data desconhecida")[:19].replace("T"," "),40)
+        text=(f"Backup de **{when}** com **{len(records)} cadastro(s)** de {len({r['owner_id'] for r in records})} membro(s).\n\n"
+              +(f"Isso **substitui os {current} cadastro(s) atuais** deste servidor. O histórico dos atuais fica no /historico.\n" if current else "")
+              +("A planilha conectada será regravada com o backup.\n" if self.store.guild(i.guild_id).get("sheet_url") else "")
+              +("\n**Atenção:** esse backup é de outro servidor.\n" if other else "")
+              +(f"\n{len(warnings)} aviso(s): "+clean("; ".join(warnings[:3]),400) if warnings else ""))
+        v=RestoreConfirm(self,i.user.id,records)
+        await private_reply(i,embed=self.carteiro.decorate(card("Restaurar backup",text)),view=v)
+    def restore(self, gid, records, actor_id) -> int:
+        n=apply(self.store,gid,records,actor_id,replace=True)
+        self.notify_soon()
+        return n
     async def departed(self, guild) -> str:
         """Donos de cadastro que não estão mais no servidor, com o ID para o /limpar."""
         counts={}
@@ -372,6 +416,10 @@ class Arquivista(commands.Bot):
                     raise UserError("Só quem pode gerenciar o servidor configura o Arquivista.")
                 v=Settings(self,i.user.id,i.guild)
                 await private_reply(i,embed=v.embed(),view=v)
+            elif action=="restaurar":
+                if not self.can_configure(i.user):
+                    raise UserError("Só quem pode gerenciar o servidor restaura um backup.")
+                await self.open_restore(i,attachment)
             elif action in ("editar","situacao","transferir","remover"):
                 data=await archive.call("list",actor,{"owner_id":"" if actor.staff else actor.id,"include_released":True})
                 records=ranked(data["records"],query,limit=250)
@@ -487,7 +535,7 @@ class Arquivista(commands.Bot):
             names={o:await self.sheets.owner_name(gid,o) for o in {r["owner_id"] for r in records}}
             files.append(discord.File(io.BytesIO(backup.workbook(records,names)),filename=name+".xlsx"))
         text=(f"{len(records)} cadastro(s), de {len({r['owner_id'] for r in records})} membro(s). "
-              "O .json restaura o arquivo no bot (`python importar.py arquivo.json --servidor ID`)"+
+              "O .json restaura o arquivo no bot (`/restaurar` com ele anexado)"+
               (" e o .xlsx é uma cópia da planilha, uma guia por membro." if cfg.get("sheet_url") else ".")+
               "\n\nTem justificativas e nomes internos: deixe este canal só para a staff.")
         await channel.send(embed=self.carteiro.decorate(card("Backup do arquivo",text)),files=files,allowed_mentions=discord.AllowedMentions.none())
@@ -609,6 +657,11 @@ def install_slash_commands(bot):
     @app_commands.guild_only()
     @app_commands.default_permissions(manage_guild=True)
     async def configurar(i:discord.Interaction):await bot.run_action(i,"configurar")
+    @bot.tree.command(name="restaurar",description="Gerência: volta o arquivo para um backup (.json), com confirmação.")
+    @app_commands.guild_only()
+    @app_commands.default_permissions(manage_guild=True)
+    @app_commands.describe(arquivo="O .json que o backup mandou")
+    async def restaurar(i:discord.Interaction,arquivo:discord.Attachment):await bot.run_action(i,"restaurar",attachment=arquivo)
     @bot.tree.command(name="diagnostico",description="Staff: estado do arquivo, dos canais e da planilha.")
     @app_commands.guild_only()
     async def diagnostico(i:discord.Interaction):await bot.run_action(i,"diagnostico")

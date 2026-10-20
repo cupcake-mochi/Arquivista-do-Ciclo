@@ -421,7 +421,7 @@ class FilesTests(unittest.TestCase):
         self.assertEqual(names,list(SLASH))
         # Todo comando de chat cai num comando de barra ou numa consulta pública.
         self.assertTrue(set(ALIASES.values())<=set(SLASH)|PUBLIC)
-        self.assertEqual(len(names),14)
+        self.assertEqual(len(names),15)
 
 
 class SetupTests(unittest.TestCase):
@@ -452,7 +452,7 @@ class DiscordImportTests(unittest.IsolatedAsyncioTestCase):
         with tempfile.TemporaryDirectory() as d:
             cfg=Config('FAKE',Path(d)/'t.sqlite')
             bot=Arquivista(cfg)
-            self.assertEqual(len(bot.tree.get_commands()),14)
+            self.assertEqual(len(bot.tree.get_commands()),15)
             # Um método do bot com nome de método do discord.py derrubava o login (dispatch).
             from discord.ext import commands
             mine={n for n in vars(Arquivista) if not n.startswith('__')}

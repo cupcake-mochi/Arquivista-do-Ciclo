@@ -401,6 +401,34 @@ class Confirm(GuardedView):
         self.stop()
 
 
+class RestoreConfirm(GuardedView):
+    """Confirmação do /restaurar: grava uma vez só, revalidando a permissão no clique."""
+    def __init__(self, bot, user_id, records):
+        super().__init__(bot, user_id, timeout=600)
+        self.records, self.done = records, False
+    @discord.ui.button(label="Restaurar", style=discord.ButtonStyle.danger)
+    async def go(self, i: discord.Interaction, b: discord.ui.Button):
+        if self.done:
+            return await private_reply(i, content="Este backup já foi restaurado.")
+        await i.response.defer()
+        member = await i.guild.fetch_member(i.user.id)
+        if not self.bot.can_configure(member):
+            return await private_reply(i, content="Você não pode mais gerenciar o servidor.")
+        self.done = True
+        try:
+            n = self.bot.restore(i.guild_id, self.records, str(i.user.id))
+        except ValueError as exc:
+            self.done = False
+            return await private_reply(i, content=str(exc))
+        await i.edit_original_response(embed=self.bot.carteiro.decorate(card("Backup restaurado",
+            f"{n} cadastro(s) de volta no arquivo.")), view=None)
+        self.stop()
+    @discord.ui.button(label="Cancelar", style=discord.ButtonStyle.secondary)
+    async def cancel(self, i: discord.Interaction, b: discord.ui.Button):
+        self.done = True
+        await i.response.edit_message(content="Cancelado. Nada mudou.", embed=None, view=None)
+        self.stop()
+
 def channel_problem(channel, *, images=False) -> str | None:
     """O que falta pro Arquivista usar o canal; None quando está tudo certo."""
     if not isinstance(channel, (discord.TextChannel, discord.Thread)):

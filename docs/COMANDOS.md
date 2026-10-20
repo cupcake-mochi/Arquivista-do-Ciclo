@@ -49,11 +49,12 @@ Não é preciso decorar UUID. Editar, remover e transferir apresentam uma seleç
 | `AC:apelido JJK = Jujutsu Kaisen` (`AC:apl`) | `/apelido acao apelido obra` | Apelido de obra deste servidor para a busca por obra. `AC:apelido -JJK` tira, `AC:apelido` lista (até 500). |
 | `AC:historico [aparência]` (`AC:hist`) | `/historico [aparencia]` | Histórico privado, inclusive registros removidos; vazio mostra eventos recentes. |
 | `AC:diagnostico` (`AC:diag`, `AC:st`) | `/diagnostico` | Cadastros, membros, eventos, canais, avisos pendentes e estado da planilha (envios pendentes, último envio, último erro). |
+| `AC:restaurar` com o .json anexado | `/restaurar arquivo` | Só gerência. Volta o arquivo para um backup: mostra quantos cadastros vêm e quantos atuais serão substituídos, e só grava no botão **Restaurar**. Os cadastros substituídos ficam no `/historico`, e a planilha conectada é regravada. |
 | `AC:configurar` (`AC:cfg`) | `/configurar` | Só dono, Administrador ou quem gerencia o servidor: cargos de staff, canal de histórico, canal de imagens, planilha e backup num painel privado. |
 
 Os comandos de configuração exibem um botão de atendimento privado quando usados por `AC:`; abrir esse painel executa a configuração com nova checagem de permissão. Não criam/deletam canais nem alteram permissões do servidor.
 
-**Backup:** no `/configurar` → **Backup**, escolha um canal fechado para @everyone e a frequência (6 h, 12 h, 1 dia, 3 dias ou 1 semana). O bot manda um `.json` que restaura o arquivo (`python importar.py arquivo.json --servidor ID --aplicar`, num banco sem cadastros desse servidor) e, se houver planilha conectada, um `.xlsx` com uma guia por membro. O backup leva justificativas e nomes no servidor; por isso o bot recusa canal aberto. **Fazer backup agora** manda um na hora.
+**Backup:** no `/configurar` → **Backup**, escolha um canal que só a staff vê e a frequência (6 h, 12 h, 1 dia, 3 dias ou 1 semana). O bot manda um `.json` que restaura o arquivo (`/restaurar`) e, se houver planilha conectada, um `.xlsx` com uma guia por membro. O backup leva justificativas e nomes no servidor; por isso o bot recusa canal que algum cargo fora da staff consegue ver. **Fazer backup agora** manda um na hora. Para voltar a um backup, use `/restaurar` com o .json (não precisa de terminal).
 
 **Staff** = dono do servidor, Administrador, quem tem Gerenciar Servidor ou membro de um dos cargos escolhidos no `/configurar` daquele servidor. A permissão é checada novamente nas operações finais; ter aberto um painel antes não mantém um privilégio removido.
 

@@ -11,7 +11,7 @@ import uuid
 from datetime import date, datetime, timedelta, timezone
 
 from .domain import STATUSES, exact_key
-from .store import Store
+from .store import Store, sheet_upsert
 
 FORMAT = "arquivista-export"
 ID = re.compile(r"^AP-[0-9a-fA-F-]{8,64}$")
@@ -96,14 +96,16 @@ def summary(records: list[dict]) -> dict:
             "without_date": sum(1 for r in records if not r["date"]),
             "with_image": sum(1 for r in records if r["image_url"]), "status": by_status}
 
-def apply(store: Store, guild_id: int | str, records: list[dict], actor_id: str = "") -> int:
-    """Grava tudo numa transação. Recusa servidor que já tem cadastros, pra não misturar fontes."""
+def apply(store: Store, guild_id: int | str, records: list[dict], actor_id: str = "", replace: bool = False) -> int:
+    """Grava tudo numa transação. Sem replace, recusa servidor que já tem cadastros, pra não misturar fontes.
+    Com replace (restaurar backup pelo Discord), apaga os cadastros atuais do servidor no mesmo commit;
+    a auditoria deles fica, com um evento de remoção cada, e a planilha conectada recebe a limpeza."""
     guild = str(guild_id)
     db = store.db
-    if db.execute("SELECT 1 FROM appearances WHERE guild_id=? LIMIT 1", (guild,)).fetchone():
+    if not replace and db.execute("SELECT 1 FROM appearances WHERE guild_id=? LIMIT 1", (guild,)).fetchone():
         raise ValueError("Este servidor já tem cadastros no banco. A importação só roda num servidor vazio.")
-    clash = db.execute(f"SELECT id FROM appearances WHERE id IN ({','.join('?'*len(records))})",
-                       [r["id"] for r in records]).fetchone() if records else None
+    clash = db.execute(f"SELECT id FROM appearances WHERE guild_id<>? AND id IN ({','.join('?'*len(records))})",
+                       [guild] + [r["id"] for r in records]).fetchone() if records else None
     if clash:
         raise ValueError(f"O ID {clash[0]} já existe em outro servidor do banco. A planilha foi importada em outro lugar?")
     for r in records:
@@ -112,7 +114,25 @@ def apply(store: Store, guild_id: int | str, records: list[dict], actor_id: str 
     now = time.time()
     at = datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
     rid = "import-" + str(uuid.uuid4())
+    connected = bool(store.guild(guild).get("sheet_url"))
     with db:
+        if replace:
+            fields = ("id", "owner_id", "appearance", "work", "server_name", "status", "justification", "image_url",
+                      "media_ref", "date", "revision")
+            by_id = {r["id"]: r for r in records}
+            keep = set(by_id)
+            for old in db.execute("SELECT * FROM appearances WHERE guild_id=?", (guild,)).fetchall():
+                before = {k: old[k] for k in fields}
+                db.execute("INSERT INTO events(event_id,guild_id,request_id,at,kind,record_id,actor_id,source,before,after)"
+                           " VALUES(?,?,?,?,'remove',?,?,'restauração',?,NULL)",
+                           ("EV-" + str(uuid.uuid4()), guild, rid, at, old["id"], actor_id, json.dumps(before, ensure_ascii=False)))
+                if connected and old["id"] not in keep:
+                    rev = old["revision"] + 1
+                    store.queue_sheet(guild, old["id"], rev, {"op": "clear", "id": old["id"], "revision": rev})
+                # Revisão sempre sobe: a planilha só aceita versão mais nova que a que já mostra.
+                if old["id"] in by_id:
+                    by_id[old["id"]]["revision"] = max(by_id[old["id"]].get("revision", 1), old["revision"] + 1)
+            db.execute("DELETE FROM appearances WHERE guild_id=?", (guild,))
         for r in records:
             db.execute("INSERT INTO appearances(id,guild_id,owner_id,appearance,work,key,server_name,status,justification,"
                        "image_url,media_ref,date,revision,created,updated) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
@@ -122,6 +142,8 @@ def apply(store: Store, guild_id: int | str, records: list[dict], actor_id: str 
             after = {**{k: r[k] for k in ("id", "owner_id", "appearance", "work", "server_name", "status",
                                           "justification", "image_url", "date")},
                      "media_ref": r.get("media_ref", ""), "revision": r.get("revision", 1)}
+            if connected:
+                store.queue_sheet(guild, r["id"], after["revision"], sheet_upsert(after))
             # Sem aviso no canal de histórico: importar não é cadastro novo.
             db.execute("INSERT INTO events(event_id,guild_id,request_id,at,kind,record_id,actor_id,source,before,after)"
                        " VALUES(?,?,?,?,'import',?,?,'importação',NULL,?)",

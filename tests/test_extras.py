@@ -350,6 +350,36 @@ class DepartedTests(unittest.TestCase):
         self.assertIn(f"`{U2}` · 2 cadastro(s)", text); self.assertNotIn(U1, text)
 
 
+class RestoreTests(unittest.TestCase):
+    def test_backup_round_trip_replaces_current_records(self):
+        import json
+        from arquivista import backup, importer
+        tmp = tempfile.TemporaryDirectory(); self.addCleanup(tmp.cleanup)
+        s = Store(Path(tmp.name) / "d.sqlite"); self.addCleanup(s.close)
+        a, staff = Archive(s, G1), Actor("5" * 18, "s", True)
+        ref = f"discord://{G1}/1{'0'*17}/2{'0'*17}/3{'0'*17}"
+        mk = lambda name, **f: asyncio.run(a.call("create", staff, {"owner": {"id": U1, "name": "x"},
+                                                  "fields": {"appearance": name, "work": "Azur Lane", **f}}))["record"]
+        takao = mk("Takao", media_ref=ref, image_url="https://cdn.discordapp.com/a.png")
+        atago = mk("Atago")
+        data = json.loads(backup.export_json(G1, s.records(G1)))
+        # Depois do backup: muda uma, apaga outra, cria uma terceira, e a planilha é conectada.
+        asyncio.run(a.call("edit", staff, {"id": takao["id"], "revision": 1, "fields": {"server_name": "depois"}}))
+        asyncio.run(a.call("remove", staff, {"id": atago["id"], "revision": 1}))
+        kaga = mk("Kaga")
+        s.set_guild(G1, sheet_url="https://script.google.com/macros/s/" + "a" * 30 + "/exec", sheet_key="x")
+        records, errors, _ = importer.check(data)
+        self.assertEqual(errors, [])
+        self.assertEqual(importer.apply(s, G1, records, "5" * 18, replace=True), 2)
+        now = {r["appearance"]: r for r in s.records(G1)}
+        self.assertEqual(sorted(now), ["Atago", "Takao"])
+        self.assertEqual((now["Takao"]["server_name"], now["Takao"]["media_ref"], now["Takao"]["revision"]), ("", ref, 3))
+        queued = {r["record_id"]: json.loads(r["payload"])["op"] for r in s.db.execute("SELECT * FROM sheet_outbox")}
+        self.assertEqual(queued, {takao["id"]: "upsert", atago["id"]: "upsert", kaga["id"]: "clear"})
+        kinds = [r[0] for r in s.db.execute("SELECT kind FROM events WHERE record_id=? ORDER BY seq", (kaga["id"],))]
+        self.assertEqual(kinds, ["create", "remove"])  # o que sumiu na restauração fica na auditoria
+
+
 class AmiyaPhotoTests(unittest.TestCase):
     def test_webhook_without_photo_gets_amiya_and_messages_use_it(self):
         from arquivista.transport import Carteiro
