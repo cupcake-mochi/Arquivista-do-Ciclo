@@ -25,7 +25,7 @@ from .views import Confirm, Gate, Picker, Paginator, RecordModal, Settings, back
 
 log = logging.getLogger(__name__)
 PUBLIC = frozenset(("ajuda", "aparencias", "minhas", "galeria", "consultar", "obra"))
-SLASH = ("ajuda", "aparencias", "obra", "registrar", "editar", "situacao", "transferir", "remover", "limpar", "historico", "configurar", "diagnostico")
+SLASH = ("ajuda", "aparencias", "obra", "registrar", "editar", "situacao", "transferir", "remover", "limpar", "apelido", "historico", "configurar", "diagnostico")
 
 HELP = """**Consultar o arquivo**
 `/aparencias` ou `AC:ap [aparência] [@membro]` — lista; o botão do resultado troca para galeria.
@@ -46,6 +46,7 @@ STAFF_HELP = """
 `/transferir` ou `AC:tr aparência @membro` — mudar o responsável, mantendo ID e data.
 `/remover` ou `AC:rm aparência` — remover com confirmação; o histórico fica.
 `/limpar` ou `AC:limpar @membro` — apagar todos os cadastros de alguém (vale o ID de quem já saiu).
+`/apelido` ou `AC:apelido JJK = Jujutsu Kaisen` — apelido de obra para a busca por obra. `AC:apelido -JJK` tira; `AC:apelido` lista.
 `/historico` ou `AC:hist [aparência]` — histórico privado, inclusive removidos.
 `/diagnostico` ou `AC:diag` — estado do arquivo, dos canais e da planilha.
 
@@ -214,7 +215,7 @@ class Arquivista(commands.Bot):
             if action=="obra":
                 data=await self.archive(gid).call("list",actor,{"owner_id":"","include_released":False})
                 records=[public_record(r) for r in data["records"]]
-                groups=await asyncio.to_thread(work_groups,[r["work"] for r in records])
+                groups=await asyncio.to_thread(work_groups,[r["work"] for r in records],self.store.aliases(gid))
                 if not query.strip():
                     view=Paginator(self,user.id,groups,"works",actor=actor,guild_id=gid)
                 else:
@@ -260,6 +261,33 @@ class Arquivista(commands.Bot):
         uploads=bool(i.guild_id and self.store.guild(i.guild_id).get("image_channel"))
         await i.response.send_modal(RecordModal(self,i.user.id,"create",staff=staff,owner={"id":oid,"name":name},
             attachment=attachment,uploads=uploads))
+    def alias_command(self, gid, query: str) -> str:
+        """`JJK = Jujutsu Kaisen` cadastra, `-JJK` tira, vazio lista. Só a staff chega aqui."""
+        query=query.strip()
+        aliases=self.store.aliases(gid)
+        if not query:
+            if not aliases:
+                return ("Nenhum apelido cadastrado. A busca por obra já junta grafias parecidas sozinha; "
+                        "apelido serve pro que não se parece, tipo `AC:apelido JJK = Jujutsu Kaisen`.")
+            lines=[f"**{clean(a,60)}** → {clean(w,80)}" for a,w in aliases.items()]
+            text="\n".join(lines[:60])
+            return text+(f"\n… e mais {len(lines)-60}" if len(lines)>60 else "")
+        if query.startswith("-"):
+            alias=query[1:].strip()
+            if not self.store.drop_alias(gid,work_key(alias)):
+                raise UserError("Esse apelido não está cadastrado. Use AC:apelido para ver a lista.")
+            return f"Apelido **{clean(alias,60)}** removido."
+        if "=" not in query:
+            raise UserError("Use AC:apelido JJK = Jujutsu Kaisen para cadastrar, AC:apelido -JJK para tirar ou só AC:apelido para listar.")
+        alias,work=(x.strip() for x in query.split("=",1))
+        if not alias or not work or len(alias)>100 or len(work)>100 or not work_key(alias) or not work_key(work):
+            raise UserError("Escreva o apelido e o nome da obra, cada um com até 100 caracteres.")
+        if work_key(alias)==work_key(work):
+            raise UserError("O apelido é igual ao nome da obra; a busca já acha.")
+        if work_key(alias) not in {work_key(a) for a in aliases} and len(aliases)>=500:
+            raise UserError("Este servidor já tem 500 apelidos. Tire algum antes.")
+        self.store.set_alias(gid,work_key(alias),alias,work)
+        return f"Pronto: **{clean(alias,60)}** agora acha **{clean(work,80)}** no `/obra`, e o grupo aparece com esse nome."
     async def open_private(self, i, action, query="", member_id=None, attachment=None):
         try:
             actor=await self.actor(i.user.id,i.guild_id)
@@ -278,6 +306,8 @@ class Arquivista(commands.Bot):
                     raise UserError("Não encontrei um cadastro correspondente que você possa gerenciar.")
                 v=Picker(self,i.user.id,records,action,member_id,attachment)
                 await private_reply(i,content=f"Encontrei {len(records)} opção(ões). Selecione pela aparência e obra; nenhuma alteração foi feita.",view=v)
+            elif action=="apelido":
+                await private_reply(i,embed=self.carteiro.decorate(card("Apelidos de obra",self.alias_command(i.guild_id,query))))
             elif action=="limpar":
                 data=await archive.call("list",actor,{"owner_id":str(member_id),"include_released":True})
                 records=data["records"]
@@ -481,6 +511,14 @@ def install_slash_commands(bot):
     @app_commands.describe(membro="Quem ainda está no servidor",id="ID do Discord, para quem já saiu")
     async def limpar(i:discord.Interaction,membro:discord.User|None=None,id:str=""):
         await bot.run_action(i,"limpar",id,membro.id if membro else None)
+    @bot.tree.command(name="apelido",description="Staff: apelido de obra para a busca por obra (JJK = Jujutsu Kaisen).")
+    @app_commands.guild_only()
+    @app_commands.describe(acao="Cadastrar, tirar ou ver a lista",apelido="Como as pessoas escrevem (JJK)",obra="Nome da obra (Jujutsu Kaisen)")
+    @app_commands.choices(acao=[app_commands.Choice(name="cadastrar",value="cadastrar"),app_commands.Choice(name="tirar",value="tirar"),
+                                app_commands.Choice(name="lista",value="lista")])
+    async def apelido(i:discord.Interaction,acao:str="lista",apelido:str="",obra:str=""):
+        query={"cadastrar":f"{apelido} = {obra}","tirar":"-"+apelido}.get(acao,"")
+        await bot.run_action(i,"apelido",query)
     @bot.tree.command(name="historico",description="Staff: histórico detalhado em privado.")
     @app_commands.guild_only()
     async def historico(i:discord.Interaction,aparencia:str=""):await bot.run_action(i,"historico",aparencia)

@@ -138,6 +138,32 @@ class WorkTests(unittest.TestCase):
                          "Honkai Impact 3rd", "Fate/stay night", "Fate/Grand Order", "Final Fantasy VII", "Dragon Quest"])
         self.assertEqual(len(g), 11)
 
+    def test_staff_aliases_join_and_name_groups(self):
+        aliases = {"JJK": "Jujutsu Kaisen", "AK": "Arknights", "FGO": "Fate/Grand Order"}
+        groups = work_groups(["JJK", "jujutsu kaisen", "Arknights", "Endfield", "Arknights Endfield"], aliases)
+        self.assertEqual([(g["label"], g["count"]) for g in groups], [("Arknights", 3), ("Jujutsu Kaisen", 2)])
+        self.assertEqual(groups[1]["names"], ["Jujutsu Kaisen", "JJK"])
+        self.assertEqual([g["label"] for g in find_work(groups, "ak")], ["Arknights"])
+        self.assertEqual([g["label"] for g in find_work(groups, "jjk")], ["Jujutsu Kaisen"])
+        self.assertEqual(find_work(groups, "fgo"), [])  # apelido sem cadastro usando não vira grupo vazio
+
+    def test_alias_command(self):
+        from arquivista.bot import Arquivista
+        tmp = tempfile.TemporaryDirectory(); self.addCleanup(tmp.cleanup)
+        s = Store(Path(tmp.name) / "d.sqlite"); self.addCleanup(s.close)
+        class Bot: store = s
+        run = lambda q: Arquivista.alias_command(Bot(), G1, q)
+        self.assertIn("Nenhum apelido", run(""))
+        self.assertIn("Jujutsu Kaisen", run("JJK = Jujutsu Kaisen"))
+        run("jjk=Jujutsu Kaisen 0")  # mesma chave: troca
+        self.assertEqual(s.aliases(G1), {"jjk": "Jujutsu Kaisen 0"})
+        self.assertIn("jjk", run(""))
+        for bad in ("JJK", "JJK =", "Arknights = arknights", "-nada"):
+            with self.assertRaises(Exception, msg=bad):
+                run(bad)
+        self.assertIn("removido", run("- JJK"))
+        self.assertEqual(s.aliases(G1), {})
+
     def test_search_reaches_whole_group(self):
         groups = work_groups(["Arknights", "Arknights Endfield", "Endfield", "Azur Lane"])
         for q in ("endfield", "ARKNIGHS", "ark", "arknights endfield"):

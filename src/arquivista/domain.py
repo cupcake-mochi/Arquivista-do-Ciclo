@@ -28,6 +28,7 @@ SHORT = {
     "situacao": ("situacao", "situação", "sit"),
     "transferir": ("transferir", "transf", "tr"),
     "obra": ("obra", "obras", "ob"),
+    "apelido": ("apelido", "apelidos", "apl"),
     "remover": ("remover", "rem", "rm"),
     "limpar": ("limpar", "apagar"),
     "historico": ("historico", "histórico", "hist"),
@@ -36,7 +37,7 @@ SHORT = {
     "configurar": ("configurar", "config", "cfg", "registrarhistorico", "desativarhistorico", "registrarimagens", "desativarimagens"),
 }
 ALIASES = {name: action for action, names in SHORT.items() for name in names}
-STAFF_ACTIONS = frozenset(("situacao", "transferir", "remover", "limpar", "historico", "diagnostico"))
+STAFF_ACTIONS = frozenset(("situacao", "transferir", "remover", "limpar", "apelido", "historico", "diagnostico"))
 
 ERRORS = {
     "AUTH": "A conexão com o arquivo não foi autorizada. A staff precisa conferir a configuração.",
@@ -176,13 +177,15 @@ def related_works(a: Any, b: Any) -> bool:
 def work_key(name: Any) -> str:
     return " ".join(work_words(name)) or normalized(name)
 
-def work_groups(works: list[str]) -> list[dict]:
+def work_groups(works: list[str], aliases: dict[str, str] | None = None) -> list[dict]:
     """Junta as grafias parecidas. Devolve [{label, names, count, keys}] do grupo com mais cadastros para o menor;
-    label é a grafia mais usada do grupo. Não altere o resultado: ele fica em cache."""
-    return _work_groups(tuple(sorted(works)))
+    label é a grafia mais usada do grupo. aliases: apelido -> nome da obra, cadastrados pela staff do servidor;
+    juntam o que a semelhança sozinha não junta ("JJK" e "Jujutsu Kaisen") e dão o nome do grupo.
+    Não altere o resultado: ele fica em cache."""
+    return _work_groups(tuple(sorted(works)), tuple(sorted((aliases or {}).items())))
 
 @lru_cache(maxsize=64)
-def _work_groups(works: tuple[str, ...]) -> list[dict]:
+def _work_groups(works: tuple[str, ...], aliases: tuple[tuple[str, str], ...] = ()) -> list[dict]:
     count: dict[str, int] = {}
     spelling: dict[str, dict[str, int]] = {}
     for w in works:
@@ -192,6 +195,16 @@ def _work_groups(works: tuple[str, ...]) -> list[dict]:
         count[key] = count.get(key, 0) + 1
         spelling.setdefault(key, {})
         spelling[key][w.strip()] = spelling[key].get(w.strip(), 0) + 1
+    links, targets = [], {}
+    for alias, target in aliases:
+        ak, tk = work_key(alias), work_key(target)
+        if not ak or not tk:
+            continue
+        for k, name in ((ak, alias), (tk, target)):
+            count.setdefault(k, 0)
+            spelling.setdefault(k, {}).setdefault(name.strip(), 0)
+        links.append((ak, tk))
+        targets[tk] = target.strip()
     keys = sorted(count)
     parent = {k: k for k in keys}
     def root(k):
@@ -204,26 +217,33 @@ def _work_groups(works: tuple[str, ...]) -> list[dict]:
         for b in keys[i + 1:]:
             if root(a) != root(b) and _related(words[a], words[b]):
                 parent[root(b)] = root(a)
+    for ak, tk in links:
+        if root(ak) != root(tk):
+            parent[root(ak)] = root(tk)
     groups: dict[str, list[str]] = {}
     for k in keys:
         groups.setdefault(root(k), []).append(k)
     out = []
     for members in groups.values():
-        # Nome do grupo: a grafia mais usada; no empate, a que mais aparece dentro das outras ("Arknights"
-        # está em "Arknights Endfield"), depois a que começa como as outras (franquia antes do subtítulo),
-        # depois a de palavras mais repetidas ("Arknights" ganha de "arknighs"),
-        # sem preferir sigla. Dentro da grafia, a forma com maiúscula mais comum.
+        total = sum(count[k] for k in members)
+        if not total:
+            continue  # apelido de obra que ninguém usa ainda
+        # Nome do grupo: o nome que a staff deu num apelido; sem isso, a grafia mais usada; no empate,
+        # a que mais aparece dentro das outras ("Arknights" está em "Arknights Endfield"), depois a que
+        # começa como as outras (franquia antes do subtítulo), depois a de palavras mais repetidas
+        # ("Arknights" ganha de "arknighs"), sem preferir sigla. Dentro da grafia, a forma com maiúscula mais comum.
         words: dict[str, int] = {}
         for k in members:
             for w in k.split():
                 words[w] = words.get(w, 0) + count[k]
         base = lambda k: sum(count[o] for o in members if all(any(_same_word(x, y) for y in o.split()) for x in k.split()))
         lead = lambda k: sum(count[o] for o in members if _same_word(k.split()[0], o.split()[0]))
-        best = lambda k: (-count[k], -base(k), -lead(k), -sum(words[w] for w in k.split()) / len(k.split()), len(k) <= 4, len(k), k)
+        best = lambda k: (k not in targets, -count[k], -base(k), -lead(k),
+                          -sum(words[w] for w in k.split()) / len(k.split()), len(k) <= 4, len(k), k)
         ordered = sorted(members, key=best)
-        shown = lambda k: sorted(spelling[k], key=lambda n: (-spelling[k][n], n == n.lower(), n))[0]
-        out.append({"label": shown(ordered[0]), "names": [shown(k) for k in ordered],
-                    "count": sum(count[k] for k in members), "keys": members})
+        shown = lambda k: targets.get(k) or sorted(spelling[k], key=lambda n: (-spelling[k][n], n == n.lower(), n))[0]
+        names = [shown(ordered[0])] + [shown(k) for k in ordered[1:] if count[k]]
+        out.append({"label": names[0], "names": names, "count": total, "keys": members})
     return sorted(out, key=lambda g: (-g["count"], search_text(g["label"])))
 
 def find_work(groups: list[dict], query: str) -> list[dict]:

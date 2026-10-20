@@ -36,6 +36,9 @@ SCHEMA = '''
   CREATE TABLE IF NOT EXISTS sheet_outbox(guild_id TEXT NOT NULL,record_id TEXT NOT NULL,revision INTEGER NOT NULL,
     payload TEXT NOT NULL,tries INTEGER NOT NULL DEFAULT 0,next_try REAL NOT NULL DEFAULT 0,error TEXT,
     PRIMARY KEY(guild_id,record_id));
+  -- Apelidos de obra que a staff cadastra ("JJK" = "Jujutsu Kaisen"); a chave é o apelido normalizado.
+  CREATE TABLE IF NOT EXISTS work_aliases(guild_id TEXT NOT NULL,alias_key TEXT NOT NULL,alias TEXT NOT NULL,
+    work TEXT NOT NULL,PRIMARY KEY(guild_id,alias_key));
 '''
 # Colunas acrescentadas depois da primeira versão do banco; ALTER TABLE preserva o que já existe.
 COLUMNS = {"guilds": (("sheet_url", "TEXT"), ("sheet_key", "TEXT"), ("sheet_error", "TEXT"), ("sheet_ok", "TEXT"),
@@ -162,6 +165,16 @@ class Store:
                 delay = 6 * 3600 if long else min(3600, 30 * 2 ** min(row[0], 7))
                 self.db.execute("UPDATE sheet_outbox SET tries=tries+1,next_try=?,error=? WHERE guild_id=? AND record_id=?",
                                 (time.time() + delay, error, str(guild_id), rid))
+    # ---- apelidos de obra
+    def aliases(self, guild_id: str) -> dict[str, str]:
+        rows = self.db.execute("SELECT alias,work FROM work_aliases WHERE guild_id=? ORDER BY alias_key", (str(guild_id),))
+        return {r[0]: r[1] for r in rows}
+    def set_alias(self, guild_id: str, key: str, alias: str, work: str) -> None:
+        with self.db:
+            self.db.execute("INSERT OR REPLACE INTO work_aliases VALUES(?,?,?,?)", (str(guild_id), key, alias, work))
+    def drop_alias(self, guild_id: str, key: str) -> bool:
+        with self.db:
+            return self.db.execute("DELETE FROM work_aliases WHERE guild_id=? AND alias_key=?", (str(guild_id), key)).rowcount > 0
     def sheet_queued(self, guild_id: str) -> set[str]:
         return {r[0] for r in self.db.execute("SELECT record_id FROM sheet_outbox WHERE guild_id=?", (str(guild_id),))}
     def sheet_guilds(self) -> list[str]:
