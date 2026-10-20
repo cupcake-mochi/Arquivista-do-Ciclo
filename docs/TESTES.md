@@ -1,6 +1,6 @@
-# Validação · Arquivista 1.0.2 · 20/10/2026
+# Validação · Arquivista 1.0.3 · 20/10/2026
 
-A 1.0.2 mostra o nome do personagem no servidor nas consultas e na galeria. Foram verificados nome vazio, menções e formatação escapadas, nomes longos, paginação e separação de situação/justificativa. A suíte foi executada novamente; os demais ensaios reais descritos abaixo foram feitos na preparação da 1.0.
+A 1.0.3 permite remover o próprio cadastro com confirmação. Os testes cobrem proprietário e terceiros, cancelamento, revisão antiga, transferência antes de confirmar, retentativa sem duplicar auditoria, preservação do histórico e fila de remoção da planilha. A suíte foi executada novamente; os ensaios reais descritos abaixo foram feitos nas versões indicadas.
 
 ## O que foi executado nesta entrega
 
@@ -53,7 +53,7 @@ O OAuth dedicado foi autorizado com `drive.file` e público em produção. O tes
 
 A configuração de acesso externo para imagens foi validada na API real num arquivo isolado. O teste automatizado também força uma retomada da inicialização quando essa propriedade já está habilitada, recusando nova escrita do campo que o Google torna somente leitura. Conexões antigas não recebem essa alteração automaticamente.
 
-Uma segunda conta Discord sem staff consultou a galeria e foi impedida de acessar configuração, planilha, auditoria, painel de outra pessoa e edição de ficha alheia. A staff transferiu uma ficha fictícia para essa conta, preservando ID/data; o novo responsável editou somente os campos permitidos, enquanto a remoção continuou exclusiva da staff. A API do Sheets confirmou transferência e edição na aba correta, sem duplicar a ficha. As duas fichas fictícias foram removidas e a planilha terminou com os seis cadastros originais, sem estrutura quebrada.
+Na preparação da 1.0, uma segunda conta Discord sem staff consultou a galeria e foi impedida de acessar configuração, planilha, auditoria, painel de outra pessoa e edição de ficha alheia. A staff transferiu uma ficha fictícia para essa conta, preservando ID/data; o novo responsável editou somente os campos permitidos. Naquela versão, a remoção ainda era exclusiva da staff; a 1.0.3 permite a remoção pelo próprio responsável. A API do Sheets confirmou transferência e edição na aba correta, sem duplicar a ficha. As duas fichas fictícias foram removidas e a planilha terminou com os seis cadastros originais, sem estrutura quebrada.
 
 O JSON realmente enviado pelo backup diário foi baixado e restaurado pelo importador do produto em um SQLite temporário vazio; depois foi restaurado novamente com substituição. Os oito registros do arquivo mantiveram campos, IDs e datas; as revisões subiram e o histórico anterior foi preservado. O XLSX foi validado como ZIP/XML, com duas guias de membros. Nenhuma restauração substituiu o banco de produção. Também foi criada uma cópia completa do SQLite na hospedagem pela API de backup, com `integrity_check` aprovado. A comparação final com essa cópia confirmou os seis registros originais intactos, descontando apenas URLs temporárias de imagem.
 

@@ -41,6 +41,7 @@ HELP = """**Consultar o arquivo**
 **Seu cadastro**
 `/registrar` ou `AC:reg` — preencha a ficha, confira os dados e confirme.
 `/editar` ou `AC:ed aparência` — altere o nome do personagem no servidor ou a imagem.
+`/remover` ou `AC:rm aparência` — remova um cadastro seu, com confirmação.
 
 Os nomes completos também valem (`AC:registrar`, `AC:galeria`...). `ac:` minúsculo funciona.
 Situação e justificativa não aparecem nas consultas públicas.""" + "\n\n" + DATA_LINKS
@@ -50,7 +51,7 @@ STAFF_HELP = """
 `AC:reg @membro` — cadastrar para outra pessoa.
 `/situacao` ou `AC:sit aparência` — situação e justificativa internas.
 `/transferir` ou `AC:tr aparência @membro` — mudar o responsável, mantendo ID e data.
-`/remover` ou `AC:rm aparência` — remover com confirmação; o histórico fica.
+`/remover` ou `AC:rm aparência` — a staff também pode remover cadastros de outras pessoas.
 `/limpar` ou `AC:limpar @membro` — apagar todos os cadastros de alguém (vale o ID de quem já saiu; só `AC:limpar` lista quem saiu).
 `/apelido` ou `AC:apelido JJK = Jujutsu Kaisen` — apelido de obra para a busca por obra. `AC:apelido -JJK` tira; `AC:apelido` lista.
 `/historico` ou `AC:hist [aparência]` — histórico privado, inclusive removidos.
@@ -84,7 +85,8 @@ GUIDE = (
      "Depois, confira os dados numa mensagem que só você vê, escolha a situação e clique em **Confirmar e salvar**. Se não escolher, fica **Em preparação**. Se a aparência estiver ocupada, eu aviso sem salvar outro cadastro."),
     ("Mudar o seu cadastro",
      "`AC:ed nome` ou `/editar` — muda o nome no servidor ou a imagem. Para tirar a imagem, escreva `-` no campo.\n\n"
-     "Depois do cadastro, só a staff pode mudar a aparência, a obra ou a situação. Se não quiser mais usar essa aparência, peça à staff para liberar."),
+     "`/remover` ou `AC:rm nome` — remove um cadastro seu, depois da sua confirmação. A aparência fica livre e o histórico continua guardado para a staff.\n\n"
+     "Depois do cadastro, só a staff pode mudar a aparência, a obra ou a situação. Editar ou remover cadastros de outras pessoas também exige staff."),
     ("Situações",
      "**Em preparação** — reservada, ainda sendo montada.\n**Em uso** — sendo usada.\n"
      "**Arquivado** — fora de uso, mas continua ocupada.\n**Liberado** — livre para outra pessoa.\n\n"
@@ -653,7 +655,7 @@ def install_slash_commands(bot):
     @bot.tree.command(name="transferir",description="Staff: mude o responsável, mantendo ID e data.")
     @app_commands.guild_only()
     async def transferir(i:discord.Interaction,aparencia:str,membro:discord.Member):await bot.run_action(i,"transferir",aparencia,membro.id)
-    @bot.tree.command(name="remover",description="Staff: remova o cadastro com confirmação; o histórico fica.")
+    @bot.tree.command(name="remover",description="Remova um cadastro seu; staff também pode remover de outras pessoas.")
     @app_commands.guild_only()
     async def remover(i:discord.Interaction,aparencia:str):await bot.run_action(i,"remover",aparencia)
     @bot.tree.command(name="limpar",description="Staff: apague todos os cadastros de um membro, com confirmação.")

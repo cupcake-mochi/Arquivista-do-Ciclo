@@ -29,6 +29,7 @@ Quem abriu uma lista usa seus botões; outra pessoa pode abrir a própria consul
 | `AC:registrar` (`AC:reg`) | `/registrar` | Qualquer membro. Pela barra o formulário abre na hora; pelo chat, num botão. Depois vem a revisão com a situação, e o "Salvo" aparece na mesma mensagem. |
 | `AC:registrar @membro` | `/registrar membro` | Só staff para terceiros. Autor e responsável permanecem distintos. |
 | `AC:editar aparência` (`AC:ed`) | `/editar aparencia` | Membro: próprio nome no servidor/imagem. Staff: qualquer cadastro, também aparência e obra. Escolhida a ficha, o formulário abre direto. |
+| `AC:remover aparência` (`AC:rm`) | `/remover aparencia` | Membro: remove um cadastro próprio, com confirmação. Staff: também remove de outras pessoas. A auditoria fica preservada. |
 
 A imagem pode ir pelo link HTTPS no formulário ou pelo campo de anexo do próprio formulário. No chat, também dá pra anexar à mensagem do comando. O anexo precisa do canal de imagens escolhido no `/configurar`.
 
@@ -44,7 +45,6 @@ Você pode buscar pelo nome, sem decorar o ID da ficha. Antes de editar, remover
 |---|---|---|
 | `AC:situacao aparência` (`AC:sit`) | `/situacao aparencia` | Escolher situação e escrever justificativa interna. Exige confirmação. |
 | `AC:transferir aparência @membro` (`AC:tr`) | `/transferir aparencia membro` | Muda o responsável preservando ID e data. |
-| `AC:remover aparência` (`AC:rm`) | `/remover aparencia` | Remove o cadastro ativo, mas não sua auditoria. Confirmação destacada. |
 | `AC:limpar @membro` ou `AC:limpar ID` | `/limpar [membro] [id]` | Apaga **todos** os cadastros de uma pessoa, inclusive quem já saiu do servidor (pelo ID do Discord). Só `AC:limpar` lista quem tem cadastro e saiu, com o ID. A confirmação mostra quantos são e quais; se alguém cadastrar ou remover algo no meio, pede de novo. A auditoria fica e o canal de histórico recebe um aviso só. |
 | `AC:apelido JJK = Jujutsu Kaisen` (`AC:apl`) | `/apelido acao apelido obra` | Apelido de obra deste servidor para a busca por obra. `AC:apelido -JJK` tira, `AC:apelido` lista (até 500). |
 | `AC:historico [aparência]` (`AC:hist`) | `/historico [aparencia]` | Histórico privado, inclusive registros removidos; vazio mostra eventos recentes. |
@@ -65,7 +65,7 @@ Os comandos de configuração exibem um botão de atendimento privado quando usa
 
 **Planilha pronta:** cadastro e edição funcionam pelo Discord e diretamente no Sheets. As edições do Sheets entram no bot em cerca de cinco minutos, passam pela mesma validação e as recusas aparecem no `/diagnostico`. Começa com 20 posições por membro e ganha mais 20 quando faltam duas livres. Preserve as fórmulas e colunas de identificação; não insira/apague linhas no meio das fichas. Para remover um cadastro, use `/remover` ou `/limpar`. Compartilhe edição apenas com a staff. Desconectar só desliga a sincronização, preservando arquivo e permissões.
 
-**Em preparação**, **Em uso** e **Arquivado** mantêm a aparência ocupada. **Liberado** permite que outro cadastro a utilize. Remoção e liberação são administrativas; mudar a aparência/obra também fica com a staff para não criar uma liberação disfarçada por edição.
+**Em preparação**, **Em uso** e **Arquivado** mantêm a aparência ocupada. **Liberado** permite que outro cadastro a utilize. Cada membro pode remover os próprios cadastros; só a staff remove cadastros de outras pessoas, muda situação, aparência ou obra e usa `/limpar`.
 
 A duplicidade usa aparência + obra normalizadas, ignorando maiúsculas e excesso de espaços. Não faz fusão automática de apelidos nem pressupõe que dois desenhos da mesma pessoa sejam referências diferentes.
 

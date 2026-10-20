@@ -36,7 +36,7 @@ Se a staff ativar o backup, o bot envia cópias dos cadastros num canal do Disco
 
 ## Como ver e apagar
 
-Use `AC:min` ou `/aparencias` com você no campo membro para consultar seus cadastros. Pelo `/editar`, você pode mudar o nome do personagem no servidor e a imagem. Para mudar outros campos ou remover uma ficha, fale com a staff.
+Use `AC:min` ou `/aparencias` com você no campo membro para consultar seus cadastros. Pelo `/editar`, você pode mudar o nome do personagem no servidor e a imagem. Use `/remover` para apagar um cadastro seu, com confirmação; o histórico fica preservado para a staff. Para mudar outros campos ou alterar cadastros de outra pessoa, fale com a staff.
 
 `/remover` tira a ficha do arquivo, mas mantém o histórico para a staff. `/limpar` faz isso com todos os cadastros de uma pessoa, inclusive depois que ela sai do servidor.
 

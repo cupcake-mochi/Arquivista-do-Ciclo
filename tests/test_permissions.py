@@ -78,6 +78,37 @@ class BackupAccessTests(unittest.TestCase):
 
 
 class PanelAccessTests(unittest.IsolatedAsyncioTestCase):
+    async def test_owner_can_confirm_removal_and_cancel_without_writing(self):
+        from arquivista.archive import Archive
+        from arquivista.domain import Actor
+        from arquivista.views import Confirm, Gate, Picker
+        with tempfile.TemporaryDirectory() as directory:
+            bot = Arquivista(Config('FAKE', Path(directory) / 'test.sqlite'))
+            try:
+                actor=Actor('30','Dono')
+                archive=Archive(bot.store,'123')
+                r=(await archive.call('create',actor,{'fields':{'appearance':'Teste próprio','work':'Teste'}}))['record']
+                payload={'id':r['id'],'revision':r['revision']}
+                bot.actor=AsyncMock(return_value=actor)
+                bot.notify_soon=MagicMock()
+                i=SimpleNamespace(user=SimpleNamespace(id=30),guild_id=123,response=SimpleNamespace(
+                    is_done=lambda:False,send_message=AsyncMock(),defer=AsyncMock(),edit_message=AsyncMock()),edit_original_response=AsyncMock())
+                canceled=Confirm(bot,30,'remove',dict(payload))
+                await canceled.cancel.callback(i)
+                self.assertEqual(len((await archive.call('list',actor))['records']),1)
+                for view in (Gate(bot,30,'remover'),Picker(bot,30,[r],'remover'),Confirm(bot,30,'remove',dict(payload))):
+                    self.assertFalse(view.requires_staff)
+                    self.assertTrue(await view.interaction_check(i))
+                own=Confirm(bot,30,'remove',dict(payload))
+                self.assertEqual(own.confirm.label,'Confirmar remoção')
+                await own.confirm.callback(i)
+                self.assertTrue(own.completed)
+                self.assertEqual((await archive.call('list',actor))['records'],[])
+                self.assertEqual(bot.actor.await_count,1)
+                self.assertTrue(Confirm(bot,30,'purge',{}).requires_staff)
+            finally:
+                await bot.close()
+
     async def test_other_user_and_lost_staff_cannot_use_panel(self):
         with tempfile.TemporaryDirectory() as directory:
             bot = Arquivista(Config('FAKE', Path(directory) / 'test.sqlite'))

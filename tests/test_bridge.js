@@ -74,7 +74,7 @@ test('mesmo pedido repetido não duplica cadastro/evento',()=>{const before=get(
 test('reuso do pedido com outro conteúdo é negado',()=>assertCode('REUSED_REQUEST',()=>call('edit',{id:takao.id,revision:'x',fields:{server_name:'outro'}},actor,'request-idempotente')));
 test('Arquivado continua ocupando',()=>{call('change_status',{id:takao.id,revision:get(takao.id).revision,status:'Arquivado',justification:'SEGREDO'},staff);assertCode('DUPLICATE',()=>call('create',{fields:{appearance:'Takao',work:'Azur Lane'}},{id:other,name:'Outro',staff:false}));});
 test('Liberado permite novo uso; não é uma morte automática',()=>{call('change_status',{id:takao.id,revision:get(takao.id).revision,status:'Liberado'},staff);const r=call('create',{fields:{appearance:'Takao',work:'Azur Lane'}},{id:other,name:'Outro',staff:false});newid=r.record.id;assert.notEqual(newid,takao.id);});
-test('membro não libera/remova/transfere por payload',()=>{for(const action of ['change_status','remove','transfer'])assertCode('FORBIDDEN',()=>call(action,{id:takao.id,revision:get(takao.id).revision,status:'Liberado'}));});
+test('membro não libera/transfere nem remove cadastro alheio por payload',()=>{for(const action of ['change_status','transfer'])assertCode('FORBIDDEN',()=>call(action,{id:takao.id,revision:get(takao.id).revision,status:'Liberado'}));assertCode('FORBIDDEN',()=>call('remove',{id:newid,revision:get(newid).revision}));});
 test('nome no servidor é público; situação e justificativa ficam privadas',()=>{const r=call('list',{include_released:true});const text=JSON.stringify(r);assert(!text.includes('justification'));assert.equal(r.records.find(x=>x.id===takao.id).server_name,get(takao.id).server_name);assert(!text.includes('status'));assert(!text.includes('SEGREDO'));const ev=JSON.stringify(call('events',{after:0},staff));assert(!ev.includes('server_name'));assert(!ev.includes('SEGREDO'));assert(!ev.includes('Arquivado'));});
 test('transferência preserva ID/data e limpa apenas a ficha antiga',()=>{const before=get(newid);const after=call('transfer',{id:newid,revision:before.revision,owner:{id:staffid,name:'Staff'}},staff).record;assert.equal(after.id,before.id);assert.equal(after.date,before.date);assert.equal(after.owner_id,staffid);assert.equal(ss.getSheetById(900120).read(before.row,before.col+1),'');assert.equal(get(newid).owner_id,staffid);});
 test('remoção guarda auditoria e não reutiliza ID',()=>{const before=get(newid);call('remove',{id:newid,revision:before.revision},staff);assertCode('NOT_FOUND',()=>get(newid));assert(call('history',{query:newid},staff).events.length>=2);const r=call('create',{fields:{appearance:'Takao',work:'Azur Lane'}},{id:other,name:'Outro',staff:false});assert.notEqual(r.record.id,newid);});
@@ -91,4 +91,21 @@ test('limpar imagem nativa restaura a fórmula mesmo sem link',()=>{const before
 test('histórico e detalhes de terceiros exigem staff',()=>{assertCode('FORBIDDEN',()=>call('history',{}));assertCode('FORBIDDEN',()=>call('get',{id:takao.id},{id:other,name:'Outro',staff:false}));});
 test('outro escritor recebe BUSY antes de qualquer alteração',()=>{locks=1;const q={...request('status',{},staff),ts:Math.floor(Date.now()/1000)};const body=JSON.stringify(q),sig=crypto.createHmac('sha256','z'.repeat(48)).update(body).digest('hex');const result=JSON.parse(ctx.doPost({postData:{contents:JSON.stringify({body,sig})}}));assert.equal(result.code,'BUSY');locks=0;});
 test('exportação completa só para staff, com campos internos e data',()=>{assertCode('FORBIDDEN',()=>call('export',{}));const x=call('export',{},staff);assert.equal(x.format,'arquivista-export');assert.equal(x.version,1);assert.equal(x.records.length,call('list',{include_released:true}).records.length);const t=x.records.find(r=>r.id===takao.id);assert.deepEqual(Object.keys(t).sort(),['appearance','date','id','image_url','justification','owner_id','server_name','status','work']);assert.equal(typeof t.date,'number');});
+test('dono remove a própria ficha com revisão e retentativa; transferência revoga acesso',()=>{
+  let r=call('create',{fields:{appearance:'Remoção própria',work:'Teste'}}).record;
+  assertCode('FORBIDDEN',()=>call('remove',{id:r.id,revision:r.revision},{id:other,name:'Outro',staff:false}));
+  const old=r;
+  r=call('edit',{id:r.id,revision:r.revision,fields:{server_name:'Novo'}}).record;
+  assertCode('STALE',()=>call('remove',{id:old.id,revision:old.revision}));
+  const payload={id:r.id,revision:r.revision},rid='remocao-propria-repetida';
+  const result=call('remove',payload,actor,rid);
+  assert.equal(result.removed_id,r.id);
+  assert.deepEqual(JSON.parse(JSON.stringify(call('remove',payload,actor,rid))),JSON.parse(JSON.stringify(result)));
+  assertCode('NOT_FOUND',()=>get(r.id));
+  assert.equal(call('history',{query:r.id},staff).events[0].kind,'remove');
+  r=call('create',{fields:{appearance:'Transferência antes de remover',work:'Teste'}}).record;
+  r=call('transfer',{id:r.id,revision:r.revision,owner:{id:other,name:'Outro'}},staff).record;
+  assertCode('FORBIDDEN',()=>call('remove',{id:r.id,revision:r.revision}));
+  assert.equal(call('remove',{id:r.id,revision:r.revision},{id:other,name:'Outro',staff:false}).removed_id,r.id);
+});
 console.log(`\n${passed} testes JavaScript aprovados. Serviços Google simulados, não executados remotamente.`);

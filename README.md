@@ -29,6 +29,8 @@ Cada servidor tem seus próprios cadastros e configurações. O banco SQLite gua
 
 O nome do personagem no servidor aparece na lista e na galeria, junto da aparência e do responsável. Situação e justificativa continuam privadas; as notificações públicas também não incluem o nome no servidor. Arquivado continua ocupado. Liberado permite reutilização. Não há aprovação obrigatória para o cadastro inicial.
 
+Cada membro pode editar o nome e a imagem das próprias fichas e removê-las com `/remover`, depois de confirmar. Só a staff altera cadastros de outras pessoas, muda aparência, obra ou situação, transfere e usa a limpeza em lote. A remoção preserva o histórico para a staff.
+
 ## Comece por aqui
 
 **Leia [docs/INSTALACAO.md](docs/INSTALACAO.md).** A conta Google é configurada uma vez pelo mantenedor; donos de servidor recebem a planilha pronta pelo Discord.

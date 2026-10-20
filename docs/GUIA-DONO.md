@@ -20,7 +20,7 @@ Sem **Gerenciar webhooks** tudo funciona, mas as mensagens saem com o ícone do 
 
 Use `/configurar` (só o dono, quem é Administrador ou quem tem Gerenciar Servidor vê):
 
-1. **Cargos de staff:** quem pode mudar situação, transferir, remover, limpar e ver o histórico. Dono e administradores já contam.
+1. **Cargos de staff:** quem pode mudar situação, transferir, remover cadastros de outras pessoas, limpar e ver o histórico. Dono e administradores já contam.
 2. **Canal de histórico:** cada cadastro, mudança e remoção gera um aviso aqui. Não mostra justificativa nem situação.
 3. **Canal de imagens:** onde o bot guarda as imagens enviadas por anexo. Sem ele, só dá pra usar link de imagem.
 4. **Backup:** escolha um canal que **só a staff vê** e a frequência dos envios. Os arquivos incluem justificativas e nomes dos personagens no servidor, então o bot recusa canais com acesso de pessoas fora da staff. Use **Fazer backup agora** para conferir o envio e guarde o `.json` para recuperar os cadastros. Esse arquivo não inclui todas as configurações e o histórico do bot; o mantenedor também precisa guardar uma cópia completa da hospedagem.
@@ -56,6 +56,7 @@ Indique `/guia` para quem vai usar pela primeira vez e `/ajuda` para consultar o
 - `/registrar` cadastra a aparência de alguém;
 - `/aparencias`, `/obra` e `AC:gal` consultam;
 - `/editar` muda nome no servidor e imagem.
+- `/remover` remove um cadastro próprio, com confirmação; o histórico fica com a staff.
 
 A staff usa `/situacao`, `/transferir`, `/remover`, `/limpar`, `/apelido` e `/historico`. `/diagnostico` mostra se está tudo funcionando.
 

@@ -1,12 +1,12 @@
-VALIDAÇÃO FINAL — ARQUIVISTA DO CICLO 1.0.2 — 20/10/2026
+VALIDAÇÃO FINAL — ARQUIVISTA DO CICLO 1.0.3 — 20/10/2026
 
-Nome do personagem no servidor nas consultas e na galeria; situação e justificativa privadas.
+Remoção dos próprios cadastros com confirmação; terceiros e limpeza em lote exigem staff.
 Suíte repetida após a alteração; demais ensaios reais abaixo feitos na preparação da 1.0.
 
-131 testes Python aprovados, incluindo discord.py 2.7.1 real; nenhum pulado.
-28 testes JavaScript da ponte aprovados, com serviços Google simulados.
+134 testes Python aprovados, incluindo discord.py 2.7.1 real; nenhum pulado.
+29 testes JavaScript da ponte aprovados, com serviços Google simulados.
 7 testes JavaScript do script da planilha aprovados, incluindo pedidos reais do layout.
-TOTAL: 166 aprovados, nenhuma falha. Sintaxe dos três scripts e git diff --check aprovados.
+TOTAL: 170 aprovados, nenhuma falha. Sintaxe dos três scripts e git diff --check aprovados.
 
 Comandos: python -m unittest discover -s tests -q
           node tests/test_bridge.js

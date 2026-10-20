@@ -230,7 +230,7 @@ class Picker(GuardedView):
             await private_reply(i, embed=self.bot.carteiro.decorate(card("Confirmar transferência", f"**{clean(record['appearance'])}** será transferida para <@{target.id}>. O ID e a data original serão preservados.")), view=v)
         elif self.action == "remover":
             v = Confirm(self.bot, self.author_id, "remove", {"id": record["id"], "revision": record["revision"]})
-            await private_reply(i, embed=self.bot.carteiro.decorate(card("Confirmar remoção", f"Remover **{clean(record['appearance'])}**, de **{clean(record['work'])}**?\nA ficha sai da lista e da planilha, mas continua no histórico. Se quiser manter a aparência reservada, escolha Arquivado em /situacao.")), view=v)
+            await private_reply(i, embed=self.bot.carteiro.decorate(card("Confirmar remoção", f"Remover **{clean(record['appearance'])}**, de **{clean(record['work'])}**?\nA ficha sai da lista e da planilha, mas continua no histórico da staff. Para manter a aparência reservada, a staff pode arquivar a ficha em /situacao.")), view=v)
     @discord.ui.button(label="Anteriores", row=1)
     async def back(self, i: discord.Interaction, b: discord.ui.Button):
         self.page = max(0, self.page-1); self.options()
@@ -341,7 +341,7 @@ class Confirm(GuardedView):
     def __init__(self,bot,user_id,action,payload,attachment=None):
         super().__init__(bot,user_id,timeout=600)
         self.action,self.payload,self.attachment=action,payload,attachment
-        self.requires_staff=action in ("change_status","transfer","remove","purge")
+        self.requires_staff=action in ("change_status","transfer","purge")
         self.request_id=str(uuid.uuid4())
         self.busy=False
         self.completed=False
@@ -373,7 +373,7 @@ class Confirm(GuardedView):
         await i.response.defer()  # o resultado entra no lugar da revisão, na mesma mensagem
         try:
             actor=await self.bot.actor(i.user.id,i.guild_id)
-            if self.action in ("change_status","transfer","remove","purge") and not actor.staff:
+            if self.action in ("change_status","transfer","purge") and not actor.staff:
                 raise UserError("Você não tem mais autorização para essa operação.")
             if self.attachment:
                 media=await self.bot.images.save(self.attachment,i.guild_id)
@@ -383,7 +383,7 @@ class Confirm(GuardedView):
             self.completed=True
             if result.get("changed",True):
                 self.bot.notify_soon()
-            text={"remove":"Cadastro removido. O histórico continua disponível.",
+            text={"remove":"Cadastro removido. O histórico foi preservado para a staff.",
                   "purge":f"Cadastros removidos: {result.get('removed',0)}. O histórico continua disponível."}.get(self.action,"Pronto, salvei a ficha.")
             if not result.get("changed",True):
                 text="A ficha já estava assim. Não havia nada para mudar."

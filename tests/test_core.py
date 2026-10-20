@@ -63,7 +63,9 @@ class DomainTests(unittest.TestCase):
         user=Actor('1','User');staff=Actor('2','Staff',True)
         self.assertTrue(can_manage(user,'1','editar'))
         self.assertFalse(can_manage(user,'2','editar'))
-        for action in ('situacao','transferir','remover','diagnostico'):
+        self.assertTrue(can_manage(user,'1','remover'))
+        self.assertFalse(can_manage(user,'2','remover'))
+        for action in ('situacao','transferir','diagnostico'):
             self.assertFalse(can_manage(user,'1',action))
             self.assertTrue(can_manage(staff,'1',action))
     def test_safe_urls(self):
@@ -164,9 +166,35 @@ class ArchiveTests(unittest.TestCase):
         self.assertEqual(self.code(self.a,'get',self.other,{'id':r['id']}),'FORBIDDEN')
         self.assertEqual(self.code(self.a,'edit',self.other,{'id':r['id'],'revision':1,'fields':{'server_name':'x'}}),'FORBIDDEN')
         self.assertEqual(self.code(self.a,'edit',self.user,{'id':r['id'],'revision':1,'fields':{'work':'x'}}),'FORBIDDEN')
-        for action in ('change_status','transfer','remove','history','status'):
+        self.assertEqual(self.code(self.a,'remove',self.other,{'id':r['id'],'revision':1}),'FORBIDDEN')
+        for action in ('change_status','transfer','history','status'):
             self.assertEqual(self.code(self.a,action,self.user,{'id':r['id'],'revision':1}),'FORBIDDEN')
         self.assertEqual(self.code(self.a,'create',self.user,{'fields':{'appearance':'A','work':'B'},'owner':{'id':U2,'name':'x'}}),'FORBIDDEN')
+    def test_owner_remove_preserves_history_queue_and_retries(self):
+        self.s.set_guild(G1,sheet_url='https://script.google.com/macros/s/test/exec',sheet_key='key')
+        r=self.create()
+        edited=self.call(self.a,'edit',self.user,{'id':r['id'],'revision':1,'fields':{'server_name':'Kai'}})['record']
+        self.assertEqual(self.code(self.a,'remove',self.user,{'id':r['id'],'revision':1}),'STALE')
+        payload={'id':r['id'],'revision':edited['revision']}
+        result=self.call(self.a,'remove',self.user,payload,'own-remove-retry')
+        self.assertEqual(result['removed_id'],r['id'])
+        self.assertEqual(self.call(self.a,'remove',self.user,payload,'own-remove-retry'),result)
+        self.assertEqual(self.call(self.a,'list',self.user)['records'],[])
+        events=self.call(self.a,'history',self.staff,{'query':r['id']})['events']
+        self.assertEqual([e['kind'] for e in events],['remove','edit','create'])
+        self.assertEqual(events[0]['actor_id'],U1)
+        queued=json.loads(self.s.db.execute('SELECT payload FROM sheet_outbox WHERE record_id=?',(r['id'],)).fetchone()[0])
+        self.assertEqual(queued['op'],'clear')
+        self.assertEqual(self.code(self.a,'history',self.user,{'query':r['id']}),'FORBIDDEN')
+
+    def test_remove_rechecks_owner_after_transfer(self):
+        r=self.create()
+        transferred=self.call(self.a,'transfer',self.staff,{'id':r['id'],'revision':1,'owner':{'id':U2,'name':'Other'}})['record']
+        payload={'id':r['id'],'revision':transferred['revision']}
+        self.assertEqual(self.code(self.a,'remove',self.user,payload),'FORBIDDEN')
+        self.assertEqual(self.code(self.b,'remove',self.other,payload),'NOT_FOUND')
+        self.assertEqual(self.call(self.a,'remove',self.other,payload)['removed_id'],r['id'])
+
     def test_edit_revision_and_stale(self):
         r=self.create()
         out=self.call(self.a,'edit',self.user,{'id':r['id'],'revision':1,'fields':{'server_name':'Kai'}})
