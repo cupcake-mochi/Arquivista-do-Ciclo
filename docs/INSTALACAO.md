@@ -14,6 +14,10 @@ A planilha recebe uma cópia de tudo que é cadastrado pelo bot. Por enquanto o 
 6. Na planilha, **Arquivista → Mostrar a chave da conexão** e copie a chave.
 7. No Discord, `/configurar` → **Conectar planilha**, cole o link e a chave. O bot testa a conexão antes de salvar e manda todos os cadastros do servidor.
 
+Cada membro ganha uma guia própria, com o nome de usuário do Discord (o `@`, não o apelido do servidor). Se o nome de usuário mudar, a guia é renomeada na próxima vez que o bot gravar algo dessa pessoa. Não crie guias com o mesmo nome de um membro: se acontecer, a guia do membro vira `nome (2)`.
+
+**Atualizar o script:** cole o `Planilha.gs` novo por cima, salve, e em Implantar → Gerenciar implantações → lápis → Versão **Nova versão** → Implantar (o link `/exec` continua o mesmo). Depois, `/configurar` → **Conectar planilha** de novo com o mesmo link e chave, pra reenviar tudo na hora.
+
 A chave fica cifrada no banco do bot. Sem `AC_MASTER_KEY`, a cifra depende do token: se o token mudar, conecte a planilha de novo. Quem tiver a chave consegue escrever na planilha; se ela vazar, use **Trocar a chave da conexão** e reconecte.
 
 ## Antes de começar

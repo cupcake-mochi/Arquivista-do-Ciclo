@@ -85,12 +85,15 @@ marcados como "fora da planilha", até ampliarem.
 A ficha continua sendo onde se edita, no visual de blocos de hoje. O que muda é
 como o espaço é reservado:
 
-- **Guias por faixa de membros** ("FICHAS 1–20", "FICHAS 21–40"…), criadas só
-  quando necessário, no lugar de uma guia única de 41 mil linhas.
+- **Uma guia por membro**, com o nome de usuário do Discord dele (não o apelido
+  do servidor), criada no primeiro cadastro. Nome repetido ganha " (2)". Se o
+  nome de usuário mudar, a guia é renomeada na próxima gravação. (Até a 1.0.1
+  eram guias por faixa, "FICHAS 1–20"; uma guia antiga com um membro só é
+  renomeada sozinha.)
 - **Posições sob demanda:** cada membro começa com 20 posições e ganha mais 20
   quando chega perto do fim (ex.: posição 18), até 200. Os blocos + / − ficam.
-  Pior caso (todos com 200): ~9 mil células por membro, como hoje, mas em guias
-  de 20 membros (~8 mil linhas cada) em vez de uma guia de 41 mil.
+  Pior caso (todos com 200): ~9 mil células por membro, como hoje, cada membro
+  na sua guia em vez de uma guia de 41 mil linhas.
 - **Expansão automática:** o gatilho de edição que já existe acrescenta o
   bloco, copiando um modelo pequeno de uma guia escondida. Membro novo em
   MEMBROS ganha bloco (e guia nova, se a faixa estiver cheia). O bot pede a
@@ -148,7 +151,7 @@ importação.
 3. **Bot → planilha:** modelo novo da planilha (guias por faixa e posições sob demanda), ação `apply` na ponte, fila e `/configurar planilha`.
    Script sem ID fixo.
    *Feito:* `apps_script/Planilha.gs` (planilha nova, um bloco vertical por membro,
-   20 blocos por guia, bloco cresce sozinho quando faltam 2 posições), ação `apply`
+   uma guia por membro com o nome de usuário dele, bloco cresce sozinho quando faltam 2 posições), ação `apply`
    com revisão por cadastro (pedido repetido ou antigo é ignorado), fila
    `sheet_outbox` no bot que guarda só a última versão de cada cadastro, botão
    "Conectar planilha" no `/configurar` (testa antes de salvar, chave cifrada no

@@ -10,7 +10,7 @@ Também foram verificadas a sintaxe Python/JavaScript, a ausência de token Disc
 
 ## Planilha conectada (v0.3)
 
-- `tests/test_planilha.js` roda o planejador real do `Planilha.gs` contra uma grade simulada e confere, depois de cada gravação, que o modelo interno bate com a grade: criação, separador de fórmula, revisões antigas ignoradas, bloco que cresce empurrando o próximo, transferência, 21ª pessoa abrindo guia nova, operação inválida isolada, imagem e a Web App (assinatura, horário, servidor, tamanho, pedido repetido).
+- `tests/test_planilha.js` roda o planejador real do `Planilha.gs` contra uma grade simulada e confere, depois de cada gravação, que o modelo interno bate com a grade: criação, separador de fórmula, revisões antigas ignoradas, bloco que cresce, transferência, uma guia por pessoa com o nome de usuário, nome repetido com (2), renomear quando o nome de usuário muda, guia antiga renomeada, operação inválida isolada, imagem e a Web App (assinatura, horário, servidor, tamanho, pedido repetido).
 - Os pedidos de um cenário reduzido foram enviados de verdade pela API do Sheets numa planilha de teste: visor, contagem e grupos funcionaram depois da expansão. O Apps Script em si (menu, implantação, trava) não rodou ao vivo.
 - `tests/test_core.py` (`SheetTests`): cifra da chave, fila guardando só a última versão, envio com ponte falsa, conexão e desconexão, migração de banco antigo.
 

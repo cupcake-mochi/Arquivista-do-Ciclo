@@ -350,7 +350,7 @@ class SheetTests(unittest.TestCase):
         self.s.set_guild(G1,sheet_url='https://script.google.com/macros/s/'+'a'*30+'/exec',sheet_key=seal(b'k'*32,'f'*64))
         ids=[self.call('create',self.user,{'fields':{'appearance':n,'work':'Azur Lane'}})['record']['id'] for n in ('Takao','Atago','Kaga')]
         sent=[]
-        class Member:display_name='Mizuki'
+        class Member:display_name='Kal\'tsits';name='mizuki_sama'
         class Guild:
             def get_member(self,_):return Member()
         class Bot:
@@ -372,7 +372,7 @@ class SheetTests(unittest.TestCase):
         self.s.db.execute("UPDATE sheet_outbox SET next_try=0");self.s.db.commit()
         sync.bridge=lambda gid,cfg=None:FakeBridge({'results':[{'id':ids[0],'status':'ok'},{'id':ids[1],'status':'stale'},{'id':ids[2],'status':'invalid'}]})
         asyncio.run(sync.run())
-        action,data=sent[-1];self.assertEqual(action,'apply');self.assertEqual([o['record']['owner_name'] for o in data['ops']],['Mizuki']*3)
+        action,data=sent[-1];self.assertEqual(action,'apply');self.assertEqual([o['record']['owner_name'] for o in data['ops']],['mizuki_sama']*3)
         self.assertEqual(list(self.queue()),[]);self.assertEqual(self.s.sheet_pending(G1),(1,1))
         g=self.s.guild(G1);self.assertIsNone(g['sheet_error']);self.assertEqual(g['sheet_ok'],'agora')
     def test_refresh_image_keeps_revision(self):

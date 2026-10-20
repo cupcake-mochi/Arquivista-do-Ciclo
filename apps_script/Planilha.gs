@@ -16,7 +16,7 @@
  * Nesta versão, editar a planilha à mão NÃO volta para o bot (isso é a etapa 4).
  */
 const PL = Object.freeze({
-  version: '1.0.1', prefix: 'FICHAS ', perTab: 20, step: 20, head: 13, width: 11,
+  version: '1.1.0', step: 20, head: 13, width: 11,
   maxBody: 400000, maxOps: 100, firstBlock: 5,
   statuses: ['Em preparação', 'Em uso', 'Arquivado', 'Liberado'],
   headers: ['Nº', 'Aparência', 'Nome no servidor', 'Obra de origem', 'Situação', 'Cadastro', 'Imagem', 'Link da imagem', 'ID do registro', 'ID Discord', 'Revisão']
@@ -72,7 +72,7 @@ function plGroup_(req, sid, r1, r2, depth, collapsed) {
   if (collapsed) req.push({updateDimensionGroup: {dimensionGroup: {range: range, depth: depth, collapsed: true}, fields: 'collapsed'}});
 }
 
-// ---------------- modelo em memória (valores A:K de cada guia FICHAS) ----------------
+// ---------------- modelo em memória (valores A:K de cada guia de membro) ----------------
 function plCell_(v) {
   if (v === null || v === undefined || v === '') return {};
   if (typeof v === 'object' && v.f) return {userEnteredValue: {formulaValue: v.f}};
@@ -128,11 +128,21 @@ function plFind_(m, id) {
 function plUsed_(b) { let used = 0; for (let n = 1; n <= b.slots; n++) if (b.tab.grid[plSlotRow_(b, n) - 1][PC.id - 1]) used++; return used; }
 
 // ---------------- estrutura: guia, bloco de membro e posições ----------------
-function plNewTab_(m) {
-  const k = m.tabs.length, sid = m.nextSheetId++;
-  const tab = {name: PL.prefix + (PL.perTab * k + 1) + '–' + (PL.perTab * k + PL.perTab), sheetId: sid, grid: plEmptyRows_(PL.firstBlock)};
+/** Nome de guia livre: o nome de usuário do dono, com (2), (3)... se já existir outra guia com ele. */
+function plTabName_(m, name, owner, self) {
+  const base = String(name || ('Membro ' + owner)).replace(/[\x00-\x1f]/g, '').trim().slice(0, 90) || ('Membro ' + owner);
+  // O Sheets não aceita duas guias com o mesmo nome, nem só mudando maiúsculas.
+  const key = n => n.toLowerCase(), taken = n => m.names.some(x => key(x) === key(n) && x !== self);
+  let out = base;
+  for (let i = 2; taken(out); i++) out = base + ' (' + i + ')';
+  return out;
+}
+function plNewTab_(m, name, owner) {
+  const sid = m.nextSheetId++;
+  const tab = {name: plTabName_(m, name, owner), sheetId: sid, grid: plEmptyRows_(PL.firstBlock)};
+  m.names.push(tab.name);
   const req = m.req;
-  req.push({addSheet: {properties: {sheetId: sid, title: tab.name, index: k,
+  req.push({addSheet: {properties: {sheetId: sid, title: tab.name,
     gridProperties: {rowCount: PL.firstBlock, columnCount: PL.width, frozenRowCount: 3, hideGridlines: true}}}});
   [48, 160, 160, 140, 135, 100, 155, 225, 290, 180, 70].forEach((px, i) => req.push({updateDimensionProperties: {
     range: {sheetId: sid, dimension: 'COLUMNS', startIndex: i, endIndex: i + 1}, properties: {pixelSize: px}, fields: 'pixelSize'}}));
@@ -140,7 +150,7 @@ function plNewTab_(m) {
     properties: {hiddenByUser: true}, fields: 'hiddenByUser'}});
   m.tabs.push(tab);
   plSet_(m, tab, 1, 1, ['CATÁLOGO DE APARÊNCIAS']);
-  plSet_(m, tab, 2, 1, ['Esta planilha é atualizada pelo Arquivista. Use + / − para abrir as justificativas. Vermelho: aparência + obra repetida nesta guia.']);
+  plSet_(m, tab, 2, 1, ['Esta planilha é atualizada pelo Arquivista. Use + / − para abrir as justificativas. Vermelho: aparência + obra repetida nas fichas desta pessoa.']);
   plSet_(m, tab, 3, 1, ['Cada membro começa com 20 posições e ganha mais 20 quando está perto de encher. O visor mostra a posição escolhida.']);
   plMerge_(req, sid, 1, 1, 1, 10); plMerge_(req, sid, 2, 2, 1, 10); plMerge_(req, sid, 3, 3, 1, 10);
   plFormat_(req, sid, 1, 1, 1, 10, {bg: PS.title, ink: PS.white, bold: true, size: 16});
@@ -188,9 +198,8 @@ function plSlots_(m, tab, first, from, count) {
   req.push({setDataValidation: {range: plRange_(sid, first, last, PC.date, PC.date), rule: {condition: {type: 'DATE_IS_VALID'}, strict: true}}});
 }
 function plBlock_(m, owner, name) {
-  let tab = m.tabs[m.tabs.length - 1];
-  if (!tab || plBlocks_(m).filter(b => b.tab === tab).length >= PL.perTab) tab = plNewTab_(m);
-  const own = plBlocks_(m).filter(b => b.tab === tab), s = own.length ? own[own.length - 1].end + 1 : PL.firstBlock;
+  // Uma guia por membro, com o nome de usuário dele.
+  const tab = plNewTab_(m, name, owner), s = PL.firstBlock;
   const slots = PL.step, a = s + PL.head, z = a + 4 * slots, req = m.req, sid = tab.sheetId;
   plGrow_(m, tab, z);
   const A = 'A' + a + ':A' + z, at = col => col + a + ':' + col + z, M = 'MATCH(F' + (s + 1) + ',' + A + ',0)';
@@ -260,6 +269,8 @@ function plClearSlot_(m, loc) {
 }
 function plUpsert_(m, op) {
   const r = plRecord_(op.record);
+  const mine = plBlocks_(m).find(x => x.owner === r.owner_id);
+  if (mine) plOwnerName_(m, mine, r.owner_name);
   let loc = plFind_(m, r.id);
   if (loc) {
     const stored = Number(loc.block.tab.grid[loc.row - 1][PC.mark - 1]) || 0;
@@ -268,7 +279,6 @@ function plUpsert_(m, op) {
     if (loc.block.owner !== r.owner_id) { plClearSlot_(m, loc); loc = null; }
   }
   let b = plBlocks_(m).find(x => x.owner === r.owner_id) || plBlock_(m, r.owner_id, r.owner_name);
-  if (r.owner_name && b.tab.grid[b.start - 1][0] !== r.owner_name) plSet_(m, b.tab, b.start, 1, [r.owner_name]);
   if (!loc) {
     let n = 0;
     for (let i = 1; i <= b.slots && !n; i++) if (!b.tab.grid[plSlotRow_(b, i) - 1][PC.id - 1]) n = i;
@@ -283,6 +293,17 @@ function plUpsert_(m, op) {
   b = plBlocks_(m).find(x => x.owner === r.owner_id);
   if (b.slots - plUsed_(b) <= 2) plExpand_(m, b);
   return 'ok';
+}
+/** Nome do dono no cabeçalho e no título da guia (só quando a guia é dele sozinho). Vazio = o bot não achou o membro. */
+function plOwnerName_(m, b, name) {
+  if (!name) return;
+  if (b.tab.grid[b.start - 1][0] !== name) plSet_(m, b.tab, b.start, 1, [name]);
+  if (plBlocks_(m).filter(x => x.tab === b.tab).length !== 1) return;  // guia antiga com vários membros fica como está
+  const title = plTabName_(m, name, b.owner, b.tab.name);
+  if (title === b.tab.name) return;
+  m.req.push({updateSheetProperties: {properties: {sheetId: b.tab.sheetId, title: title}, fields: 'title'}});
+  m.names = m.names.map(x => x === b.tab.name ? title : x);
+  b.tab.name = title;
 }
 function plClear_(m, op) {
   if (typeof op.id !== 'string' || !/^AP-[0-9A-Za-z-]{8,64}$/.test(op.id) || !Number.isInteger(op.revision)) plFail_('INVALID');
@@ -329,18 +350,20 @@ function plSpreadsheet_() {
   return SpreadsheetApp.openById(id);
 }
 function plLoad_(ss) {
-  const sheets = ss.getSheets(), tabs = sheets.filter(s => s.getName().startsWith(PL.prefix)).map(s => ({name: s.getName(), sheetId: s.getSheetId(), rows: s.getMaxRows()}));
-  const m = {sep: plProps_().getProperty('PL_SEP') || ';', tabs: [], nextSheetId: Math.max(1000, ...sheets.map(s => s.getSheetId() + 1))};
+  const sheets = ss.getSheets(), all = sheets.map(s => ({name: s.getName(), sheetId: s.getSheetId(), rows: s.getMaxRows()}));
+  const m = {sep: plProps_().getProperty('PL_SEP') || ';', tabs: [], names: all.map(t => t.name), nextSheetId: Math.max(1000, ...sheets.map(s => s.getSheetId() + 1))};
+  const get = ranges => Sheets.Spreadsheets.Values.batchGet(ss.getId(), {ranges: ranges, valueRenderOption: 'FORMULA'}).valueRanges;
+  // Guia de membro = tem o marcador BLOCO: na coluna K. Lê só K de todas e depois A:K das que são.
+  const marks = all.length ? get(all.map(t => "'" + t.name.replace(/'/g, "''") + "'!K1:K" + t.rows)) : [];
+  const tabs = all.filter((t, i) => (marks[i].values || []).some(l => String(l[0] || '').startsWith('BLOCO:')));
   if (tabs.length) {
-    const res = Sheets.Spreadsheets.Values.batchGet(ss.getId(), {ranges: tabs.map(t => "'" + t.name + "'!A1:K" + t.rows), valueRenderOption: 'FORMULA'}).valueRanges;
+    const res = get(tabs.map(t => "'" + t.name.replace(/'/g, "''") + "'!A1:K" + t.rows));
     tabs.forEach((t, i) => {
       const values = res[i].values || [];
       t.grid = Array.from({length: t.rows}, (_, r) => { const line = (values[r] || []).slice(0, PL.width); while (line.length < PL.width) line.push(''); return line; });
       m.tabs.push(t);
     });
   }
-  // Ordem estável das guias FICHAS 1–20, 21–40...
-  m.tabs.sort((a, b) => (parseInt(a.name.slice(PL.prefix.length), 10) || 0) - (parseInt(b.name.slice(PL.prefix.length), 10) || 0));
   return m;
 }
 function plCommit_(ss, requests) {

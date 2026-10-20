@@ -73,7 +73,7 @@ class SheetSync:
                 except Exception:
                     member = None
             # Sem nome (saiu do servidor, erro de rede): a planilha mantém o que já tem.
-            self.names[key] = member.display_name[:100] if member else ""
+            self.names[key] = member.name[:100] if member else ""
         return self.names[key]
     async def run(self) -> None:
         for guild_id in self.bot.store.sheet_due():
