@@ -4,7 +4,9 @@
 
 ## Planilha conectada (v0.3, opcional)
 
-A planilha recebe uma cópia de tudo que é cadastrado pelo bot. Por enquanto o caminho é só bot → planilha: o que for editado direto nela não volta pro bot.
+A planilha recebe uma cópia de tudo que é cadastrado pelo bot, e o que a staff mudar nela volta pro bot.
+
+**Editar pela planilha:** a cada 5 minutos o bot lê a planilha e compara com o banco. Aparência, nome no servidor, obra, situação, data, link da imagem e justificativa mudados à mão entram como alteração com autor "Planilha; autor não identificado" (aparece no canal de histórico e no `/historico`). Uma linha digitada numa posição vazia vira cadastro novo do dono daquela guia, naquela mesma linha. O que o bot recusa (aparência + obra já ocupadas, situação fora da lista, link sem https, data ilegível) é desfeito na planilha, e o motivo aparece no `/diagnostico`. Apagar uma linha à mão não apaga o cadastro: ela volta; para apagar, use `/remover` ou `/limpar`. Se a mesma ficha mudar pelo Discord e pela planilha ao mesmo tempo, vale a do Discord. Qualquer pessoa com permissão de edição na planilha consegue mudar cadastros por ela, então compartilhe só com a staff.
 
 1. Crie uma planilha **nova e vazia** no Google Sheets.
 2. Extensões → Apps Script. Apague o conteúdo de `Código.gs` e cole o de `apps_script/Planilha.gs`.

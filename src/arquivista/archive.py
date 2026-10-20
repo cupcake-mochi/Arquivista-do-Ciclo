@@ -255,6 +255,49 @@ class Archive:
             # Duas confirmações simultâneas da mesma aparência: o índice único decide.
             fail("DUPLICATE")
         return result
+    def from_sheet(self, change: dict) -> str:
+        """Edição feita à mão na planilha (linha com ID) ou cadastro digitado numa posição vazia (sem ID).
+        Devolve "ok", "same" ou o código do motivo da recusa. Não passa pela fila de pedidos do Discord:
+        quem chama já conferiu que o cadastro não tem mudança esperando ir para a planilha."""
+        actor = Actor("", "Planilha", True)  # autor não identificado
+        try:
+            status = change.get("status") or ("" if change.get("id") else "Em preparação")
+            if status not in STATUSES: fail("INVALID")
+            f = {"appearance": text(change.get("appearance"), 100, True), "work": text(change.get("work"), 100, True),
+                 "server_name": text(change.get("server_name") or "", 100), "status": status,
+                 "justification": text(change.get("justification") or "", 2000), "image_url": url(change.get("image_url") or "")}
+            day = change.get("date")
+            if day is not None and not (isinstance(day, str) and re.fullmatch(r"\d{4}-\d{2}-\d{2}", day)): fail("INVALID")
+            before = None
+            if change.get("id"):
+                before = self.record(str(change["id"]))
+                if before["revision"] != change.get("revision"): fail("STALE")
+                after = {**before, **f, "date": day or before["date"]}
+                if after["image_url"] != before["image_url"]:
+                    after["media_ref"] = ""  # link trocado na planilha deixa de ser o anexo guardado pelo bot
+                if all(before[k] == after[k] for k in FIELDS):
+                    return "same"
+                if after["owner_id"] != before["owner_id"]: fail("INVALID")
+                after["revision"] = before["revision"] + 1
+            else:
+                owner = str(change.get("owner_id") or "")
+                if not owner.isdigit(): fail("INVALID")
+                self.room(owner)
+                after = {"id": "AP-" + str(uuid.uuid4()), "owner_id": owner, **f, "media_ref": "",
+                         "date": day or datetime.now(self.tz).date().isoformat(), "revision": 1}
+            if self.taken(after): fail("DUPLICATE")
+            with self.db:
+                self.write(before, after, time.time())
+                self.log("create" if before is None else "edit", "planilha-" + str(uuid.uuid4()), actor, before, after, "planilha")
+                op = sheet_upsert(after)
+                if before is None and isinstance(change.get("slot"), int):
+                    op["slot"] = change["slot"]
+                self.store.queue_sheet(self.guild, after["id"], after["revision"], op)
+        except BridgeError as exc:
+            return exc.code
+        except sqlite3.IntegrityError:
+            return "DUPLICATE"
+        return "ok"
     def write(self, before, after, now) -> None:
         if after is None:
             self.db.execute("DELETE FROM appearances WHERE guild_id=? AND id=?", (self.guild, before["id"]))

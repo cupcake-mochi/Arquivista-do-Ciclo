@@ -11,8 +11,11 @@ O prefixo é `AC:`; `ac:`, `Ac:` e espaços após `:` funcionam. Mensagens de bo
 | `AC:minhas` (`AC:min`) | `/aparencias membro:` você | A própria lista. Lista de uma pessoa só mostra a foto dela no canto e a obra em cada linha. |
 | `AC:galeria [aparência] [@membro]` (`AC:gal`) | `/aparencias modo:galeria` | Já abre em galeria. |
 | `AC:consultar aparência` (`AC:busca`) | `/aparencias aparencia:` | Busca aproximada; a obra pode ir junto do nome. |
+| `AC:obra [nome]` (`AC:ob`) | `/obra [nome] [modo]` | Aparências de uma obra. Junta grafias parecidas: `arknights` acha "Arknights", "Arknights Endfield", "Endfield" e "arknighs". Sem nome, lista as obras do arquivo com quantas aparências cada uma tem e como ela também foi escrita. |
 
-Exemplos: `AC:gal Takao`, `AC:gal @Mizuki Takao`, `AC:busca Takao Azur Lane`.
+Exemplos: `AC:gal Takao`, `AC:gal @Mizuki Takao`, `AC:busca Takao Azur Lane`, `AC:obra endfield`.
+
+**Como a obra é agrupada:** duas grafias ficam juntas quando todas as palavras de uma estão na outra (com erro de digitação tolerado em palavra de 5+ letras), quando o nome inteiro é quase igual ou contido no outro ("Umamusume" e "Uma Musume Pretty Derby"), ou quando uma é a sigla da outra ("HSR"). Junta como franquia: "Fate" puxa "Fate/stay night" e "Fate/Grand Order". Palavra comum de título sozinha não junta ("Love Live" e "Live A Live" ficam separadas). Apelido sem relação com o nome ("JJK") não é reconhecido.
 
 O resultado público tem aparência original, obra, responsável e imagem quando disponível. **Não mostra o nome secreto no servidor, situação, justificativa, data interna nem link da planilha.** O cadastro Liberado fica fora dessas listas. A ausência de resultado aproximado não prova disponibilidade: aliases não padronizados continuam exigindo revisão humana.
 
@@ -41,6 +44,7 @@ Não é preciso decorar UUID. Editar, remover e transferir apresentam uma seleç
 | `AC:situacao aparência` (`AC:sit`) | `/situacao aparencia` | Escolher situação e escrever justificativa interna. Exige confirmação. |
 | `AC:transferir aparência @membro` (`AC:tr`) | `/transferir aparencia membro` | Muda o responsável preservando ID e data. |
 | `AC:remover aparência` (`AC:rm`) | `/remover aparencia` | Remove o cadastro ativo, mas não sua auditoria. Confirmação destacada. |
+| `AC:limpar @membro` ou `AC:limpar ID` | `/limpar [membro] [id]` | Apaga **todos** os cadastros de uma pessoa, inclusive quem já saiu do servidor (pelo ID do Discord). A confirmação mostra quantos são e quais; se alguém cadastrar ou remover algo no meio, pede de novo. A auditoria fica e o canal de histórico recebe um aviso só. |
 | `AC:historico [aparência]` (`AC:hist`) | `/historico [aparencia]` | Histórico privado, inclusive registros removidos; vazio mostra eventos recentes. |
 | `AC:diagnostico` (`AC:diag`, `AC:st`) | `/diagnostico` | Cadastros, membros, eventos, canais, avisos pendentes e estado da planilha (envios pendentes, último envio, último erro). |
 | `AC:configurar` (`AC:cfg`) | `/configurar` | Só dono, Administrador ou quem gerencia o servidor: cargos de staff, canal de histórico, canal de imagens, planilha e backup num painel privado. |

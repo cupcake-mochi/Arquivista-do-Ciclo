@@ -307,7 +307,8 @@ class Arquivista(commands.Bot):
                     queued,bad=self.store.sheet_pending(i.guild_id)
                     body+=(f"\n**Planilha:** conectada · {queued} mudança(s) esperando envio"+(f", {bad} recusada(s) pela planilha" if bad else "")+
                            f"\n**Último envio para a planilha:** {cfg.get('sheet_ok') or 'ainda não realizado'}"+
-                           (f"\n**Último erro da planilha:** {SHEET_ERRORS.get(cfg['sheet_error'],cfg['sheet_error'])}" if cfg.get("sheet_error") else ""))
+                           (f"\n**Último erro da planilha:** {SHEET_ERRORS.get(cfg['sheet_error'],cfg['sheet_error'])}" if cfg.get("sheet_error") else "")+
+                           (f"\n**Edição da planilha que não entrou:** {clean(cfg['sheet_note'],900)}" if cfg.get("sheet_note") else ""))
                 else:
                     body+="\n**Planilha:** não conectada"
                 if cfg.get("backup_channel"):
@@ -347,6 +348,10 @@ class Arquivista(commands.Bot):
             return  # o envio em andamento pega o que entrou na fila
         async with self.sheet_lock:
             await self.sheets.run()
+            if await self.sheets.pull_due():
+                # Edição vinda da planilha: aviso no histórico e a linha regravada com a nova revisão.
+                await self.deliver_events()
+                await self.sheets.run()
     async def run_backups(self):
         for gid in self.store.backup_due():
             try:

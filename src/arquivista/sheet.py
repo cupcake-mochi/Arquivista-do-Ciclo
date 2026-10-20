@@ -12,15 +12,20 @@ import json
 import logging
 import os
 import re
+import time
 
-from . import layout
+from . import layout, pull
 from .bridge import Bridge
 from .domain import Actor, BridgeError, ERRORS
+from .store import sheet_upsert
 
 log = logging.getLogger(__name__)
 SHEET_URL = re.compile(r"^https://script\.google\.com/macros/s/[A-Za-z0-9_-]{20,200}/exec$")
 SHEET_KEY = re.compile(r"^[0-9a-f]{32,128}$")
 BATCH = 50
+PULL_EVERY = 300  # de quanto em quanto tempo o bot procura edições feitas na planilha
+REFUSED = {"DUPLICATE": "aparência e obra já ocupadas por outro cadastro", "CAPACITY": "o membro já está no limite de cadastros",
+           "INVALID": "valor que o bot não aceita (situação fora da lista, link sem https, data ilegível ou campo obrigatório vazio)"}
 # Pedidos de uma gravação, em bytes de JSON. O script aceita até 4 MB por chamada; um membro novo dá ~130 KB.
 BUDGET = 2_500_000
 
@@ -78,6 +83,7 @@ class SheetSync:
     def __init__(self, bot):
         self.bot = bot
         self.names: dict[tuple[str, str], str] = {}
+        self.next_pull: dict[str, float] = {}
     def actor(self) -> Actor:
         return Actor(str(self.bot.user.id) if self.bot.user else "0", "Arquivista", True)
     def bridge(self, guild_id: str, cfg: dict | None = None) -> Bridge:
@@ -102,6 +108,51 @@ class SheetSync:
                 await self.guild(guild_id)
             except Exception as exc:
                 log.warning("Planilha do servidor %s: %s", guild_id, type(exc).__name__)
+    async def pull_due(self) -> int:
+        """Procura edições feitas na planilha nos servidores em que já deu a hora. Devolve quantas entraram."""
+        total, now = 0, time.time()
+        for guild_id in self.bot.store.sheet_guilds():
+            if self.next_pull.get(guild_id, 0) > now:
+                continue
+            self.next_pull[guild_id] = now + PULL_EVERY
+            try:
+                total += await self.pull(guild_id)
+            except Exception as exc:
+                self.next_pull[guild_id] = now + 3 * PULL_EVERY
+                log.warning("Leitura da planilha do servidor %s: %s", guild_id, type(exc).__name__)
+        return total
+    async def pull(self, guild_id: str) -> int:
+        store = self.bot.store
+        if store.sheet_batch(guild_id, 1):
+            return 0  # primeiro a fila do bot vai para a planilha; a leitura fica para a próxima volta
+        model, _ = await read_sheet(self.bridge(guild_id), self.actor())
+        archive = self.bot.archive(int(guild_id))
+        records = {r["id"]: r for r in store.records(guild_id)}
+        found, lost = pull.changes(model, records, store.sheet_queued(guild_id))
+        applied, notes = 0, []
+        for change in found:
+            result = archive.from_sheet(change)
+            if result == "ok":
+                applied += 1
+                continue
+            if result in ("same", "STALE", "NOT_FOUND"):
+                continue  # mudou no Discord no meio da leitura: a versão do bot vai por cima
+            notes.append(f"{change.get('appearance') or 'linha sem nome'} (guia {change['tab']}): {REFUSED.get(result, result)}")
+            if change["id"]:
+                # Desfaz na planilha: regrava a linha com o que está no banco, na mesma revisão.
+                r = archive.record(change["id"])
+                with store.db:
+                    store.queue_sheet(guild_id, r["id"], r["revision"], {**sheet_upsert(r), "force": True})
+        if lost:
+            # Linha apagada à mão na planilha volta: para apagar um cadastro, use /remover.
+            with store.db:
+                for rid in lost:
+                    store.queue_sheet(guild_id, rid, records[rid]["revision"], sheet_upsert(records[rid]))
+            notes.append(f"{len(lost)} cadastro(s) apagado(s) à mão na planilha foram regravados; para apagar, use /remover")
+        note = "; ".join(notes)[:900] or None
+        if note != store.guild(guild_id).get("sheet_note"):
+            store.set_guild(guild_id, sheet_note=note)
+        return applied + len(lost)
     async def guild(self, guild_id: str) -> None:
         store = self.bot.store
         while True:

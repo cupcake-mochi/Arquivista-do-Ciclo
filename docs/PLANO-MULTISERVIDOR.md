@@ -155,14 +155,19 @@ importação.
    com revisão por cadastro (pedido repetido ou antigo é ignorado), fila
    `sheet_outbox` no bot que guarda só a última versão de cada cadastro, botão
    "Conectar planilha" no `/configurar` (testa antes de salvar, chave cifrada no
-   banco) e estado da planilha no `/diagnostico`. Edições feitas na planilha ainda não
-   voltam pro bot.
+   banco) e estado da planilha no `/diagnostico`.
    *Script 2.0:* a montagem saiu do script e foi pro bot (`src/arquivista/layout.py`). O script
    ficou fixo: confere a assinatura, lê (`status`, `read`) e aplica (`write`) uma lista de
    pedidos permitidos, recusando a gravação se a planilha mudou desde a leitura. Mudar o visual
-   da planilha não exige mais que cada servidor cole e reimplante o script. A etapa 4 vai
-   precisar de uma ação nova de leitura de eventos, que entra no script uma vez só.
+   da planilha não exige mais que cada servidor cole e reimplante o script.
 4. **Planilha → bot:** consumo dos eventos por servidor, eco e conflitos.
+   *Feito sem mudar o script:* o bot lê a planilha (`read`) a cada 5 minutos, quando a fila
+   dele está vazia, e compara com o banco (`src/arquivista/pull.py`). Linha com a mesma
+   revisão do banco e valor diferente é edição; linha digitada sem ID vira cadastro na mesma
+   posição. Eco não acontece porque cada gravação do bot sobe a revisão na coluna K. Conflito:
+   cadastro com mudança na fila do bot fica de fora e a versão do bot vai por cima (sem a
+   tabela `conflicts`). Recusa é desfeita na planilha e explicada no `/diagnostico`; linha
+   apagada à mão é regravada.
 5. **Guia de instalação** pra donos de servidor e planilha modelo pública.
 6. **Público:** privacidade, termos, verificação.
 

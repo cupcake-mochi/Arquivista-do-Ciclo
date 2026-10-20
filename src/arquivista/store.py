@@ -39,7 +39,8 @@ SCHEMA = '''
 '''
 # Colunas acrescentadas depois da primeira versão do banco; ALTER TABLE preserva o que já existe.
 COLUMNS = {"guilds": (("sheet_url", "TEXT"), ("sheet_key", "TEXT"), ("sheet_error", "TEXT"), ("sheet_ok", "TEXT"),
-                      ("backup_channel", "TEXT"), ("backup_hours", "INTEGER"), ("backup_next", "REAL"), ("backup_error", "TEXT"))}
+                      ("backup_channel", "TEXT"), ("backup_hours", "INTEGER"), ("backup_next", "REAL"), ("backup_error", "TEXT"),
+                      ("sheet_note", "TEXT"))}
 
 SHEET_FIELDS = ("id", "owner_id", "appearance", "work", "server_name", "status", "justification", "image_url", "date", "revision")
 
@@ -73,13 +74,14 @@ class Store:
         if not row:
             return {"guild_id": str(guild_id), "staff_roles": [], "log_channel": None, "image_channel": None,
                     "sheet_url": None, "sheet_key": None, "sheet_error": None, "sheet_ok": None,
-                    "backup_channel": None, "backup_hours": None, "backup_next": None, "backup_error": None}
+                    "backup_channel": None, "backup_hours": None, "backup_next": None, "backup_error": None,
+                    "sheet_note": None}
         data = dict(row)
         data["staff_roles"] = [str(x) for x in json.loads(data["staff_roles"])]
         return data
     def set_guild(self, guild_id: int | str, **fields) -> None:
         allowed = {"staff_roles", "log_channel", "image_channel", "sheet_url", "sheet_key", "sheet_error", "sheet_ok",
-                   "backup_channel", "backup_hours", "backup_next", "backup_error"}
+                   "backup_channel", "backup_hours", "backup_next", "backup_error", "sheet_note"}
         if not fields or set(fields) - allowed:
             raise ValueError("campo de servidor desconhecido")
         if "staff_roles" in fields:
@@ -160,6 +162,10 @@ class Store:
                 delay = 6 * 3600 if long else min(3600, 30 * 2 ** min(row[0], 7))
                 self.db.execute("UPDATE sheet_outbox SET tries=tries+1,next_try=?,error=? WHERE guild_id=? AND record_id=?",
                                 (time.time() + delay, error, str(guild_id), rid))
+    def sheet_queued(self, guild_id: str) -> set[str]:
+        return {r[0] for r in self.db.execute("SELECT record_id FROM sheet_outbox WHERE guild_id=?", (str(guild_id),))}
+    def sheet_guilds(self) -> list[str]:
+        return [r[0] for r in self.db.execute("SELECT guild_id FROM guilds WHERE sheet_url IS NOT NULL")]
     def sheet_pending(self, guild_id: str) -> tuple[int, int]:
         """(na fila, com erro de dado que não vai resolver sozinho)."""
         total = self.db.execute("SELECT COUNT(*) FROM sheet_outbox WHERE guild_id=?", (str(guild_id),)).fetchone()[0]
@@ -168,7 +174,7 @@ class Store:
     def drop_sheet(self, guild_id: str) -> None:
         with self.db:
             self.db.execute("DELETE FROM sheet_outbox WHERE guild_id=?", (str(guild_id),))
-            self.db.execute("UPDATE guilds SET sheet_url=NULL,sheet_key=NULL,sheet_error=NULL,sheet_ok=NULL WHERE guild_id=?", (str(guild_id),))
+            self.db.execute("UPDATE guilds SET sheet_url=NULL,sheet_key=NULL,sheet_error=NULL,sheet_ok=NULL,sheet_note=NULL WHERE guild_id=?", (str(guild_id),))
     # ---- mensagens da própria Amiya (respostas a ela recebem a saudação)
     def remember(self, message_id: int) -> None:
         with self.db:

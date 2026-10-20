@@ -146,5 +146,119 @@ class WorkTests(unittest.TestCase):
         self.assertEqual(find_work(groups, "  "), [])
 
 
+class PullTests(unittest.TestCase):
+    """Edição feita à mão na planilha voltando para o banco, contra a planilha simulada."""
+    def setUp(self):
+        from arquivista.config import Config
+        from arquivista.sheet import SheetSync, seal
+        sys.path.insert(0, str(ROOT / "tests"))
+        from sheet_sim import FakeSheet
+        self.tmp = tempfile.TemporaryDirectory()
+        self.s = s = Store(Path(self.tmp.name) / "d.sqlite")
+        s.set_guild(G1, log_channel="7" * 18, sheet_url="https://script.google.com/macros/s/" + "a" * 30 + "/exec",
+                    sheet_key=seal(b"k" * 32, "f" * 64))
+        class Member: name = "mizuki_sama"
+        class Guild:
+            def get_member(self, _): return Member()
+        class Bot:
+            store = s; config = Config("T", Path("x"), master_key=b"k" * 32); session = None
+            class user: id = 999999999999999999
+            def get_guild(self, _): return Guild()
+            def now_text(self): return "agora"
+            def archive(self, gid): return Archive(s, gid)
+        self.sync = SheetSync(Bot())
+        self.sheet = FakeSheet()
+        self.sync.bridge = lambda gid, cfg=None: self.sheet
+        self.a = Archive(s, G1)
+        self.ids = [asyncio.run(self.a.call("create", Actor(U1, "m"), {"fields": {"appearance": n, "work": "Azur Lane"}}))["record"]["id"]
+                    for n in ("Takao", "Atago")]
+        asyncio.run(self.sync.run())
+        self.assertEqual(self.s.sheet_pending(G1), (0, 0))
+    def tearDown(self):
+        self.s.close(); self.tmp.cleanup()
+    def cell(self, rid, col, value=None, below=0):
+        from arquivista import layout
+        grid = self.grid()
+        row = next(i for i, line in enumerate(grid) if line[layout.ID - 1] == rid) + below
+        if value is not None:
+            grid[row][col - 1] = value
+        return grid[row][col - 1]
+    def grid(self):
+        return next(iter(self.sheet.grids.values()))
+    def pull(self):
+        n = asyncio.run(self.sync.pull(G1))
+        asyncio.run(self.sync.run())  # devolve a linha regravada para a planilha
+        return n
+    def rec(self, rid):
+        return self.a.record(rid)
+
+    def test_edit_in_sheet_reaches_bot_with_unknown_author(self):
+        from arquivista import layout
+        self.cell(self.ids[0], layout.SERVER_NAME, "Takao do Mizuki")
+        self.cell(self.ids[0], layout.STATUS, "Em uso")
+        self.cell(self.ids[0], layout.APPEARANCE, "Aprovada na call.", below=2)
+        self.s.db.execute("UPDATE notices SET sent=1"); self.s.db.commit()
+        self.assertEqual(self.pull(), 1)
+        r = self.rec(self.ids[0])
+        self.assertEqual((r["server_name"], r["status"], r["justification"], r["revision"]),
+                         ("Takao do Mizuki", "Em uso", "Aprovada na call.", 2))
+        self.assertEqual(self.cell(self.ids[0], layout.MARK), 2)  # a planilha recebeu a revisão nova
+        ev = self.s.db.execute("SELECT actor_id,source FROM events ORDER BY seq DESC LIMIT 1").fetchone()
+        self.assertEqual(tuple(ev), ("", "planilha"))
+        self.assertEqual(len(self.s.pending()), 1)  # aviso no canal de histórico
+        self.assertEqual(self.pull(), 0)  # nada mais a trazer
+
+    def test_refused_edit_is_undone_in_sheet(self):
+        from arquivista import layout
+        self.cell(self.ids[1], layout.APPEARANCE, "Takao")  # repetiria Takao + Azur Lane
+        self.cell(self.ids[0], layout.STATUS, "Qualquer")
+        self.assertEqual(self.pull(), 0)
+        self.assertEqual(self.cell(self.ids[1], layout.APPEARANCE), "Atago")
+        self.assertEqual(self.cell(self.ids[0], layout.STATUS), "Em preparação")
+        self.assertIn("já ocupadas", self.s.guild(G1)["sheet_note"])
+        self.assertEqual(self.rec(self.ids[1])["revision"], 1)
+
+    def test_row_typed_in_empty_slot_becomes_record_there(self):
+        from arquivista import layout
+        grid = self.grid()
+        row = next(i for i, line in enumerate(grid) if line[layout.ID - 1] == self.ids[1]) + 8  # posição 4, pulando a 3
+        grid[row][layout.APPEARANCE - 1] = "Kaga"; grid[row][layout.WORK - 1] = "Azur Lane"
+        self.assertEqual(self.pull(), 1)
+        new = [r for r in self.s.records(G1) if r["appearance"] == "Kaga"]
+        self.assertEqual((len(new), new[0]["owner_id"], new[0]["status"]), (1, U1, "Em preparação"))
+        grid = self.grid()  # a planilha simulada troca a grade inteira a cada gravação
+        self.assertEqual(grid[row][layout.ID - 1], new[0]["id"])  # na linha onde foi digitado
+        self.assertEqual(self.pull(), 0)
+        grid = self.grid()
+        # Cadastro novo pelo bot não pisa numa linha digitada que ainda não foi lida.
+        grid[row - 4][layout.APPEARANCE - 1] = "Akagi"; grid[row - 4][layout.WORK - 1] = "Azur Lane"
+        asyncio.run(self.a.call("create", Actor(U1, "m"), {"fields": {"appearance": "Shoukaku", "work": "Azur Lane"}}))
+        asyncio.run(self.sync.run())
+        self.assertEqual(self.grid()[row - 4][layout.APPEARANCE - 1], "Akagi")
+        self.assertEqual(self.pull(), 1)
+        self.assertEqual(sorted(r["appearance"] for r in self.s.records(G1)), ["Akagi", "Atago", "Kaga", "Shoukaku", "Takao"])
+
+    def test_row_deleted_by_hand_comes_back(self):
+        from arquivista import layout
+        grid = self.grid()
+        row = next(i for i, line in enumerate(grid) if line[layout.ID - 1] == self.ids[0])
+        for c in (layout.APPEARANCE, layout.WORK, layout.STATUS, layout.ID, layout.OWNER, layout.MARK):
+            grid[row][c - 1] = ""
+        self.pull()
+        self.assertTrue(any(line[layout.ID - 1] == self.ids[0] for line in self.grid()))
+        self.assertIn("/remover", self.s.guild(G1)["sheet_note"])
+        self.assertEqual(len(self.s.records(G1)), 2)
+
+    def test_discord_change_waiting_wins_over_sheet(self):
+        from arquivista import layout
+        self.cell(self.ids[0], layout.SERVER_NAME, "pela planilha")
+        asyncio.run(self.a.call("edit", Actor(U1, "m"), {"id": self.ids[0], "revision": 1, "fields": {"server_name": "pelo discord"}}))
+        self.assertEqual(asyncio.run(self.sync.pull(G1)), 0)  # fila primeiro
+        asyncio.run(self.sync.run())
+        self.assertEqual(self.pull(), 0)
+        self.assertEqual(self.rec(self.ids[0])["server_name"], "pelo discord")
+        self.assertEqual(self.cell(self.ids[0], layout.SERVER_NAME), "pelo discord")
+
+
 if __name__ == "__main__":
     unittest.main()

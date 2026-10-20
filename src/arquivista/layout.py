@@ -60,6 +60,9 @@ class Block:
         return self.tab.grid[self.row(n) - 1][col - 1]
     def used(self) -> int:
         return sum(1 for n in range(1, self.slots + 1) if self.cell(n, ID))
+    def free(self, n: int) -> bool:
+        # Linha preenchida à mão (sem ID ainda) não é posição livre: o bot vai cadastrar ali.
+        return not self.cell(n, ID) and not str(self.cell(n, APPEARANCE) or "").strip()
 
 
 class Model:
@@ -154,7 +157,7 @@ class Model:
                                                   "properties": {"hiddenByUser": True}, "fields": "hiddenByUser"}})
         self.tabs.append(tab)
         self.set(tab, 1, 1, ["CATÁLOGO DE APARÊNCIAS"])
-        self.set(tab, 2, 1, ["Esta planilha é atualizada pelo Arquivista. Use + / − para abrir as justificativas. Vermelho: aparência + obra repetida nas fichas desta pessoa."])
+        self.set(tab, 2, 1, ["Esta planilha é atualizada pelo Arquivista, e o que a staff mudar aqui volta para o bot em alguns minutos. Use + / − para abrir as justificativas. Vermelho: aparência + obra repetida nas fichas desta pessoa."])
         self.set(tab, 3, 1, ["Cada membro começa com 20 posições e ganha mais 20 quando está perto de encher. O visor mostra a posição escolhida."])
         for r in (1, 2, 3):
             _merge(req, sid, r, r, 1, 10)
@@ -296,14 +299,17 @@ class Model:
             stored = _num(loc[0].tab.grid[loc[1] - 1][MARK - 1])
             if stored > r["revision"]:
                 return "stale"
-            if stored == r["revision"]:
-                return "ok"
+            if stored == r["revision"] and op.get("force") is not True:
+                return "ok"  # force: desfaz uma edição feita na planilha que o bot recusou
             if loc[0].owner != r["owner_id"]:
                 self.clear_slot(loc[0], loc[1])
                 loc = None
         b = self.block_of(r["owner_id"]) or self.new_block(r["owner_id"], r["owner_name"])
+        slot = op.get("slot")
+        if not loc and _int(slot) and b.owner == r["owner_id"] and 1 <= slot <= b.slots and not b.cell(slot, ID):
+            loc = (b, b.row(slot), slot)  # cadastro que alguém digitou na planilha: fica na linha onde foi digitado
         if not loc:
-            n = next((i for i in range(1, b.slots + 1) if not b.cell(i, ID)), 0)
+            n = next((i for i in range(1, b.slots + 1) if b.free(i)), 0)
             if not n:
                 b = self.expand(b)
                 n = b.slots - STEP + 1
@@ -314,7 +320,7 @@ class Model:
         self.set(tab, row + 2, APPEARANCE, [r["justification"]])
         # Como a expansão por edição: perto do fim (2 posições livres), o bloco ganha mais 20.
         b = self.block_of(r["owner_id"])
-        if b.slots - b.used() <= 2:
+        if sum(b.free(i) for i in range(1, b.slots + 1)) <= 2:
             self.expand(b)
         return "ok"
     def clear(self, op: dict) -> str:
