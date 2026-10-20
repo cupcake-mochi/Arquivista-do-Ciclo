@@ -15,19 +15,27 @@ from urllib.parse import urlsplit
 
 STATUSES = ("Em preparação", "Em uso", "Arquivado", "Liberado")
 PUBLIC_FIELDS = frozenset(("id", "appearance", "work", "owner_id", "occupied"))
-ALIASES = {
-    "aparencias": "aparencias", "aparências": "aparencias", "lista": "aparencias",
-    "galeria": "galeria", "consultar": "consultar", "buscar": "consultar",
-    "minhas": "minhas", "registrar": "registrar", "editar": "editar",
-    "situacao": "situacao", "situação": "situacao", "transferir": "transferir",
-    "remover": "remover", "historico": "historico", "histórico": "historico",
-    "registrarhistorico": "registrar_historico", "registrar_historico": "registrar_historico",
-    "desativarhistorico": "desativar_historico", "desativar_historico": "desativar_historico",
-    "registrarimagens": "registrar_imagens", "registrar_imagens": "registrar_imagens",
-    "desativarimagens": "desativar_imagens", "desativar_imagens": "desativar_imagens",
-    "ajuda": "ajuda", "help": "ajuda", "status": "status",
-    "configurar": "configurar", "config": "configurar",
+# Nome completo e abreviações de cada comando de chat (AC:...). Sem letra solta, que dispara sem querer.
+SHORT = {
+    "aparencias": ("aparencias", "aparências", "lista", "ap"),
+    "minhas": ("minhas", "min"),
+    "galeria": ("galeria", "gal"),
+    "consultar": ("consultar", "buscar", "busca", "con"),
+    "registrar": ("registrar", "reg"),
+    "editar": ("editar", "ed"),
+    "situacao": ("situacao", "situação", "sit"),
+    "transferir": ("transferir", "transf", "tr"),
+    "remover": ("remover", "rem", "rm"),
+    "historico": ("historico", "histórico", "hist"),
+    "registrar_historico": ("registrarhistorico", "registrar_historico"),
+    "desativar_historico": ("desativarhistorico", "desativar_historico"),
+    "registrar_imagens": ("registrarimagens", "registrar_imagens"),
+    "desativar_imagens": ("desativarimagens", "desativar_imagens"),
+    "ajuda": ("ajuda", "help", "aj"),
+    "status": ("status", "st"),
+    "configurar": ("configurar", "config", "cfg"),
 }
+ALIASES = {name: action for action, names in SHORT.items() for name in names}
 STAFF_ACTIONS = frozenset(("situacao", "transferir", "remover", "historico", "status",
     "registrar_historico", "desativar_historico", "registrar_imagens", "desativar_imagens"))
 

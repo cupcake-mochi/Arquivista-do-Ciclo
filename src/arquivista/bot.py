@@ -24,14 +24,14 @@ log = logging.getLogger(__name__)
 PUBLIC = frozenset(("ajuda", "aparencias", "minhas", "galeria", "consultar"))
 
 HELP = """**Consultar o arquivo**
-`AC:aparencias [@membro]` — lista paginada.
-`AC:minhas` — suas aparências.
-`AC:galeria [nome] [@membro]` — uma imagem por página.
-`AC:consultar nome` — busca aproximada; refine com a obra.
+`AC:aparencias [@membro]` (`AC:ap`) — lista paginada.
+`AC:minhas` (`AC:min`) — suas aparências.
+`AC:galeria [nome] [@membro]` (`AC:gal`) — uma imagem por página.
+`AC:consultar nome` (`AC:busca`) — busca aproximada; refine com a obra.
 
 **Seu cadastro**
-`AC:registrar` — abrir formulário, revisar e confirmar.
-`AC:editar nome` — editar nome no servidor e imagem.
+`AC:registrar` (`AC:reg`) — abrir formulário, revisar e confirmar.
+`AC:editar nome` (`AC:ed`) — editar nome no servidor e imagem.
 Pode anexar uma imagem à mensagem de registrar/editar, após a staff configurar o canal de imagens.
 
 Também existem comandos de barra `/`. `ac:` e espaços depois de `AC:` são aceitos.
@@ -40,16 +40,16 @@ STAFF_HELP = """
 
 **Staff**
 `AC:registrar @membro` — cadastrar para outra pessoa.
-`AC:situacao nome` — situação e justificativa internas.
-`AC:transferir nome @membro` — preservar identidade e data.
-`AC:remover nome` — remoção com confirmação e auditoria.
-`AC:historico nome` — histórico privado, inclusive removidos.
+`AC:situacao nome` (`AC:sit`) — situação e justificativa internas.
+`AC:transferir nome @membro` (`AC:tr`) — preservar identidade e data.
+`AC:remover nome` (`AC:rm`) — remoção com confirmação e auditoria.
+`AC:historico nome` (`AC:hist`) — histórico privado, inclusive removidos.
 `AC:registrarhistorico` / `AC:desativarhistorico` — canal de notificações.
 `AC:registrarimagens` / `AC:desativarimagens` — canal para preservar anexos.
-`AC:status` — diagnóstico privado do arquivo deste servidor.
+`AC:status` (`AC:st`) — diagnóstico privado do arquivo deste servidor.
 
 **Gerência do servidor**
-`AC:configurar` — cargos de staff e canais de histórico e imagens.
+`AC:configurar` (`AC:cfg`) — cargos de staff, canais e planilha.
 """
 
 SHEET_ERRORS = {"AUTH": "a planilha recusou a chave ou a URL; conecte de novo no /configurar",

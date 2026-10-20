@@ -32,6 +32,11 @@ class DomainTests(unittest.TestCase):
         self.assertIsNone(parse_prefix('Eu escrevi AC:registrar.'))
         self.assertEqual(parse_prefix('AC:inexistente')[0],'unknown')
     def test_all_aliases(self):
+        for short,action in (('reg','registrar'),('AP','aparencias'),('gal','galeria'),('busca','consultar'),('ed','editar'),
+                             ('sit','situacao'),('tr','transferir'),('rm','remover'),('hist','historico'),('st','status'),('cfg','configurar')):
+            self.assertEqual(parse_prefix(f'AC:{short} Takao')[0],action)
+        from arquivista.domain import SHORT
+        self.assertEqual(len(ALIASES),sum(len(v) for v in SHORT.values()))  # nenhuma abreviação usada por dois comandos
         for alias,expected in ALIASES.items():
             self.assertEqual(parse_prefix('AC:'+alias)[0],expected)
     def test_normalization(self):
