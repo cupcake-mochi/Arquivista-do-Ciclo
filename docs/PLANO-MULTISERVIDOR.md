@@ -80,6 +80,32 @@ limite, então um servidor conectado pode passar do que a planilha comporta.
 Padrão proposto: o bot avisa a staff e mantém esses cadastros só no banco,
 marcados como "fora da planilha", até ampliarem.
 
+## Modelo novo da planilha (decidido em 20/10)
+
+A ficha continua sendo onde se edita, no visual de blocos de hoje. O que muda é
+como o espaço é reservado:
+
+- **Guias por faixa de membros** ("FICHAS 1–20", "FICHAS 21–40"…), criadas só
+  quando necessário, no lugar de uma guia única de 41 mil linhas.
+- **Posições sob demanda:** cada membro começa com 50 posições e ganha mais 50
+  quando chega perto do fim (ex.: posição 48), até 200. Os blocos + / − ficam.
+- **Expansão automática:** o gatilho de edição que já existe acrescenta o
+  bloco, copiando um modelo pequeno de uma guia escondida. Membro novo em
+  MEMBROS ganha bloco (e guia nova, se a faixa estiver cheia). O bot pede a
+  expansão pela ponte antes de gravar, porque edição pela API não dispara o
+  gatilho. Um gatilho de tempo e um item de menu servem de rede de segurança.
+- **Mapa de blocos:** a posição deixa de ser calculada por `5 + 822 × grupo`; a
+  SISTEMA · MEMBROS guarda guia e linha inicial de cada bloco. O ID de cada
+  ficha continua sendo a identidade.
+- **Uma regra de cor por coluna em cada guia**, em vez dos milhares de pedaços
+  atuais; duplicata conferida pelo banco quando conectado, com aviso leve na
+  planilha.
+- Estimativa: uns mil membros por arquivo antes de pesar. Servidor maior usa
+  só o banco.
+
+A migração da planilha atual pra esse modelo é feita por script, preservando
+IDs e datas, com a versão antiga guardada como cópia.
+
 ## Importação da planilha atual
 
 Uma ação de leitura completa na ponte (com campos internos, só pra staff) traz
@@ -104,7 +130,7 @@ importação.
 1. **Núcleo multi-servidor sem planilha:** banco, repositório, configuração por
    servidor, comandos globais, `/configurar` (cargos e canais). Testes locais.
 2. **Importação** da Planilha Aparências atual pro banco.
-3. **Bot → planilha:** ação `apply` na ponte, fila e `/configurar planilha`.
+3. **Bot → planilha:** modelo novo da planilha (guias por faixa e posições sob demanda), ação `apply` na ponte, fila e `/configurar planilha`.
    Script sem ID fixo.
 4. **Planilha → bot:** consumo dos eventos por servidor, eco e conflitos.
 5. **Guia de instalação** pra donos de servidor e planilha modelo pública.
