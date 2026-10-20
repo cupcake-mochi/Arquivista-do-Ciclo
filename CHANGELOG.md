@@ -1,5 +1,11 @@
 # Histórico de versões
 
+## 1.0.1 · 20/10/2026
+
+Revisão dos textos da Amiya: ajuda, guia, formulários, confirmações, avisos e instruções das planilhas. As mensagens estão mais curtas e os exemplos acompanham o que o bot faz. O guia público, a política de privacidade e os termos também foram revisados, mantendo suas regras e condições.
+
+Corrigidas duas orientações: a consulta de histórico mostra até 200 resultados recentes guardados no banco, e novas variáveis da Discloud precisam de rebuild ou deploy. As regras de cadastro, permissões e sincronização continuam as mesmas.
+
 ## 1.0.0 · 20/10/2026
 
 - Planilha privada pronta pelo `/planilha criar`, com formulário de e-mail, edição concedida e sincronização nos dois sentidos. Donos de servidor não instalam scripts.

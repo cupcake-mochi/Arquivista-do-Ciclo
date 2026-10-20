@@ -24,7 +24,7 @@ A planilha recebe uma cópia de tudo que é cadastrado pelo bot, e o que a staff
 
 Cada membro ganha uma guia própria, com o nome de usuário do Discord (o `@`, não o apelido do servidor). Se o nome de usuário mudar, a guia é renomeada na próxima vez que o bot gravar algo dessa pessoa. Não crie guias com o mesmo nome de um membro: se acontecer, a guia do membro vira `nome (2)`.
 
-**O script não muda mais:** desde a versão 2.0 ele só confere a assinatura, lê e aplica o que o bot manda. Quem monta as guias (posições, cores, bordas, fórmulas) é o bot, então melhorias na planilha chegam só atualizando o bot. Quem tem o script 1.x precisa colar o 2.0 uma última vez: cole o `Planilha.gs` novo por cima, salve, e em Implantar → Gerenciar implantações → lápis → Versão **Nova versão** → Implantar (o link `/exec` continua o mesmo). Se o bot avisar "o script da planilha é antigo", é isso que falta.
+**Como as abas são montadas:** desde a versão 2.0, o script confere a assinatura, lê a planilha e aplica os pedidos do bot. O layout fica no código do bot: posições, cores, bordas e fórmulas podem ser atualizados sem reinstalar o script. Quem ainda usa o script 1.x precisa substituir o conteúdo pelo `Planilha.gs` atual, salvar e escolher Implantar → Gerenciar implantações → lápis → Versão **Nova versão** → Implantar. O link `/exec` continua o mesmo. Esse é o procedimento quando aparecer o aviso de script antigo.
 
 Guias criadas por versões antigas continuam funcionando. Antes de migrar, confira se todas as edições manuais entraram no banco e faça backup. Desconecte a antiga e use `/planilha criar`; o arquivo antigo permanece no Drive do seu dono.
 

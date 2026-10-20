@@ -32,18 +32,18 @@ PUBLIC = frozenset(("ajuda", "guia", "aparencias", "minhas", "galeria", "consult
 SLASH = ("ajuda", "guia", "aparencias", "obra", "registrar", "editar", "situacao", "transferir", "remover", "limpar", "apelido", "historico", "configurar", "restaurar", "planilha", "diagnostico")
 
 HELP = """**Consultar o arquivo**
-`/aparencias` ou `AC:ap [aparência] [@membro]` — lista; o botão do resultado troca para galeria.
-`AC:min` — suas aparências. `AC:gal` — já abre em galeria.
-`/obra` ou `AC:obra [nome]` — aparências de uma obra, juntando grafias parecidas ("Arknights", "Endfield", "arknighs"). Sem nome, lista as obras.
+`/aparencias` ou `AC:ap [aparência] [@membro]` — consulte a lista. Use **Ver em galeria** para ver as imagens.
+`AC:min` — veja suas aparências. `AC:gal` — abra a galeria.
+`/obra` ou `AC:obra [nome]` — busque pela obra. A busca aceita abreviações e pequenos erros de digitação. Sem nome, mostra as obras cadastradas.
 
-`/guia` ou `AC:guia` — passo a passo de como o arquivo funciona.
+`/guia` ou `AC:guia` — comece por aqui se for sua primeira vez.
 
 **Seu cadastro**
-`/registrar` ou `AC:reg` — formulário com link ou anexo da imagem, revisão e confirmação.
-`/editar` ou `AC:ed aparência` — mudar nome no servidor e imagem.
+`/registrar` ou `AC:reg` — preencha a ficha, confira os dados e confirme.
+`/editar` ou `AC:ed aparência` — altere o nome do personagem no servidor ou a imagem.
 
 Os nomes completos também valem (`AC:registrar`, `AC:galeria`...). `ac:` minúsculo funciona.
-Situação e justificativa ficam só nos painéis privados.""" + "\n\n" + DATA_LINKS
+Situação e justificativa não aparecem nas consultas públicas.""" + "\n\n" + DATA_LINKS
 STAFF_HELP = """
 
 **Staff**
@@ -57,10 +57,10 @@ STAFF_HELP = """
 `/diagnostico` ou `AC:diag` — estado do arquivo, dos canais e da planilha.
 
 **Gerência do servidor**
-`/configurar` ou `AC:cfg` — cargos de staff, canais de histórico e imagens, planilha.
-`/restaurar` ou `AC:restaurar` com o .json do backup anexado — volta o arquivo para o backup, com confirmação.
-`/planilha criar` — cria a planilha pronta e concede edição ao e-mail informado em privado; repetir reutiliza o arquivo.
-`/planilha abrir` ou `AC:planilha` — painel privado da planilha.
+`/configurar` ou `AC:cfg` — escolha os cargos de staff, os canais e a frequência do backup; conecte a planilha.
+`/restaurar` ou `AC:restaurar` com o .json anexado — recupere os cadastros de um backup. Confira o resumo antes de confirmar.
+`/planilha criar` — informe seu e-mail Google em privado para receber a planilha pronta, com acesso de editor. Se ela já existe, abre o mesmo arquivo.
+`/planilha abrir` ou `AC:planilha` — recupere o link e abra o painel da planilha.
 `/planilha membro` — selecione um @membro do servidor para preparar a aba antes de preencher à mão.
 """ + "\n" + SETUP_LINK
 
@@ -68,23 +68,23 @@ STAFF_HELP = """
 GUIDE = (
     ("O que é o arquivo",
      "Aqui fica registrado quem usa cada **aparência**: o personagem (ou a pessoa) que você usa no servidor, junto com a **obra** de onde ele vem.\n\n"
-     "Cada aparência + obra só pode ter um dono por vez. Antes de escolher a sua, confira se ela está livre; o cadastro faz a conferência final.\n\n"
-     "Use os botões abaixo para seguir o guia.\n\n" + DATA_LINKS),
+     "A combinação de aparência e obra só pode estar ocupada por uma pessoa de cada vez. Consulte a lista antes de escolher; ao salvar, eu confiro se já existe um cadastro.\n\n"
+     "Use **Próxima** para continuar.\n\n" + DATA_LINKS),
     ("Consultar",
-     "`AC:ap Takao` ou `/aparencias` — procura pelo nome (aproximado vale) e mostra o responsável.\n"
+     "`AC:ap Takao` ou `/aparencias` — busque pelo nome e veja quem usa a aparência. Pequenos erros de digitação também são aceitos.\n"
      "`AC:gal` — o mesmo, mas uma por página, com imagem.\n"
      "`AC:obra arknights` ou `/obra` — tudo de uma obra, juntando jeitos diferentes de escrever o nome.\n"
      "`AC:ap @membro` — as aparências de alguém. `AC:min` — as suas.\n\n"
-     "Não achar um nome parecido não garante que ele esteja livre: às vezes alguém escreveu de outro jeito."),
+     "Se não encontrar, tente também o nome da obra: a aparência pode ter sido cadastrada com outra grafia."),
     ("Registrar a sua",
      "`AC:reg` ou `/registrar` abre um formulário com:\n"
      "• **Aparência** — o nome do personagem;\n• **Obra** — de onde ele vem;\n"
      "• **Nome no servidor** (opcional) — como o seu personagem se chama aqui;\n"
      "• **Imagem** — link https ou anexo.\n\n"
-     "Depois vem uma revisão privada, você escolhe a situação e confirma. Se a aparência já tiver dono, o bot avisa e não salva."),
+     "Depois, confira os dados numa mensagem que só você vê, escolha a situação e clique em **Confirmar e salvar**. Se não escolher, fica **Em preparação**. Se a aparência estiver ocupada, eu aviso sem salvar outro cadastro."),
     ("Mudar o seu cadastro",
      "`AC:ed nome` ou `/editar` — muda o nome no servidor ou a imagem. Para tirar a imagem, escreva `-` no campo.\n\n"
-     "Trocar a aparência, a obra ou a situação fica com a staff. Para desistir de uma aparência, peça para a staff liberar."),
+     "Depois do cadastro, só a staff pode mudar a aparência, a obra ou a situação. Se não quiser mais usar essa aparência, peça à staff para liberar."),
     ("Situações",
      "**Em preparação** — reservada, ainda sendo montada.\n**Em uso** — sendo usada.\n"
      "**Arquivado** — fora de uso, mas continua ocupada.\n**Liberado** — livre para outra pessoa.\n\n"
@@ -93,17 +93,17 @@ GUIDE = (
      "`AC:sit nome` — situação e justificativa. `AC:tr nome @membro` — muda o dono.\n"
      "`AC:rm nome` — remove um cadastro. `AC:limpar @membro` — apaga todos de alguém (vale o ID de quem saiu).\n"
      "`AC:apelido JJK = Jujutsu Kaisen` — apelido de obra para a busca.\n"
-     "`AC:hist` — histórico completo, inclusive removidos. `AC:diag` — estado do bot.\n\n"
-     "Tudo isso confirma antes de salvar e fica no histórico."),
+     "`AC:hist` — mudanças recentes, inclusive de cadastros removidos. `AC:diag` — veja se o bot e a planilha estão funcionando.\n\n"
+     "Antes de transferir, remover ou mudar a situação, confira a ficha selecionada e confirme. O histórico do cadastro fica guardado."),
     ("Configurar o servidor",
      "`/configurar` (dono, Administrador ou Gerenciar Servidor):\n"
      "• cargos de staff;\n• canal de histórico (avisos de cada mudança);\n• canal de imagens (guarda os anexos);\n"
-     "• planilha conectada (cópia de tudo, e o que a staff mudar nela volta pro bot);\n• backup automático num canal fechado.\n\n"
-     "`/planilha criar` entrega a planilha pronta: informe seu e-mail Google em privado para receber edição. "
-     "Se já existe, o comando reutiliza o arquivo. `/planilha abrir` mostra o painel.\n"
-     "`/planilha membro` exige selecionar um @membro válido deste servidor para preparar a aba dele. "
-     "Preencha as posições prontas; edições no Sheets entram no bot em cerca de 5 minutos. "
-     "Compartilhe edição só com a staff.\n\n"
+     "• planilha para editar as fichas pelo Google Sheets;\n• backup automático num canal só da staff.\n\n"
+     "Use `/planilha criar` e informe seu e-mail Google no formulário privado. Você recebe o arquivo pronto e pode editá-lo. "
+     "Para abrir novamente, use `/planilha abrir` ou `AC:planilha`.\n"
+     "Quer uma aba para outra pessoa? Use `/planilha membro` e selecione o @membro do servidor. "
+     "Preencha as posições prontas; as edições no Sheets chegam ao bot em cerca de 5 minutos. Compartilhe edição só com a staff.\n\n"
+     "Em **Backup**, escolha o canal e a frequência. **Fazer backup agora** envia uma cópia na hora. Para recuperar os cadastros, anexe o `.json` ao `/restaurar`.\n\n"
      "Para as mensagens saírem com a foto da Amiya, o bot precisa da permissão **Gerenciar Webhooks**.\n\n" + SETUP_LINK),
 )
 STAFF_PAGES = 2
@@ -181,7 +181,7 @@ class Arquivista(commands.Bot):
         if i.response.is_done():
             return
         try:
-            await i.response.send_message("Esse painel expirou (o bot foi atualizado ou ficou muito tempo parado). Abra o comando de novo.",
+            await i.response.send_message("Este painel expirou. Isso acontece após uma atualização ou um tempo sem uso. Abra o comando novamente.",
                                           ephemeral=True)
         except discord.HTTPException:
             pass  # o painel respondeu no meio tempo
@@ -241,7 +241,7 @@ class Arquivista(commands.Bot):
                 pass
         return result
     async def failure(self, source, error):
-        text = str(error) if isinstance(error,UserError) else "Não consegui concluir essa etapa. A staff pode conferir o diagnóstico; não presuma que uma gravação foi confirmada."
+        text = str(error) if isinstance(error,UserError) else "Não consegui confirmar se a alteração foi salva. Confira a ficha antes de tentar de novo; a staff pode consultar o /diagnostico."
         if isinstance(source,discord.Interaction):
             await private_reply(source,content=text)
         else:
@@ -279,7 +279,7 @@ class Arquivista(commands.Bot):
                     await self.open_private(source,action,query,member_id,attachment)
                 else:
                     gate=Gate(self,user.id,action,query,member_id,attachment)
-                    await self.reply_public(source,embed=card("Amiya · Atendimento", "Abra o painel para continuar. As informações internas não serão publicadas neste canal."),view=gate)
+                    await self.reply_public(source,embed=card("Amiya · Atendimento", "Clique abaixo para continuar em privado. Só você verá o formulário e as respostas."),view=gate)
                 return
             if action=="guia":
                 pages=GUIDE if actor.staff else GUIDE[:-STAFF_PAGES]
@@ -350,16 +350,16 @@ class Arquivista(commands.Bot):
             raise UserError("Não consegui ler o arquivo. Use o .json que o backup mandou, sem editar.") from None
         records,errors,warnings=check(data)
         if errors:
-            raise UserError("O arquivo tem problema, nada foi mudado:\n"+"\n".join("• "+clean(e,180) for e in errors[:8])+
+            raise UserError("Não consegui usar este backup. Nada foi alterado:\n"+"\n".join("• "+clean(e,180) for e in errors[:8])+
                             (f"\n… e mais {len(errors)-8}" if len(errors)>8 else ""))
         current=len(self.store.records(i.guild_id))
         other=str(data.get("guild_id") or "")!=str(i.guild_id)
         when=clean(str(data.get("exported_at") or "data desconhecida")[:19].replace("T"," "),40)
-        text=(f"Backup de **{when}** com **{len(records)} cadastro(s)** de {len({r['owner_id'] for r in records})} membro(s).\n\n"
-              +(f"Isso **substitui os {current} cadastro(s) atuais** deste servidor. O histórico dos atuais fica no /historico.\n" if current else "")
+        text=(f"Backup de **{when}**.\n**Cadastros:** {len(records)} · **Membros:** {len({r['owner_id'] for r in records})}\n\n"
+              +(f"Isso **substitui todos os cadastros atuais deste servidor** (total: {current}). O histórico continua no /historico.\n" if current else "")
               +("A planilha conectada será regravada com o backup.\n" if self.store.guild(i.guild_id).get("sheet_url") else "")
               +("\n**Atenção:** esse backup é de outro servidor.\n" if other else "")
-              +(f"\n{len(warnings)} aviso(s): "+clean("; ".join(warnings[:3]),400) if warnings else ""))
+              +(f"\nAvisos ({len(warnings)}): "+clean("; ".join(warnings[:3]),400) if warnings else ""))
         v=RestoreConfirm(self,i.user.id,records)
         await private_reply(i,embed=self.carteiro.decorate(card("Restaurar backup",text)),view=v)
     def restore(self, gid, records, actor_id) -> int:
@@ -381,7 +381,7 @@ class Arquivista(commands.Bot):
             try:
                 await guild.fetch_member(int(owner))
             except discord.NotFound:
-                gone.append(f"<@{owner}> · `{owner}` · {n} cadastro(s)")
+                gone.append(f"<@{owner}> · `{owner}` · Cadastros: {n}")
             except discord.HTTPException:
                 pass
         if not gone:
@@ -443,7 +443,7 @@ class Arquivista(commands.Bot):
                 if not records:
                     raise UserError("Não encontrei um cadastro correspondente que você possa gerenciar.")
                 v=Picker(self,i.user.id,records,action,member_id,attachment)
-                await private_reply(i,content=f"Encontrei {len(records)} opção(ões). Selecione pela aparência e obra; nenhuma alteração foi feita.",view=v)
+                await private_reply(i,content=f"Selecione a aparência e a obra na lista abaixo. Resultados: **{len(records)}**.",view=v)
             elif action=="apelido":
                 await private_reply(i,embed=self.carteiro.decorate(card("Apelidos de obra",self.alias_command(i.guild_id,query))))
             elif action=="limpar" and not member_id:
@@ -458,12 +458,12 @@ class Arquivista(commands.Bot):
                     names+=f"\n… e mais {len(records)-15}"
                 v=Confirm(self,i.user.id,"purge",{"owner_id":str(member_id),"ids":sorted(r["id"] for r in records)})
                 await private_reply(i,embed=self.carteiro.decorate(card("Confirmar limpeza",
-                    f"Apagar **todos os {len(records)} cadastro(s)** de <@{member_id}>?\n\n{names}\n\n"
-                    "As aparências ficam livres e saem da planilha. A auditoria do /historico fica guardada.")),view=v)
+                    f"Apagar **todos os cadastros** de <@{member_id}> (total: **{len(records)}**)?\n\n{names}\n\n"
+                    "As aparências ficam livres e as fichas saem da planilha. As mudanças anteriores continuam no /historico.")),view=v)
             elif action=="historico":
                 data=await archive.call("history",actor,{"query":query})
                 v=Paginator(self,i.user.id,data["events"],"history",actor=actor,guild_id=i.guild_id)
-                await private_reply(i,content="Exibindo os eventos mais recentes; a auditoria original foi preservada." if data.get("truncated") else None,embed=await v.embed(),view=v if data["events"] else None)
+                await private_reply(i,content="Esta consulta mostra até 200 mudanças recentes. As anteriores continuam guardadas no banco." if data.get("truncated") else None,embed=await v.embed(),view=v if data["events"] else None)
             elif action=="diagnostico":
                 data=await archive.call("status",actor)
                 cfg=self.store.guild(i.guild_id)
@@ -473,13 +473,13 @@ class Arquivista(commands.Bot):
                       f"**Eventos na auditoria:** {data['events']}\n**Avisos esperando envio:** {data['pending_notices']}\n"
                       f"**Canal de histórico:** {channel(cfg['log_channel'])}\n**Canal de imagens:** {channel(cfg['image_channel'])}\n"
                       f"**Cargos de staff:** {', '.join(f'<@&{r}>' for r in cfg['staff_roles']) or 'só dono e quem gerencia o servidor'}\n"
-                      f"**Último envio de avisos:** {self.last_sync or 'ainda não realizado'}\n**Situação operacional:** {self.sync_problem or 'sem erro registrado nesta sessão'}")
+                      f"**Último envio de avisos:** {self.last_sync or 'ainda não realizado'}\n**Funcionamento:** {self.sync_problem or 'sem erro registrado nesta sessão'}")
                 me=getattr(i.guild,"me",None);here=i.channel
                 hooks=bool(me and here is not None and hasattr(here,"permissions_for") and here.permissions_for(me).manage_webhooks)
                 body+="\n**Amiya neste canal:** "+("com a foto dela" if hooks else "sai com o ícone do bot; dê ao bot a permissão Gerenciar Webhooks")
                 if cfg.get("sheet_url"):
                     queued,bad=self.store.sheet_pending(i.guild_id)
-                    body+=(f"\n**Planilha:** conectada · {queued} mudança(s) esperando envio"+(f", {bad} recusada(s) pela planilha" if bad else "")+
+                    body+=(f"\n**Planilha:** conectada · envios pendentes: {queued}"+(f", recusados pela planilha: {bad}" if bad else "")+
                            f"\n**Último envio para a planilha:** {cfg.get('sheet_ok') or 'ainda não realizado'}"+
                            (f"\n**Último erro da planilha:** {SHEET_ERRORS.get(cfg['sheet_error'],cfg['sheet_error'])}" if cfg.get("sheet_error") else "")+
                            (f"\n**Edição da planilha que não entrou:** {clean(cfg['sheet_note'],900)}" if cfg.get("sheet_note") else ""))
@@ -553,10 +553,10 @@ class Arquivista(commands.Bot):
         if cfg.get("sheet_url"):
             names={o:await self.sheets.owner_name(gid,o) for o in {r["owner_id"] for r in records}}
             files.append(discord.File(io.BytesIO(backup.workbook(records,names)),filename=name+".xlsx"))
-        text=(f"{len(records)} cadastro(s), de {len({r['owner_id'] for r in records})} membro(s). "
-              "O .json restaura o arquivo no bot (`/restaurar` com ele anexado)"+
-              (" e o .xlsx é uma cópia da planilha, uma guia por membro." if cfg.get("sheet_url") else ".")+
-              "\n\nTem justificativas e nomes internos: deixe este canal só para a staff.")
+        text=(f"Cadastros: **{len(records)}** · Membros: **{len({r['owner_id'] for r in records})}**.\n\n"
+              "Para recuperar os cadastros, anexe o `.json` ao `/restaurar`"+
+              (". O `.xlsx` permite consultar os cadastros por membro, cada um na sua aba." if cfg.get("sheet_url") else ".")+
+              "\n\nOs arquivos incluem justificativas e nomes dos personagens no servidor. Mantenha este canal só para a staff.")
         await channel.send(embed=self.carteiro.decorate(card("Backup do arquivo",text)),files=files,allowed_mentions=discord.AllowedMentions.none())
         hours=cfg.get("backup_hours") or 24
         self.store.set_guild(gid,backup_error=None,backup_next=time.time()+hours*3600)

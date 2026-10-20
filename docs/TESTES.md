@@ -1,4 +1,6 @@
-# Validação · Arquivista 1.0.0 · 20/10/2026
+# Validação · Arquivista 1.0.1 · 20/10/2026
+
+A 1.0.1 revisa os textos de comandos, painéis, avisos, modelos de planilha e documentos. As regras do bot continuam as mesmas. A suíte foi executada novamente após a revisão; os ensaios reais descritos abaixo foram feitos na preparação da 1.0.
 
 ## O que foi executado nesta entrega
 

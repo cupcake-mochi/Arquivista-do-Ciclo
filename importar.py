@@ -39,12 +39,12 @@ def main() -> int:
     for w in warnings[:30]:
         print("Aviso:", w)
     if len(warnings) > 30:
-        print(f"... e mais {len(warnings)-30} aviso(s).")
+        print(f"... outros avisos: {len(warnings)-30}.")
     if errors:
         for e in errors[:50]:
             print("Erro:", e)
         if len(errors) > 50:
-            print(f"... e mais {len(errors)-50} erro(s).")
+            print(f"... outros erros: {len(errors)-50}.")
         print("Nada foi gravado. Corrija na planilha, exporte de novo e rode outra vez.")
         return 2
     if not args.aplicar:
@@ -65,9 +65,9 @@ def main() -> int:
         print(str(exc)); return 1
     finally:
         store.close()
-    print(f"Importados {n} cadastro(s); banco agora tem {count} neste servidor. Amostra conferida: {len(sample) - len(bad)}/{len(sample)}.")
+    print(f"Cadastros importados: {n}. Total neste servidor: {count}. Amostra conferida: {len(sample) - len(bad)}/{len(sample)}.")
     if bad or count != n:
-        print("A conferência encontrou diferença. Não ligue o bot e me mande esta saída."); return 3
+        print("A importação terminou com diferenças. Confira o arquivo e o banco antes de iniciar o bot."); return 3
     return 0
 
 

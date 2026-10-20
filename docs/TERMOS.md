@@ -2,15 +2,15 @@
 
 Atualizados em 20/10/2026.
 
-Eu sou o Mizuki e mantenho o Arquivista do Ciclo, o bot da Amiya que cuida do arquivo de aparências dos servidores. Usar o bot quer dizer que você concorda com o que está aqui.
+Sou o Mizuki, mantenedor do Arquivista do Ciclo, o bot da Amiya. Ao usar o bot, você concorda com estes termos.
 
 ## O que o bot faz
 
-Ele guarda, para cada servidor, quem usa qual aparência (personagem e obra de origem), com nome no servidor e imagem. Mostra a lista, a galeria e a busca, e deixa a staff do servidor organizar a situação de cada cadastro, transferir e remover. Cada servidor tem o próprio arquivo; o que é cadastrado num servidor não aparece em outro.
+O Arquivista registra quem usa cada aparência, junto com a obra de origem, o nome do personagem no servidor e a imagem. Os membros consultam a lista, a galeria e a busca. A staff organiza as situações e pode transferir ou remover fichas. Cada servidor tem seu próprio arquivo.
 
 ## Como usar
 
-Quando a criação automática estiver ativada, a gerência pode pedir uma planilha pronta com `/planilha criar`, informando um e-mail Google para receber edição. O arquivo pertence à conta do Arquivista e permite cadastro e edição tanto pelo Sheets quanto pelo bot. Informe somente um e-mail autorizado a acessar os dados internos do servidor e compartilhe edição apenas com a staff. Desconectar a sincronização não remove o arquivo nem revoga acessos no Google.
+Quando a criação de planilhas está ativada, a gerência pode usar `/planilha criar` e informar um e-mail Google para receber acesso de editor. O arquivo fica na conta do Arquivista e pode ser preenchido pelo Sheets ou pelo bot. Informe um e-mail autorizado a ver os dados internos do servidor e dê edição só à staff. Desconectar não apaga o arquivo nem retira os acessos no Google.
 
 - Siga as regras do Discord e as do servidor em que você está.
 - Cadastre só aparências e imagens que você pode usar. Não envie imagem sexual, violenta ou que exponha outra pessoa.
@@ -21,11 +21,11 @@ A staff de cada servidor decide quem pode usar cada aparência e pode editar ou 
 
 ## O que eu não garanto
 
-O bot é um projeto pessoal e gratuito. Ele pode ficar fora do ar, mudar ou acabar sem aviso. Não garanto que nenhum cadastro se perca. A conferência de disponibilidade vale só para o arquivo do bot, não para outras listas do servidor.
+O Arquivista é um projeto pessoal e gratuito. Pode ficar fora do ar, mudar ou ser encerrado sem aviso. Não há garantia contra perda de cadastros. A busca e a conferência de disponibilidade consideram o arquivo do bot; outras listas do servidor precisam ser consultadas à parte.
 
 ## Seus dados
 
-O que o bot guarda e como apagar está na política de privacidade do Arquivista, com link no perfil do bot.
+A política de privacidade explica quais dados ficam guardados e como pedir a exclusão. O link está no perfil do bot e nos comandos de ajuda.
 
 ## Personagens
 

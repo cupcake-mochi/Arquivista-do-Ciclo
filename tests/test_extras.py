@@ -347,7 +347,7 @@ class DepartedTests(unittest.TestCase):
             async def fetch_member(self, uid): raise discord.NotFound(Resp(), "x")
         class Bot: store = s
         text = asyncio.run(Arquivista.departed(Bot(), Guild()))
-        self.assertIn(f"`{U2}` · 2 cadastro(s)", text); self.assertNotIn(U1, text)
+        self.assertIn(f"`{U2}` · Cadastros: 2", text); self.assertNotIn(U1, text)
 
 
 class RestoreTests(unittest.TestCase):

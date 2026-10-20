@@ -48,7 +48,7 @@ ERRORS = {
     "GUILD": "A planilha foi instalada para outro servidor. No menu Arquivista > Instalar ou reinstalar, informe o ID deste servidor.",
     "CLOCK": "O relógio do bot e o do Google não batem. Confira a hora da hospedagem.",
     "LOGIN": "O Google pediu login antes de chegar no script. Na implantação do App da Web, deixe \"Quem pode acessar\" em \"Qualquer pessoa\".",
-    "BUSY": "O arquivo está ocupado com outra operação. Aguarde um pouco e tente novamente.",
+    "BUSY": "Estou concluindo outra alteração no arquivo. Aguarde um pouco e tente novamente.",
     "MAINTENANCE": "A planilha está em preparação ou revisão. Vou aguardar antes de alterar cadastros.",
     "DUPLICATE": "Essa aparência e obra já estão ocupadas. Consulte o arquivo antes de registrar.",
     "FORBIDDEN": "Você não tem autorização para essa alteração.",
@@ -56,12 +56,12 @@ ERRORS = {
     "STALE": "O cadastro mudou enquanto você preenchia. Abra a edição novamente para não sobrescrever outra alteração.",
     "CAPACITY": "Os espaços preparados para esse membro ou servidor estão ocupados. A staff precisa ampliar a estrutura.",
     "REUSED_REQUEST": "Essa confirmação já foi utilizada para outra operação. Abra o comando novamente.",
-    "INVALID": "Um dos dados não passou na validação. Confira os campos e tente novamente.",
+    "INVALID": "Confira os campos preenchidos: algum valor não foi aceito.",
     "NOT_READY": "A integração do Arquivista ainda não foi ativada na planilha.",
     "OLD_SCRIPT": SCRIPT_UPDATE,
     "OLD_BOT": "O script da planilha é mais novo que o bot. Atualize o bot.",
     "CHANGED": "A planilha mudou enquanto eu gravava. Vou ler de novo e tentar outra vez.",
-    "INTERNAL": "Não consegui confirmar a operação. A staff pode verificar o diagnóstico sem repetir o cadastro às cegas.",
+    "INTERNAL": "Não consegui confirmar se a alteração foi salva. Confira a ficha antes de tentar de novo e peça à staff para consultar o /diagnostico.",
 }
 
 class UserError(Exception):

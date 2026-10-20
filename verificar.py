@@ -30,7 +30,7 @@ async def check() -> int:
         count = store.db.execute('SELECT COUNT(*) FROM appearances').fetchone()[0]
         servers = store.db.execute('SELECT COUNT(DISTINCT guild_id) FROM appearances').fetchone()[0]
         store.close()
-        print(f'Banco aberto: {count} cadastro(s) em {servers} servidor(es).')
+        print(f'Banco aberto. Cadastros: {count} · servidores: {servers}.')
     except Exception as exc:
         print('Não consegui abrir o banco em', config.db_path, '· tipo do problema:', type(exc).__name__)
         return 1

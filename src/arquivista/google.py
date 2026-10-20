@@ -27,8 +27,8 @@ class GoogleConfig:
 class GoogleError(BridgeError):
     def __init__(self, code, *, uncertain=False):
         messages = {
-            "GOOGLE_SETUP": "A criação automática ainda não foi ativada pelo mantenedor do Arquivista. O cadastro pelo bot continua funcionando.",
-            "GOOGLE_AUTH": "A conta Google do Arquivista precisa ser reconectada pelo mantenedor.",
+            "GOOGLE_SETUP": "A criação de planilhas ainda precisa ser ativada por quem mantém o Arquivista. Enquanto isso, você pode cadastrar pelo bot.",
+            "GOOGLE_AUTH": "Quem mantém o Arquivista precisa autorizar novamente a conta Google.",
             "GOOGLE_ACCESS": "O Google recusou o acesso. Confira as permissões da planilha; se continuar, avise o mantenedor.",
             "GOOGLE_STORAGE": "A conta Google do Arquivista está sem espaço para criar planilhas. Avise o mantenedor.",
             "GOOGLE_MISSING": "A planilha não foi encontrada. Confira se foi removida ou se o Arquivista perdeu o acesso.",
@@ -36,7 +36,7 @@ class GoogleError(BridgeError):
             "GOOGLE_LOCALE": "A localidade da planilha mudou. Em Arquivo > Configurações, escolha Brasil para retomar a sincronização.",
             "BUSY": "O Google demorou ou atingiu o limite de pedidos. Tente novamente em alguns minutos.",
         }
-        super().__init__(code, messages.get(code, "Não consegui concluir a operação no Google. Avise o mantenedor."))
+        super().__init__(code, messages.get(code, "Não consegui concluir no Google. Avise quem mantém o Arquivista."))
         self.uncertain = uncertain
 
 class GoogleAPI:

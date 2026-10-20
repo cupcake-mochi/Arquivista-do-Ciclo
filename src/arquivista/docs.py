@@ -11,5 +11,5 @@ SCRIPT_UPDATE = (
     f"O script da planilha é antigo. Abra o [código da planilha]({SHEET_CODE}), "
     "copie o conteúdo inteiro e substitua o código no Apps Script. "
     "Depois use Implantar > Gerenciar implantações > Editar > Nova versão > Implantar. "
-    f"O passo a passo está no {SETUP_LINK}."
+    f"Para configurar o servidor, consulte o {SETUP_LINK}."
 )
