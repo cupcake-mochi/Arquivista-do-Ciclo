@@ -332,6 +332,11 @@ class DiscordImportTests(unittest.IsolatedAsyncioTestCase):
             cfg=Config('FAKE',Path(d)/'t.sqlite')
             bot=Arquivista(cfg)
             self.assertEqual(len(bot.tree.get_commands()),17)
+            # Um método do bot com nome de método do discord.py derrubava o login (dispatch).
+            from discord.ext import commands
+            mine={n for n in vars(Arquivista) if not n.startswith('__')}
+            self.assertEqual(mine & set(dir(commands.Bot)),{'setup_hook','on_message','close'})
+            bot.dispatch('connect')
             for c in bot.tree.get_commands():c.to_dict(bot.tree)
             r={'id':'AP-test','appearance':'Takao','work':'Azur Lane','owner_id':'123456789012345678',
                'status':'Em uso','revision':'r','justification':''}

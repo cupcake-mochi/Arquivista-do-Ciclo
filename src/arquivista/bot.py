@@ -131,7 +131,7 @@ class Arquivista(commands.Bot):
         if parsed:
             action, query, member_id = parsed
             attachment = message.attachments[0] if message.attachments else None
-            await self.dispatch(message, action, query, member_id, attachment)
+            await self.run_action(message, action, query, member_id, attachment)
             return
         is_reply = message.reference and message.reference.message_id and self.store.is_ours(message.reference.message_id)
         if any(user.id == self.user.id for user in message.mentions) or is_reply:
@@ -158,7 +158,7 @@ class Arquivista(commands.Bot):
             await self.carteiro.send(source.channel,embed=card("Amiya · Atenção",text))
         if not isinstance(error,UserError):
             log.warning("Falha de comando: %s",type(error).__name__)
-    async def dispatch(self, source, action, query="", member_id=None, attachment=None):
+    async def run_action(self, source, action, query="", member_id=None, attachment=None):
         user = source.user if isinstance(source,discord.Interaction) else source.author
         gid = source.guild_id if isinstance(source,discord.Interaction) else source.guild.id
         if not gid:
@@ -324,59 +324,59 @@ class Arquivista(commands.Bot):
 
 
 def install_slash_commands(bot):
-    """As duas entradas usam o mesmo dispatch e as mesmas permissões."""
+    """As duas entradas usam o mesmo run_action e as mesmas permissões."""
     @bot.tree.command(name="ajuda",description="Abra o índice de comandos da Amiya.")
     @app_commands.guild_only()
-    async def ajuda(i:discord.Interaction):await bot.dispatch(i,"ajuda")
+    async def ajuda(i:discord.Interaction):await bot.run_action(i,"ajuda")
     @bot.tree.command(name="aparencias",description="Lista paginada de aparência e responsável.")
     @app_commands.guild_only()
-    async def aparencias(i:discord.Interaction,membro:discord.Member|None=None):await bot.dispatch(i,"aparencias",member_id=membro.id if membro else None)
+    async def aparencias(i:discord.Interaction,membro:discord.Member|None=None):await bot.run_action(i,"aparencias",member_id=membro.id if membro else None)
     @bot.tree.command(name="minhas",description="Consulte suas próprias aparências.")
     @app_commands.guild_only()
-    async def minhas(i:discord.Interaction):await bot.dispatch(i,"minhas")
+    async def minhas(i:discord.Interaction):await bot.run_action(i,"minhas")
     @bot.tree.command(name="galeria",description="Veja as imagens; filtre por pessoa ou nome aproximado.")
     @app_commands.guild_only()
-    async def galeria(i:discord.Interaction,nome:str="",membro:discord.Member|None=None):await bot.dispatch(i,"galeria",nome,membro.id if membro else None)
+    async def galeria(i:discord.Interaction,nome:str="",membro:discord.Member|None=None):await bot.run_action(i,"galeria",nome,membro.id if membro else None)
     @bot.tree.command(name="consultar",description="Procure uma aparência ocupada pelo nome e pela obra.")
     @app_commands.guild_only()
-    async def consultar(i:discord.Interaction,nome:str,obra:str=""):await bot.dispatch(i,"consultar",f"{nome} {obra}".strip())
+    async def consultar(i:discord.Interaction,nome:str,obra:str=""):await bot.run_action(i,"consultar",f"{nome} {obra}".strip())
     @bot.tree.command(name="registrar",description="Cadastre uma aparência para si; staff também cadastra para terceiros.")
     @app_commands.guild_only()
-    async def registrar(i:discord.Interaction,membro:discord.Member|None=None,imagem:discord.Attachment|None=None):await bot.dispatch(i,"registrar",member_id=membro.id if membro else None,attachment=imagem)
+    async def registrar(i:discord.Interaction,membro:discord.Member|None=None,imagem:discord.Attachment|None=None):await bot.run_action(i,"registrar",member_id=membro.id if membro else None,attachment=imagem)
     @bot.tree.command(name="editar",description="Altere um cadastro permitido em formulário privado.")
     @app_commands.guild_only()
-    async def editar(i:discord.Interaction,personagem:str,imagem:discord.Attachment|None=None):await bot.dispatch(i,"editar",personagem,attachment=imagem)
+    async def editar(i:discord.Interaction,personagem:str,imagem:discord.Attachment|None=None):await bot.run_action(i,"editar",personagem,attachment=imagem)
     @bot.tree.command(name="situacao",description="Staff: altere situação e justificativa internas.")
     @app_commands.guild_only()
-    async def situacao(i:discord.Interaction,personagem:str):await bot.dispatch(i,"situacao",personagem)
+    async def situacao(i:discord.Interaction,personagem:str):await bot.run_action(i,"situacao",personagem)
     @bot.tree.command(name="transferir",description="Staff: transfira a aparência preservando ID e data.")
     @app_commands.guild_only()
-    async def transferir(i:discord.Interaction,personagem:str,membro:discord.Member):await bot.dispatch(i,"transferir",personagem,membro.id)
+    async def transferir(i:discord.Interaction,personagem:str,membro:discord.Member):await bot.run_action(i,"transferir",personagem,membro.id)
     @bot.tree.command(name="remover",description="Staff: remova o cadastro com confirmação e auditoria.")
     @app_commands.guild_only()
-    async def remover(i:discord.Interaction,personagem:str):await bot.dispatch(i,"remover",personagem)
+    async def remover(i:discord.Interaction,personagem:str):await bot.run_action(i,"remover",personagem)
     @bot.tree.command(name="historico",description="Staff: consulte o histórico detalhado em privado.")
     @app_commands.guild_only()
-    async def historico(i:discord.Interaction,personagem:str=""):await bot.dispatch(i,"historico",personagem)
+    async def historico(i:discord.Interaction,personagem:str=""):await bot.run_action(i,"historico",personagem)
     @bot.tree.command(name="registrar_historico",description="Staff: use este canal para futuras notificações públicas.")
     @app_commands.guild_only()
-    async def registrar_historico(i:discord.Interaction):await bot.dispatch(i,"registrar_historico")
+    async def registrar_historico(i:discord.Interaction):await bot.run_action(i,"registrar_historico")
     @bot.tree.command(name="desativar_historico",description="Staff: desative notificações sem apagar a auditoria.")
     @app_commands.guild_only()
-    async def desativar_historico(i:discord.Interaction):await bot.dispatch(i,"desativar_historico")
+    async def desativar_historico(i:discord.Interaction):await bot.run_action(i,"desativar_historico")
     @bot.tree.command(name="registrar_imagens",description="Staff: preserve neste canal as imagens anexadas ao cadastro.")
     @app_commands.guild_only()
-    async def registrar_imagens(i:discord.Interaction):await bot.dispatch(i,"registrar_imagens")
+    async def registrar_imagens(i:discord.Interaction):await bot.run_action(i,"registrar_imagens")
     @bot.tree.command(name="desativar_imagens",description="Staff: pare novos uploads sem apagar os arquivos existentes.")
     @app_commands.guild_only()
-    async def desativar_imagens(i:discord.Interaction):await bot.dispatch(i,"desativar_imagens")
+    async def desativar_imagens(i:discord.Interaction):await bot.run_action(i,"desativar_imagens")
     @bot.tree.command(name="configurar",description="Gerência: cargos de staff e canais do Arquivista neste servidor.")
     @app_commands.guild_only()
     @app_commands.default_permissions(manage_guild=True)
-    async def configurar(i:discord.Interaction):await bot.dispatch(i,"configurar")
+    async def configurar(i:discord.Interaction):await bot.run_action(i,"configurar")
     @bot.tree.command(name="status",description="Staff: diagnóstico privado da ponte e do histórico.")
     @app_commands.guild_only()
-    async def status(i:discord.Interaction):await bot.dispatch(i,"status")
+    async def status(i:discord.Interaction):await bot.run_action(i,"status")
     @bot.tree.error
     async def error(i:discord.Interaction,error:app_commands.AppCommandError):
         await bot.failure(i,error)
