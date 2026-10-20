@@ -112,7 +112,7 @@ class Paginator(GuardedView):
             for j, g in enumerate(self.records[self.page*self.per_page:(self.page+1)*self.per_page]):
                 line = f"**{self.page*self.per_page+j+1}. {clean(g['label'],80)}** · {g['count']} aparência(s)"
                 if len(g["names"]) > 1:
-                    line += "\n-# também escrita como " + clean(", ".join(g["names"][1:]), 150)
+                    line += "\n-# também escrita como " + clean(", ".join(g["names"][1:])[:120], 150)
                 lines.append(line)
             e = card("Obras do arquivo", "\n".join(lines) + "\n\nUse `AC:obra nome` para ver as aparências de uma obra.")
         elif self.mode == "gallery":
@@ -250,7 +250,7 @@ class RecordModal(discord.ui.Modal):
         definitions += [("server_name","Nome no servidor (como se chama aqui)",100,False),("image_url","Link HTTPS da imagem (opcional)",1500,False)]
         for key,label,limit,required in definitions:
             item = discord.ui.TextInput(label=label, max_length=limit, required=required,
-                default=str(self.record.get(key) or ""), placeholder=self.hint(key))
+                default=str(self.record.get(key) or "")[:limit], placeholder=self.hint(key))
             self.fields[key] = item
             self.add_item(item)
         # Anexo dentro do formulário: só com canal de imagens, que guarda o arquivo (link de anexo expira).
@@ -315,7 +315,7 @@ class StatusModal(discord.ui.Modal):
     def __init__(self,bot,user_id,record,status):
         super().__init__(title="Amiya · Observação interna")
         self.bot,self.author_id,self.record,self.status=bot,user_id,record,status
-        self.text=discord.ui.TextInput(label="Observação / justificativa (interna)",style=discord.TextStyle.paragraph,required=False,max_length=2000,default=record.get("justification", ""))
+        self.text=discord.ui.TextInput(label="Observação / justificativa (interna)",style=discord.TextStyle.paragraph,required=False,max_length=2000,default=(record.get("justification") or "")[:2000])
         self.add_item(self.text)
     async def on_submit(self,i):
         if i.user.id!=self.author_id or i.guild_id is None:
@@ -414,15 +414,24 @@ def channel_problem(channel, *, images=False) -> str | None:
         return "Faltam permissões de ver/enviar, incorporar links, ler histórico ou anexar arquivos em " + channel.mention + "."
     return None
 
-def backup_problem(channel) -> str | None:
-    """O backup leva justificativas e nomes internos: o canal precisa estar fechado para @everyone."""
+def backup_problem(channel, staff_roles=()) -> str | None:
+    """O backup leva justificativas e nomes internos: só a staff pode ver o canal. Vale @everyone e
+    também qualquer outro cargo (o comum é fechar @everyone e abrir para um cargo "Membro")."""
     if channel is None:
         return "O canal de backup não existe mais. Escolha outro no /configurar."
     problem = channel_problem(channel, images=True)
     if problem:
         return problem
-    if channel.permissions_for(channel.guild.default_role).view_channel:
+    guild = channel.guild
+    if channel.permissions_for(guild.default_role).view_channel:
         return f"{channel.mention} está aberto para todo mundo. O backup tem dados internos: use um canal só da staff."
+    staff = {str(x) for x in staff_roles}
+    open_to = [r for r in guild.roles if r != guild.default_role and not r.managed and str(r.id) not in staff
+               and not (r.permissions.administrator or r.permissions.manage_guild) and channel.permissions_for(r).view_channel]
+    if open_to:
+        names = ", ".join(r.mention for r in open_to[:5]) + (" e outros" if len(open_to) > 5 else "")
+        return (f"{channel.mention} pode ser visto por {names}, que não são da staff. O backup tem dados internos: "
+                "feche o canal para esses cargos ou marque-os como staff no /configurar.")
     return None
 
 class BackupPanel(GuardedView):
@@ -454,13 +463,13 @@ class BackupPanel(GuardedView):
         e = card("Backup automático",
             f"**Canal:** {where}\n**Frequência:** {INTERVALS.get(cfg.get('backup_hours') or 24, 'todo dia')}\n\n"
             "Manda um .json que restaura o arquivo no bot e, se a planilha estiver conectada, um .xlsx com uma guia por membro. "
-            "O backup tem justificativas e nomes internos, então o canal precisa estar fechado para @everyone.")
+            "O backup tem justificativas e nomes internos, então só a staff pode ver o canal.")
         return self.bot.carteiro.decorate(e)
     async def refresh(self, i: discord.Interaction, note: str | None = None):
         await i.response.edit_message(content=note, embed=self.embed(), view=self, allowed_mentions=MENTIONS)
     async def save_channel(self, i: discord.Interaction):
         channel = self.guild.get_channel(self.channel.values[0].id)
-        problem = backup_problem(channel)
+        problem = backup_problem(channel, self.bot.store.guild(self.guild.id)["staff_roles"])
         if problem:
             return await self.refresh(i, problem)
         # O primeiro sai na próxima volta do bot (até 90 s); depois, na frequência escolhida.
@@ -526,7 +535,7 @@ class SheetModal(discord.ui.Modal):
         found = f" A planilha já tinha {found_records} cadastro(s); os que vierem do bot ficam no lugar certo pelo ID." if found_records else ""
         await private_reply(i, embed=self.bot.carteiro.decorate(card("Planilha conectada",
             f"Vou mandar os {count} cadastro(s) deste servidor agora e, daqui pra frente, cada mudança.{found}\n\n"
-            "Por enquanto a planilha só recebe: o que for editado direto nela não volta para o bot.")))
+            "O que a staff mudar direto na planilha volta para o bot em alguns minutos. Deixe a edição da planilha só com a staff.")))
     async def on_error(self, i, error):
         log.warning("Conexão da planilha: %s", type(error).__name__)
         await private_reply(i, content="Não consegui concluir a conexão. Nada foi alterado.")

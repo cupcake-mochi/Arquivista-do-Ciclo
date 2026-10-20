@@ -35,7 +35,7 @@ class Images:
         due = []
         for r in self.bot.store.renewable():
             end = expires(r["image_url"])
-            if self.gave_up.get(f"{r['guild_id']}/{r['id']}", 0) > time.time():
+            if self.gave_up.get(f"{r['guild_id']}/{r['id']}", 0) > time.time() or not self.bot.get_guild(int(r["guild_id"])):
                 continue
             if end is not None and end - time.time() < RENEW_BEFORE:
                 due.append((end, r))

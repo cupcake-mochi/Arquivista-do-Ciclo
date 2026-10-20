@@ -43,6 +43,7 @@ class RenewTests(unittest.TestCase):
         store = self.s
         class Bot:
             def service_actor(self): return Actor("9" * 18, "svc", True)
+            def get_guild(self, _): return object()
         bot = Bot(); bot.store = store
         images = media.Images(bot)
         async def resolve(rid, actor, gid):
@@ -275,6 +276,50 @@ class PullTests(unittest.TestCase):
         self.assertIn("/remover", self.s.guild(G1)["sheet_note"])
         self.assertEqual(len(self.s.records(G1)), 2)
 
+    def test_sheet_edit_survives_discord_change_before_pull(self):
+        from arquivista import layout
+        self.cell(self.ids[0], layout.APPEARANCE, "Aprovada na call.", below=2)  # justificativa, pela planilha
+        self.cell(self.ids[0], layout.SERVER_NAME, "pela planilha")
+        asyncio.run(self.a.call("edit", Actor(U1, "m"), {"id": self.ids[0], "revision": 1, "fields": {"server_name": "pelo discord"}}))
+        asyncio.run(self.sync.run())  # grava antes da leitura de 5 em 5 minutos
+        r = self.rec(self.ids[0])
+        self.assertEqual((r["justification"], r["server_name"]), ("Aprovada na call.", "pelo discord"))
+        self.assertEqual(self.cell(self.ids[0], layout.APPEARANCE, below=2), "Aprovada na call.")
+        self.assertEqual(self.cell(self.ids[0], layout.SERVER_NAME), "pelo discord")
+        self.assertEqual(self.s.sheet_pending(G1), (0, 0))
+
+    def test_pull_waits_while_writes_are_failing(self):
+        from arquivista import layout
+        grid = self.grid()
+        row = next(i for i, line in enumerate(grid) if line[layout.ID - 1] == self.ids[1]) + 4
+        grid[row][layout.APPEARANCE - 1] = "Kaga"; grid[row][layout.WORK - 1] = "Azur Lane"
+        from arquivista.domain import BridgeError
+        self.sheet.fail = None
+        real = self.sheet.call
+        async def no_write(action, actor, data):
+            if action == "write":
+                raise BridgeError("INTERNAL", "x")
+            return await real(action, actor, data)
+        self.sheet.call = no_write
+        self.assertEqual(asyncio.run(self.sync.pull(G1)), 1)
+        asyncio.run(self.sync.run())  # gravação falha e entra em espera
+        self.assertEqual(asyncio.run(self.sync.pull(G1)), 0)  # não importa a mesma linha de novo
+        self.assertEqual(sum(r["appearance"] == "Kaga" for r in self.s.records(G1)), 1)
+
+    def test_row_inserted_in_block_stops_writes_without_new_tab(self):
+        from arquivista import layout
+        grid = self.grid()
+        sid = next(iter(self.sheet.grids))
+        grid.insert(20, [""] * 11); self.sheet.depths[sid].insert(20, 0)  # linha inserida à mão no meio das fichas
+        asyncio.run(self.a.call("edit", Actor(U1, "m"), {"id": self.ids[0], "revision": 1, "fields": {"server_name": "x"}}))
+        asyncio.run(self.sync.run())
+        self.assertEqual(len(self.sheet.meta), 1)  # não criou outra guia para a mesma pessoa
+        self.s.db.execute("UPDATE sheet_outbox SET next_try=0"); self.s.db.commit()
+        self.sync.next_pull.clear()
+        asyncio.run(self.sync.pull(G1))
+        self.assertIn("Ctrl+Z", self.s.guild(G1)["sheet_note"])
+        self.assertEqual(len(self.s.records(G1)), 2)
+
     def test_discord_change_waiting_wins_over_sheet(self):
         from arquivista import layout
         self.cell(self.ids[0], layout.SERVER_NAME, "pela planilha")
@@ -284,6 +329,25 @@ class PullTests(unittest.TestCase):
         self.assertEqual(self.pull(), 0)
         self.assertEqual(self.rec(self.ids[0])["server_name"], "pelo discord")
         self.assertEqual(self.cell(self.ids[0], layout.SERVER_NAME), "pelo discord")
+
+
+class DepartedTests(unittest.TestCase):
+    def test_lists_owners_who_left(self):
+        from arquivista.bot import Arquivista
+        import discord
+        tmp = tempfile.TemporaryDirectory(); self.addCleanup(tmp.cleanup)
+        s = Store(Path(tmp.name) / "d.sqlite"); self.addCleanup(s.close)
+        a = Archive(s, G1)
+        for owner, name in ((U1, "Takao"), (U2, "Atago"), (U2, "Kaga")):
+            asyncio.run(a.call("create", Actor("5" * 18, "s", True), {"owner": {"id": owner, "name": "x"}, "fields": {"appearance": name, "work": "Azur Lane"}}))
+        class Resp: status = 404; reason = "x"
+        class Guild:
+            id = int(G1)
+            def get_member(self, uid): return object() if str(uid) == U1 else None
+            async def fetch_member(self, uid): raise discord.NotFound(Resp(), "x")
+        class Bot: store = s
+        text = asyncio.run(Arquivista.departed(Bot(), Guild()))
+        self.assertIn(f"`{U2}` · 2 cadastro(s)", text); self.assertNotIn(U1, text)
 
 
 class AmiyaPhotoTests(unittest.TestCase):

@@ -359,6 +359,7 @@ class SheetTests(unittest.TestCase):
             class user:id=999999999999999999
             def get_guild(self,_):return Guild()
             def now_text(self):return 'agora'
+            def archive(self,gid):return Archive(self.store,gid)
         sync=SheetSync(Bot())
         sys.path.insert(0,str(ROOT/'tests'));from sheet_sim import FakeSheet
         sheet=FakeSheet();sheet.fail=BridgeError('BUSY','ocupado')
@@ -511,7 +512,7 @@ class DiscordImportTests(unittest.IsolatedAsyncioTestCase):
             sent=[]
             class Channel:
                 async def send(self,**kw):sent.append(kw)
-            old=botmod.backup_problem;botmod.backup_problem=lambda c:None
+            old=botmod.backup_problem;botmod.backup_problem=lambda c,*a:None
             try:
                 Archive(bot.store,G1)
                 await Archive(bot.store,G1).call('create',Actor(U1,'x'),{'fields':{'appearance':'Takao','work':'Azur Lane'}})

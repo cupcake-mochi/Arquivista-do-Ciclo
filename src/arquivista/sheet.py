@@ -5,6 +5,7 @@ ou derivada do token quando ela não existe). Só biblioteca padrão: fluxo HMAC
 modo contador + etiqueta HMAC (cifra, depois autentica), com chaves separadas para cada uso.
 """
 from __future__ import annotations
+import asyncio
 import base64
 import hashlib
 import hmac
@@ -104,6 +105,8 @@ class SheetSync:
         return self.names[key]
     async def run(self) -> None:
         for guild_id in self.bot.store.sheet_due():
+            if not self.bot.get_guild(int(guild_id)):
+                continue  # o bot saiu do servidor: os dados ficam, mas não mexe mais na planilha
             try:
                 await self.guild(guild_id)
             except Exception as exc:
@@ -112,7 +115,7 @@ class SheetSync:
         """Procura edições feitas na planilha nos servidores em que já deu a hora. Devolve quantas entraram."""
         total, now = 0, time.time()
         for guild_id in self.bot.store.sheet_guilds():
-            if self.next_pull.get(guild_id, 0) > now:
+            if self.next_pull.get(guild_id, 0) > now or not self.bot.get_guild(int(guild_id)):
                 continue
             self.next_pull[guild_id] = now + PULL_EVERY
             try:
@@ -123,12 +126,15 @@ class SheetSync:
         return total
     async def pull(self, guild_id: str) -> int:
         store = self.bot.store
-        if store.sheet_batch(guild_id, 1):
-            return 0  # primeiro a fila do bot vai para a planilha; a leitura fica para a próxima volta
+        queued, bad = store.sheet_pending(guild_id)
+        if queued > bad:
+            # Primeiro a fila do bot vai para a planilha (inclusive a que está esperando outra tentativa);
+            # ler antes importaria de novo uma linha digitada cujo ID ainda não foi gravado.
+            return 0
         model, _ = await read_sheet(self.bridge(guild_id), self.actor())
         archive = self.bot.archive(int(guild_id))
         records = {r["id"]: r for r in store.records(guild_id)}
-        found, lost = pull.changes(model, records, store.sheet_queued(guild_id))
+        found, lost = await asyncio.to_thread(pull.changes, model, records, store.sheet_queued(guild_id))
         applied, notes = 0, []
         for change in found:
             result = archive.from_sheet(change)
@@ -143,6 +149,8 @@ class SheetSync:
                 r = archive.record(change["id"])
                 with store.db:
                     store.queue_sheet(guild_id, r["id"], r["revision"], {**sheet_upsert(r), "force": True})
+        for owner, tab in model.broken().items():
+            notes.append(f"a guia {tab} ganhou ou perdeu uma linha no meio das fichas; desfaça (Ctrl+Z) para o bot voltar a atualizar essa pessoa")
         if lost:
             # Linha apagada à mão na planilha volta: para apagar um cadastro, use /remover.
             with store.db:
@@ -155,6 +163,7 @@ class SheetSync:
         return applied + len(lost)
     async def guild(self, guild_id: str) -> None:
         store = self.bot.store
+        rescued: set[str] = set()
         while True:
             rows = store.sheet_batch(guild_id, BATCH)
             if not rows:
@@ -169,14 +178,26 @@ class SheetSync:
             try:
                 bridge = self.bridge(guild_id)
                 model, expect = await read_sheet(bridge, self.actor())
-                requests, planned = model.plan(ops, BUDGET)
+                # Edição feita na planilha num cadastro que também mudou no Discord: entra antes de gravar
+                # por cima. Depois disso a fila mudou, então lê de novo.
+                archive = self.bot.archive(int(guild_id))
+                records = {r["id"]: r for r in store.records(guild_id)}
+                fixes = [c for c in pull.rescued(model, records, store.sheet_queued(guild_id), archive.version)
+                         if c["id"] not in rescued]
+                rescued.update(c["id"] for c in fixes)
+                if [c for c in fixes if archive.from_sheet(c) == "ok"]:
+                    continue
+                requests, planned = await asyncio.to_thread(model.plan, ops, BUDGET)
                 if requests:
                     # Se a planilha mudou de tamanho ou de nome desde a leitura, o script recusa (CHANGED)
                     # e nada é aplicado; isso também torna seguro repetir uma gravação cuja resposta se perdeu.
                     await bridge.call("write", self.actor(), {"requests": requests, "expect": expect})
                 data = {"results": planned}
-            except (BridgeError, ValueError) as exc:
-                code = getattr(exc, "code", "KEY")
+            except Exception as exc:
+                # Erro inesperado também espera e aparece no diagnóstico, em vez de tentar de novo a cada volta.
+                code = getattr(exc, "code", None) or ("KEY" if isinstance(exc, ValueError) else "INTERNAL")
+                if not isinstance(exc, (BridgeError, ValueError)):
+                    log.warning("Planilha do servidor %s: %s", guild_id, type(exc).__name__)
                 store.sheet_retry(guild_id, ids, code)
                 store.set_guild(guild_id, sheet_error=code)
                 return
@@ -185,6 +206,9 @@ class SheetSync:
                 if r["record_id"] not in results:
                     continue  # ficou para a próxima gravação (limite de tamanho); continua na fila como está
                 status = results.get(r["record_id"])
+                if status == "broken":
+                    store.sheet_retry(guild_id, [r["record_id"]], "broken")  # espera a guia ser consertada
+                    continue
                 if status in ("ok", "stale"):
                     store.sheet_done(guild_id, r["record_id"], r["revision"])
                 else:

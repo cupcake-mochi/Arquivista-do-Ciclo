@@ -182,7 +182,7 @@ class Store:
     def sheet_pending(self, guild_id: str) -> tuple[int, int]:
         """(na fila, com erro de dado que não vai resolver sozinho)."""
         total = self.db.execute("SELECT COUNT(*) FROM sheet_outbox WHERE guild_id=?", (str(guild_id),)).fetchone()[0]
-        bad = self.db.execute("SELECT COUNT(*) FROM sheet_outbox WHERE guild_id=? AND error='invalid'", (str(guild_id),)).fetchone()[0]
+        bad = self.db.execute("SELECT COUNT(*) FROM sheet_outbox WHERE guild_id=? AND error IN ('invalid','broken')", (str(guild_id),)).fetchone()[0]
         return total, bad
     def drop_sheet(self, guild_id: str) -> None:
         with self.db:

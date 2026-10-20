@@ -45,7 +45,7 @@ Não é preciso decorar UUID. Editar, remover e transferir apresentam uma seleç
 | `AC:situacao aparência` (`AC:sit`) | `/situacao aparencia` | Escolher situação e escrever justificativa interna. Exige confirmação. |
 | `AC:transferir aparência @membro` (`AC:tr`) | `/transferir aparencia membro` | Muda o responsável preservando ID e data. |
 | `AC:remover aparência` (`AC:rm`) | `/remover aparencia` | Remove o cadastro ativo, mas não sua auditoria. Confirmação destacada. |
-| `AC:limpar @membro` ou `AC:limpar ID` | `/limpar [membro] [id]` | Apaga **todos** os cadastros de uma pessoa, inclusive quem já saiu do servidor (pelo ID do Discord). A confirmação mostra quantos são e quais; se alguém cadastrar ou remover algo no meio, pede de novo. A auditoria fica e o canal de histórico recebe um aviso só. |
+| `AC:limpar @membro` ou `AC:limpar ID` | `/limpar [membro] [id]` | Apaga **todos** os cadastros de uma pessoa, inclusive quem já saiu do servidor (pelo ID do Discord). Só `AC:limpar` lista quem tem cadastro e saiu, com o ID. A confirmação mostra quantos são e quais; se alguém cadastrar ou remover algo no meio, pede de novo. A auditoria fica e o canal de histórico recebe um aviso só. |
 | `AC:apelido JJK = Jujutsu Kaisen` (`AC:apl`) | `/apelido acao apelido obra` | Apelido de obra deste servidor para a busca por obra. `AC:apelido -JJK` tira, `AC:apelido` lista (até 500). |
 | `AC:historico [aparência]` (`AC:hist`) | `/historico [aparencia]` | Histórico privado, inclusive registros removidos; vazio mostra eventos recentes. |
 | `AC:diagnostico` (`AC:diag`, `AC:st`) | `/diagnostico` | Cadastros, membros, eventos, canais, avisos pendentes e estado da planilha (envios pendentes, último envio, último erro). |

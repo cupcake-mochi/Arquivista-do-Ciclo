@@ -87,9 +87,13 @@ class Archive:
             with self.db:
                 self.db.execute("UPDATE appearances SET image_url=? WHERE guild_id=? AND id=?", (fresh, self.guild, r["id"]))
                 if self.connected():
-                    # Mesma revisão: a planilha troca só o link, sem contar como alteração.
-                    self.store.queue_sheet(self.guild, r["id"], r["revision"],
-                                           {"op": "image", "id": r["id"], "revision": r["revision"], "image_url": fresh})
+                    if r["id"] in self.store.sheet_queued(self.guild):
+                        # Já tem versão esperando na fila: troca por ela com o link novo, sem perder a mudança.
+                        self.store.queue_sheet(self.guild, r["id"], r["revision"], sheet_upsert({**r, "image_url": fresh}))
+                    else:
+                        # Mesma revisão: a planilha troca só o link, sem contar como alteração.
+                        self.store.queue_sheet(self.guild, r["id"], r["revision"],
+                                               {"op": "image", "id": r["id"], "revision": r["revision"], "image_url": fresh})
             return {}
         if action == "history":
             if not actor.staff: fail("FORBIDDEN")
@@ -146,10 +150,11 @@ class Archive:
                 "server_name": text(raw.get("server_name") or "", 100), "image_url": url(raw.get("image_url") or ""),
                 "media_ref": media}
     def room(self, owner_id: str) -> None:
-        used = self.db.execute("SELECT COUNT(*) FROM appearances WHERE guild_id=? AND owner_id=? AND status<>'Liberado'",
+        # Conta também os Liberados: eles ocupam posição na planilha, e cadastrar como Liberado não fura o teto.
+        used = self.db.execute("SELECT COUNT(*) FROM appearances WHERE guild_id=? AND owner_id=?",
                                (self.guild, owner_id)).fetchone()[0]
         if used >= MAX_PER_MEMBER:
-            fail("CAPACITY", f"Esse membro já ocupa {MAX_PER_MEMBER} aparências neste servidor. Libere alguma antes de cadastrar outra.")
+            fail("CAPACITY", f"Esse membro já tem {MAX_PER_MEMBER} cadastros neste servidor. A staff precisa remover algum antes de cadastrar outro.")
     def taken(self, r: dict) -> bool:
         if r["status"] == "Liberado":
             return False
@@ -255,6 +260,14 @@ class Archive:
             # Duas confirmações simultâneas da mesma aparência: o índice único decide.
             fail("DUPLICATE")
         return result
+    def version(self, record_id: str, revision: int) -> dict | None:
+        """O cadastro como ficou na revisão pedida, pela auditoria."""
+        for (after,) in self.db.execute("SELECT after FROM events WHERE guild_id=? AND record_id=? ORDER BY seq DESC",
+                                        (self.guild, record_id)):
+            r = json.loads(after) if after else None
+            if r and r.get("revision") == revision:
+                return r
+        return None
     def from_sheet(self, change: dict) -> str:
         """Edição feita à mão na planilha (linha com ID) ou cadastro digitado numa posição vazia (sem ID).
         Devolve "ok", "same" ou o código do motivo da recusa. Não passa pela fila de pedidos do Discord:

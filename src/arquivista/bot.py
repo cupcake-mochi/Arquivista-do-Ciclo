@@ -47,7 +47,7 @@ STAFF_HELP = """
 `/situacao` ou `AC:sit aparência` — situação e justificativa internas.
 `/transferir` ou `AC:tr aparência @membro` — mudar o responsável, mantendo ID e data.
 `/remover` ou `AC:rm aparência` — remover com confirmação; o histórico fica.
-`/limpar` ou `AC:limpar @membro` — apagar todos os cadastros de alguém (vale o ID de quem já saiu).
+`/limpar` ou `AC:limpar @membro` — apagar todos os cadastros de alguém (vale o ID de quem já saiu; só `AC:limpar` lista quem saiu).
 `/apelido` ou `AC:apelido JJK = Jujutsu Kaisen` — apelido de obra para a busca por obra. `AC:apelido -JJK` tira; `AC:apelido` lista.
 `/historico` ou `AC:hist [aparência]` — histórico privado, inclusive removidos.
 `/diagnostico` ou `AC:diag` — estado do arquivo, dos canais e da planilha.
@@ -125,6 +125,7 @@ class Arquivista(commands.Bot):
         self.last_sync: str | None = None
         self.sync_problem: str | None = None
         self.avatar_checked = False
+        self.background: set[asyncio.Task] = set()
         install_slash_commands(self)
     async def setup_hook(self):
         self.session = aiohttp.ClientSession(headers={"User-Agent":"ArquivistaDoCiclo/0.2"})
@@ -239,8 +240,8 @@ class Arquivista(commands.Bot):
                     raise UserError("Use AC:tr aparência @responsável.")
                 if action=="limpar":
                     member_id=member_id or (query.strip() if re.fullmatch(r"\d{17,20}",query.strip()) else None)
-                    if not member_id:
-                        raise UserError("Use AC:limpar @membro ou AC:limpar ID (o ID serve para quem já saiu do servidor).")
+                    if not member_id and query.strip():
+                        raise UserError("Use AC:limpar @membro ou AC:limpar ID. Só AC:limpar lista quem tem cadastro e saiu do servidor.")
                     query=""
                 if action in ("editar","situacao","transferir","remover") and not query.strip():
                     raise UserError("Informe o nome da aparência depois do comando. O bot apresentará opções quando houver mais de uma.")
@@ -307,6 +308,28 @@ class Arquivista(commands.Bot):
         uploads=bool(i.guild_id and self.store.guild(i.guild_id).get("image_channel"))
         await i.response.send_modal(RecordModal(self,i.user.id,"create",staff=staff,owner={"id":oid,"name":name},
             attachment=attachment,uploads=uploads))
+    async def departed(self, guild) -> str:
+        """Donos de cadastro que não estão mais no servidor, com o ID para o /limpar."""
+        counts={}
+        for r in self.store.records(guild.id):
+            counts[r["owner_id"]]=counts.get(r["owner_id"],0)+1
+        gone,checked=[],0
+        for owner,n in sorted(counts.items(),key=lambda x:-x[1]):
+            if checked>=150:
+                break
+            checked+=1
+            if guild.get_member(int(owner)):
+                continue
+            try:
+                await guild.fetch_member(int(owner))
+            except discord.NotFound:
+                gone.append(f"<@{owner}> · `{owner}` · {n} cadastro(s)")
+            except discord.HTTPException:
+                pass
+        if not gone:
+            return "Todo mundo com cadastro ainda está no servidor."+(" (conferi os 150 com mais cadastros)" if checked<len(counts) else "")
+        text="\n".join(gone[:40])
+        return text+"\n\nPara apagar: `AC:limpar ID` ou `/limpar id:`. O histórico fica."
     def alias_command(self, gid, query: str) -> str:
         """`JJK = Jujutsu Kaisen` cadastra, `-JJK` tira, vazio lista. Só a staff chega aqui."""
         query=query.strip()
@@ -316,8 +339,12 @@ class Arquivista(commands.Bot):
                 return ("Nenhum apelido cadastrado. A busca por obra já junta grafias parecidas sozinha; "
                         "apelido serve pro que não se parece, tipo `AC:apelido JJK = Jujutsu Kaisen`.")
             lines=[f"**{clean(a,60)}** → {clean(w,80)}" for a,w in aliases.items()]
-            text="\n".join(lines[:60])
-            return text+(f"\n… e mais {len(lines)-60}" if len(lines)>60 else "")
+            text,shown="",0
+            for line in lines:
+                if len(text)+len(line)>3800:
+                    break
+                text+=("\n" if text else "")+line;shown+=1
+            return text+(f"\n… e mais {len(lines)-shown}" if shown<len(lines) else "")
         if query.startswith("-"):
             alias=query[1:].strip()
             if not self.store.drop_alias(gid,work_key(alias)):
@@ -354,6 +381,8 @@ class Arquivista(commands.Bot):
                 await private_reply(i,content=f"Encontrei {len(records)} opção(ões). Selecione pela aparência e obra; nenhuma alteração foi feita.",view=v)
             elif action=="apelido":
                 await private_reply(i,embed=self.carteiro.decorate(card("Apelidos de obra",self.alias_command(i.guild_id,query))))
+            elif action=="limpar" and not member_id:
+                await private_reply(i,embed=self.carteiro.decorate(card("Quem saiu do servidor",await self.departed(i.guild))))
             elif action=="limpar":
                 data=await archive.call("list",actor,{"owner_id":str(member_id),"include_released":True})
                 records=data["records"]
@@ -405,21 +434,21 @@ class Arquivista(commands.Bot):
     @tasks.loop(seconds=90)
     async def worker(self):
         # Rede de segurança: cada gravação já pede o envio na hora; aqui saem as retentativas.
-        await self.deliver_events()
-        await self.sync_sheets()
-        await self.run_backups()
-        try:
-            if await self.images.renew():
-                self.notify_soon()
-        except Exception as exc:
-            log.warning("Renovação de imagens: %s", type(exc).__name__)
+        # Cada etapa protegida: um erro inesperado numa não para o laço (tasks.loop morre com exceção).
+        for name,stage in (("avisos",self.deliver_events),("planilha",self.sync_sheets),("backup",self.run_backups),("imagens",self.images.renew)):
+            try:
+                if await stage() and name=="imagens":
+                    self.notify_soon()
+            except Exception as exc:
+                log.warning("Etapa %s: %s", name, type(exc).__name__)
     @worker.before_loop
     async def before_worker(self):
         await self.wait_until_ready()
     def notify_soon(self):
-        loop=asyncio.get_running_loop()
-        loop.create_task(self.deliver_events())
-        loop.create_task(self.sync_sheets())
+        # Guarda as tarefas até terminarem; sem referência o asyncio pode descartá-las no meio.
+        for coro in (self.deliver_events(),self.sync_sheets()):
+            task=asyncio.get_running_loop().create_task(coro)
+            self.background.add(task);task.add_done_callback(self.background.discard)
     def now_text(self)->str:
         return datetime.now().astimezone().isoformat(timespec="seconds")
     async def sync_sheets(self):
@@ -433,6 +462,8 @@ class Arquivista(commands.Bot):
                 await self.sheets.run()
     async def run_backups(self):
         for gid in self.store.backup_due():
+            if not self.get_guild(int(gid)):
+                continue  # o bot saiu do servidor
             try:
                 await self.send_backup(gid)
             except Exception as exc:
@@ -445,7 +476,7 @@ class Arquivista(commands.Bot):
         """Manda o backup no canal configurado (ou no informado). Erro de configuração vira UserError com o motivo."""
         cfg=self.store.guild(gid)
         channel=channel or self.get_channel(int(cfg["backup_channel"] or 0))
-        problem=backup_problem(channel)
+        problem=backup_problem(channel,cfg["staff_roles"])
         if problem:
             raise UserError(problem)
         records=self.store.records(gid)
@@ -560,7 +591,7 @@ def install_slash_commands(bot):
     async def remover(i:discord.Interaction,aparencia:str):await bot.run_action(i,"remover",aparencia)
     @bot.tree.command(name="limpar",description="Staff: apague todos os cadastros de um membro, com confirmação.")
     @app_commands.guild_only()
-    @app_commands.describe(membro="Quem ainda está no servidor",id="ID do Discord, para quem já saiu")
+    @app_commands.describe(membro="Quem ainda está no servidor",id="ID do Discord, para quem já saiu (vazio: lista quem saiu)")
     async def limpar(i:discord.Interaction,membro:discord.User|None=None,id:str=""):
         await bot.run_action(i,"limpar",id,membro.id if membro else None)
     @bot.tree.command(name="apelido",description="Staff: apelido de obra para a busca por obra (JJK = Jujutsu Kaisen).")

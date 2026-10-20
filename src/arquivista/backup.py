@@ -15,7 +15,8 @@ from xml.sax.saxutils import escape
 from .importer import FORMAT
 
 INTERVALS = {6: "a cada 6 horas", 12: "a cada 12 horas", 24: "todo dia", 72: "a cada 3 dias", 168: "toda semana"}
-FIELDS = ("id", "owner_id", "appearance", "work", "server_name", "status", "justification", "image_url", "date")
+FIELDS = ("id", "owner_id", "appearance", "work", "server_name", "status", "justification", "image_url", "date",
+          "media_ref", "revision")
 COLUMNS = (("Aparência", "appearance", 28), ("Nome no servidor", "server_name", 28), ("Obra de origem", "work", 24),
            ("Situação", "status", 15), ("Cadastro", "date", 12), ("Justificativa", "justification", 40),
            ("Link da imagem", "image_url", 30), ("ID do registro", "id", 42), ("ID Discord", "owner_id", 21))

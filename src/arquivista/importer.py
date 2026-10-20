@@ -54,6 +54,11 @@ def check(data: dict) -> tuple[list[dict], list[str], list[str]]:
                 warnings.append(f"{where}: {key} com {len(value)} caracteres (o bot aceita até {limit} em novas edições).")
             out[key] = value
         out["status"] = str(r.get("status") or "").strip()
+        # Backup do próprio bot traz o anexo guardado (para renovar o link) e a revisão (para a planilha).
+        media = r.get("media_ref") or ""
+        out["media_ref"] = media if isinstance(media, str) and re.fullmatch(r"discord://\d{17,20}/\d{17,20}/\d{17,20}/\d{17,20}", media) else ""
+        rev = r.get("revision")
+        out["revision"] = rev if isinstance(rev, int) and not isinstance(rev, bool) and rev >= 1 else 1
         if not ID.match(rid):
             errors.append(f"{where}: ID ausente ou fora do formato AP-…. Rode a revisão de IDs na planilha antes de exportar.")
         elif rid in seen:
@@ -101,17 +106,22 @@ def apply(store: Store, guild_id: int | str, records: list[dict], actor_id: str 
                        [r["id"] for r in records]).fetchone() if records else None
     if clash:
         raise ValueError(f"O ID {clash[0]} já existe em outro servidor do banco. A planilha foi importada em outro lugar?")
+    for r in records:
+        if r.get("media_ref") and r["media_ref"].split("/")[2] != guild:
+            r["media_ref"] = ""  # anexo de outro servidor: o bot daqui não consegue renovar o link
     now = time.time()
     at = datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
     rid = "import-" + str(uuid.uuid4())
     with db:
         for r in records:
             db.execute("INSERT INTO appearances(id,guild_id,owner_id,appearance,work,key,server_name,status,justification,"
-                       "image_url,media_ref,date,revision,created,updated) VALUES(?,?,?,?,?,?,?,?,?,?,'',?,1,?,?)",
+                       "image_url,media_ref,date,revision,created,updated) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                        (r["id"], guild, r["owner_id"], r["appearance"], r["work"], exact_key(r["appearance"], r["work"]),
-                        r["server_name"], r["status"], r["justification"], r["image_url"], r["date"], now, now))
+                        r["server_name"], r["status"], r["justification"], r["image_url"], r.get("media_ref", ""), r["date"],
+                        r.get("revision", 1), now, now))
             after = {**{k: r[k] for k in ("id", "owner_id", "appearance", "work", "server_name", "status",
-                                          "justification", "image_url", "date")}, "media_ref": "", "revision": 1}
+                                          "justification", "image_url", "date")},
+                     "media_ref": r.get("media_ref", ""), "revision": r.get("revision", 1)}
             # Sem aviso no canal de histórico: importar não é cadastro novo.
             db.execute("INSERT INTO events(event_id,guild_id,request_id,at,kind,record_id,actor_id,source,before,after)"
                        " VALUES(?,?,?,?,'import',?,?,'importação',NULL,?)",

@@ -44,6 +44,44 @@ def _revision(v):
     return v if isinstance(v, int) and not isinstance(v, bool) else None
 
 
+def row_values(b: layout.Block, n: int) -> dict:
+    row = b.row(n)
+    line = b.tab.grid[row - 1]
+    return {"appearance": _text(line[layout.APPEARANCE - 1]), "server_name": _text(line[layout.SERVER_NAME - 1]),
+            "work": _text(line[layout.WORK - 1]), "status": _text(line[layout.STATUS - 1]),
+            "justification": _text(b.tab.grid[row + 1][layout.APPEARANCE - 1]),
+            "image_url": _text(line[layout.URL - 1]), "date": _date(line[layout.DATE - 1])}
+
+
+def _fields(r: dict) -> dict:
+    return {k: r.get(k) or ("" if k != "date" else None) for k in FIELDS}
+
+
+def rescued(model: layout.Model, records: dict[str, dict], queued: set[str], version) -> list[dict]:
+    """Edição feita na planilha num cadastro que também mudou no Discord e ainda não foi para a planilha.
+    Sem isto, a gravação da versão do Discord apagaria a edição. version(id, revisão) devolve o cadastro
+    como estava na revisão que a planilha mostra. Volta mudanças para Archive.from_sheet só com os campos
+    que mudaram na planilha e que o Discord não mexeu; campo mexido dos dois lados fica com o Discord."""
+    out = []
+    for b in model.blocks():
+        for n in range(1, b.slots + 1):
+            line = b.tab.grid[b.row(n) - 1]
+            rid, rev = _text(line[layout.ID - 1]), _revision(line[layout.MARK - 1])
+            r = records.get(rid)
+            if not r or rid not in queued or r["owner_id"] != b.owner or rev is None or rev >= r["revision"]:
+                continue
+            prev = version(rid, rev)
+            if not prev:
+                continue
+            values, old, cur = row_values(b, n), _fields(prev), _fields(r)
+            if values["date"] is False:
+                values["date"] = old["date"]
+            take = {k: values[k] for k in FIELDS if values[k] != old[k] and cur[k] == old[k]}
+            if take:
+                out.append({"id": rid, "revision": r["revision"], "tab": b.tab.name, **cur, **take})
+    return out
+
+
 def changes(model: layout.Model, records: dict[str, dict], queued: set[str]) -> tuple[list[dict], list[str]]:
     """(mudanças para Archive.from_sheet, IDs que a planilha perdeu e precisam ser regravados).
 
@@ -51,12 +89,8 @@ def changes(model: layout.Model, records: dict[str, dict], queued: set[str]) -> 
     out, seen = [], set()
     for b in model.blocks():
         for n in range(1, b.slots + 1):
-            row = b.row(n)
-            line = b.tab.grid[row - 1]
-            values = {"appearance": _text(line[layout.APPEARANCE - 1]), "server_name": _text(line[layout.SERVER_NAME - 1]),
-                      "work": _text(line[layout.WORK - 1]), "status": _text(line[layout.STATUS - 1]),
-                      "justification": _text(b.tab.grid[row + 1][layout.APPEARANCE - 1]),
-                      "image_url": _text(line[layout.URL - 1]), "date": _date(line[layout.DATE - 1])}
+            line = b.tab.grid[b.row(n) - 1]
+            values = row_values(b, n)
             rid = _text(line[layout.ID - 1])
             if rid:
                 seen.add(rid)
@@ -64,8 +98,7 @@ def changes(model: layout.Model, records: dict[str, dict], queued: set[str]) -> 
                 # Fora do banco, na fila, em outra revisão ou movido para a guia de outra pessoa: não é edição.
                 if not r or rid in queued or r["owner_id"] != b.owner or _revision(line[layout.MARK - 1]) != r["revision"]:
                     continue
-                current = {k: r.get(k) or ("" if k != "date" else None) for k in FIELDS}
-                if values == current:
+                if values == _fields(r):
                     continue
                 if values["date"] is False:
                     values["date"] = "invalid"
@@ -74,5 +107,6 @@ def changes(model: layout.Model, records: dict[str, dict], queued: set[str]) -> 
                 if values["date"] is False:
                     values["date"] = "invalid"
                 out.append({"id": "", "owner_id": b.owner, "slot": n, "tab": b.tab.name, **values})
-    lost = [rid for rid in records if rid not in seen and rid not in queued]
+    broken = model.broken()
+    lost = [rid for rid in records if rid not in seen and rid not in queued and records[rid]["owner_id"] not in broken]
     return out, lost

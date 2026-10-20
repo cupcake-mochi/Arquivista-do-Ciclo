@@ -77,7 +77,8 @@ class Carteiro:
                     self.decorate(embed)
                 message = await channel.send(**kwargs)
                 break
-            except (discord.Forbidden, AttributeError, ValueError):
+            except (discord.HTTPException, AttributeError, ValueError):
+                # Sem permissão, limite de 15 webhooks no canal ou outra recusa: sai pela conta do bot.
                 log.warning("Webhook não disponível no canal %s; usando a conta do Arquivista.", getattr(channel, "id", 0))
                 if embed:
                     self.decorate(embed)

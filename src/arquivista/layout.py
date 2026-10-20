@@ -121,6 +121,18 @@ class Model:
                         out.append(Block(tab, open_[0], open_[1], i + 1))
                     open_ = None
         return out
+    def broken(self) -> dict[str, str]:
+        """Donos cujo bloco não fecha (linha inserida ou apagada à mão no meio): dono -> nome da guia.
+        O bot não grava nesses blocos nem cria outro, para não duplicar a pessoa numa guia nova."""
+        out = {}
+        for tab in self.tabs:
+            for line in tab.grid:
+                k = str(line[MARK - 1] or "")
+                if k.startswith("BLOCO:"):
+                    out[k[6:]] = tab.name
+        for b in self.blocks():
+            out.pop(b.owner, None)
+        return out
     def block_of(self, owner: str) -> Block | None:
         return next((b for b in self.blocks() if b.owner == owner), None)
     def find(self, record_id: str) -> tuple[Block, int, int] | None:
@@ -291,6 +303,8 @@ class Model:
         b.tab.name = title
     def upsert(self, op: dict) -> str:
         r = record(op.get("record"))
+        if r["owner_id"] in self.broken():
+            return "broken"
         mine = self.block_of(r["owner_id"])
         if mine:
             self.owner_name(mine, r["owner_name"])
