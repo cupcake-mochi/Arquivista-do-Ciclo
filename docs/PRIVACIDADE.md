@@ -18,7 +18,7 @@ Para cada servidor, o bot guarda:
 - a configuração do servidor: cargos de staff e canais escolhidos;
 - na criação automática da planilha, o identificador e o endereço do arquivo, o andamento da criação e o e-mail Google informado para receber edição. Esse e-mail fica cifrado no banco e é enviado ao Google para conceder acesso ao arquivo.
 
-Situação e justificativa ficam nas consultas privadas da staff. O responsável pode ver e editar o nome do próprio personagem no formulário privado. A lista, a galeria e os avisos públicos mostram aparência, obra e responsável, sem esses campos internos.
+O nome do personagem no servidor aparece nas listas e na galeria, junto da aparência, da obra e do responsável. O responsável pode editar esse nome no formulário privado. Situação e justificativa continuam restritas às consultas privadas da staff. Os avisos públicos não incluem o nome no servidor, a situação nem a justificativa.
 
 Quando alguém anexa uma imagem ao cadastro, o bot reenvia o arquivo no canal de imagens que a staff escolheu, dentro do próprio servidor, e guarda o endereço dessa mensagem.
 

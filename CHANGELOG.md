@@ -1,5 +1,11 @@
 # Histórico de versões
 
+## 1.0.2 · 20/10/2026
+
+As consultas por aparência, obra ou membro e a galeria agora mostram também o nome do personagem no servidor. O campo continua opcional e pode ser editado pelo responsável. Situação e justificativa permanecem privadas. As listas mostram até 12 fichas por página para acomodar o nome dentro do limite do Discord.
+
+Atualização sem mudança no banco ou na conexão das planilhas.
+
 ## 1.0.1 · 20/10/2026
 
 Revisão dos textos da Amiya: ajuda, guia, formulários, confirmações, avisos e instruções das planilhas. As mensagens estão mais curtas e os exemplos acompanham o que o bot faz. O guia público, a política de privacidade e os termos também foram revisados, mantendo suas regras e condições.

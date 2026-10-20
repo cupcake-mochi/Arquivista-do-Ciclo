@@ -1,6 +1,6 @@
-# Validação · Arquivista 1.0.1 · 20/10/2026
+# Validação · Arquivista 1.0.2 · 20/10/2026
 
-A 1.0.1 revisa os textos de comandos, painéis, avisos, modelos de planilha e documentos. As regras do bot continuam as mesmas. A suíte foi executada novamente após a revisão; os ensaios reais descritos abaixo foram feitos na preparação da 1.0.
+A 1.0.2 mostra o nome do personagem no servidor nas consultas e na galeria. Foram verificados nome vazio, menções e formatação escapadas, nomes longos, paginação e separação de situação/justificativa. A suíte foi executada novamente; os demais ensaios reais descritos abaixo foram feitos na preparação da 1.0.
 
 ## O que foi executado nesta entrega
 
@@ -34,7 +34,7 @@ A chave de duplicidade distingue acentos, embora a busca por obra agrupe variant
 - Prefixo AC com maiúsculas/minúsculas, espaço, aliases e menções;
 - Correspondência dos 16 comandos de barra com os comandos de chat;
 - Busca com pequeno erro de grafia e resultados ambíguos não descartados;
-- Exclusão de status, justificativa, nome interno e metadados da projeção pública;
+- Nome no servidor visível nas consultas e na galeria; situação, justificativa e metadados excluídos da projeção pública. Nomes escapados, campo vazio e páginas com textos longos verificados;
 - Cadastro próprio/por staff e rejeição de tentativa de alterar terceiros;
 - IDs e data original preservados; novos membros vinculados uma única vez;
 - Aparência + obra ocupadas, incluindo Arquivado, e reutilização após Liberado;

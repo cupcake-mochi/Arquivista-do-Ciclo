@@ -79,7 +79,7 @@ GUIDE = (
     ("Registrar a sua",
      "`AC:reg` ou `/registrar` abre um formulário com:\n"
      "• **Aparência** — o nome do personagem;\n• **Obra** — de onde ele vem;\n"
-     "• **Nome no servidor** (opcional) — como o seu personagem se chama aqui;\n"
+     "• **Nome no servidor** (opcional) — como o seu personagem se chama aqui; aparece na lista e na galeria;\n"
      "• **Imagem** — link https ou anexo.\n\n"
      "Depois, confira os dados numa mensagem que só você vê, escolha a situação e clique em **Confirmar e salvar**. Se não escolher, fica **Em preparação**. Se a aparência estiver ocupada, eu aviso sem salvar outro cadastro."),
     ("Mudar o seu cadastro",

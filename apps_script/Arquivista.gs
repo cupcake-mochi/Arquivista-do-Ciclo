@@ -111,7 +111,8 @@ function acDispatch_(ss,q){
   acReady_(ss);
   if(q.action==='list'){
     const owner=d.owner_id?String(d.owner_id):'';if(owner&&!acId_(owner))acFail_('INVALID');
-    return {records:acIndex_(ss).filter(r=>(!owner||r.owner_id===owner)&&((d.include_released===true)||r.status!=='Liberado')).map(acPublic_)};
+    const records=acIndex_(ss).filter(r=>(!owner||r.owner_id===owner)&&((d.include_released===true)||r.status!=='Liberado'));
+    return {records:acReadMany_(ss,records,acSnapshots_(ss)).map(acPublic_)};
   }
   if(q.action==='get'){
     const r=acGet_(ss,String(d.id));if(!a.staff&&r.owner_id!==a.id)acFail_('FORBIDDEN');return {record:r};
@@ -184,7 +185,7 @@ function acIndex_(ss){
     return {id,row,col:pos.col,group,slot,appearance:String(v[3]||''),work:String(v[4]||''),status:String(v[5]||''),owner_id:String(v[6]||'')};
   });
 }
-function acPublic_(r){return {id:r.id,appearance:r.appearance,work:r.work,owner_id:r.owner_id,occupied:r.status!=='Liberado'};}
+function acPublic_(r){return {id:r.id,appearance:r.appearance,work:r.work,server_name:r.server_name,owner_id:r.owner_id,occupied:r.status!=='Liberado'};}
 function acSnapshots_(ss){
   const sh=ss.getSheetByName(AC.snapshots),last=sh.getLastRow(),map=new Map();
   if(last>1)sh.getRange(2,1,last-1,2).getValues().forEach((r,i)=>{if(r[0])map.set(String(r[0]),{row:i+2,record:r[1]?acJson_(String(r[1])):null});});

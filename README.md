@@ -27,7 +27,7 @@ Cada servidor tem seus próprios cadastros e configurações. O banco SQLite gua
 | Planilha | Uma aba por membro, com visor, imagens e posições que crescem conforme o uso. IDs e datas ligam a ficha ao cadastro no banco. |
 | Instalação | Assistente `.env`, autorização Google única do mantenedor, diagnóstico sem escrita e pacote para Discloud. Apps Script mantido para conexões antigas. |
 
-Situação, justificativa e nome interno do personagem **não saem na lista, galeria nem notificações públicas**. Arquivado continua ocupado. Liberado permite reutilização. Não há aprovação obrigatória para o cadastro inicial.
+O nome do personagem no servidor aparece na lista e na galeria, junto da aparência e do responsável. Situação e justificativa continuam privadas; as notificações públicas também não incluem o nome no servidor. Arquivado continua ocupado. Liberado permite reutilização. Não há aprovação obrigatória para o cadastro inicial.
 
 ## Comece por aqui
 
