@@ -16,7 +16,7 @@ from discord.ext import commands, tasks
 from . import backup
 from .archive import Archive
 from .config import Config, ROOT
-from .domain import Actor, UserError, STAFF_ACTIONS, parse_prefix, ranked, public_record
+from .domain import Actor, UserError, STAFF_ACTIONS, find_work, parse_prefix, ranked, public_record, search_text, work_groups, work_key
 from .media import Images
 from .sheet import SheetSync
 from .store import Store
@@ -24,12 +24,13 @@ from .transport import Carteiro, MENTIONS
 from .views import Confirm, Gate, Picker, Paginator, RecordModal, Settings, backup_problem, private_reply, card, clean
 
 log = logging.getLogger(__name__)
-PUBLIC = frozenset(("ajuda", "aparencias", "minhas", "galeria", "consultar"))
-SLASH = ("ajuda", "aparencias", "registrar", "editar", "situacao", "transferir", "remover", "limpar", "historico", "configurar", "diagnostico")
+PUBLIC = frozenset(("ajuda", "aparencias", "minhas", "galeria", "consultar", "obra"))
+SLASH = ("ajuda", "aparencias", "obra", "registrar", "editar", "situacao", "transferir", "remover", "limpar", "historico", "configurar", "diagnostico")
 
 HELP = """**Consultar o arquivo**
 `/aparencias` ou `AC:ap [aparência] [@membro]` — lista; o botão do resultado troca para galeria.
 `AC:min` — suas aparências. `AC:gal` — já abre em galeria.
+`/obra` ou `AC:obra [nome]` — aparências de uma obra, juntando grafias parecidas ("Arknights", "Endfield", "arknighs"). Sem nome, lista as obras.
 
 **Seu cadastro**
 `/registrar` ou `AC:reg` — formulário com link ou anexo da imagem, revisão e confirmação.
@@ -174,7 +175,7 @@ class Arquivista(commands.Bot):
             await self.carteiro.send(source.channel,embed=card("Amiya · Atenção",text))
         if not isinstance(error,UserError):
             log.warning("Falha de comando: %s",type(error).__name__)
-    async def run_action(self, source, action, query="", member_id=None, attachment=None):
+    async def run_action(self, source, action, query="", member_id=None, attachment=None, mode=None):
         user = source.user if isinstance(source,discord.Interaction) else source.author
         gid = source.guild_id if isinstance(source,discord.Interaction) else source.guild.id
         if not gid:
@@ -209,6 +210,21 @@ class Arquivista(commands.Bot):
                 return
             if action=="ajuda":
                 await self.reply_public(source,embed=card("Índice do Arquivista",HELP+(STAFF_HELP if actor.staff else "")))
+                return
+            if action=="obra":
+                data=await self.archive(gid).call("list",actor,{"owner_id":"","include_released":False})
+                records=[public_record(r) for r in data["records"]]
+                groups=await asyncio.to_thread(work_groups,[r["work"] for r in records])
+                if not query.strip():
+                    view=Paginator(self,user.id,groups,"works",actor=actor,guild_id=gid)
+                else:
+                    found=find_work(groups,query)
+                    keys={k for g in found for k in g["keys"]}
+                    records=sorted((r for r in records if work_key(r["work"]) in keys),
+                                   key=lambda r:(search_text(r["appearance"]),search_text(r["work"])))
+                    title="Obra: "+" · ".join(g["label"] for g in found[:3]) if found else "Obra: "+query
+                    view=Paginator(self,user.id,records,"gallery" if mode=="galeria" else "list",actor=actor,guild_id=gid,title=title)
+                await self.reply_public(source,embed=await view.embed(),view=view if view.records else None)
                 return
             owner_id=str(user.id) if action=="minhas" else (str(member_id) if member_id else "")
             # Consultar mostra somente registros ocupados. Ausência não prova nome não padronizado.
@@ -434,6 +450,12 @@ def install_slash_commands(bot):
     @app_commands.choices(modo=[app_commands.Choice(name="lista",value="lista"),app_commands.Choice(name="galeria",value="galeria")])
     async def aparencias(i:discord.Interaction,aparencia:str="",membro:discord.Member|None=None,modo:str="lista"):
         await bot.run_action(i,"galeria" if modo=="galeria" else "aparencias",aparencia,membro.id if membro else None)
+    @bot.tree.command(name="obra",description="Aparências de uma obra, juntando grafias parecidas; sem nome, lista as obras.")
+    @app_commands.guild_only()
+    @app_commands.describe(nome="Nome da obra (aproximado vale: arknights também acha Endfield)",modo="Lista ou galeria de imagens")
+    @app_commands.choices(modo=[app_commands.Choice(name="lista",value="lista"),app_commands.Choice(name="galeria",value="galeria")])
+    async def obra(i:discord.Interaction,nome:str="",modo:str="lista"):
+        await bot.run_action(i,"obra",nome,mode=modo)
     @bot.tree.command(name="registrar",description="Cadastre uma aparência; staff também cadastra para outra pessoa.")
     @app_commands.guild_only()
     async def registrar(i:discord.Interaction,membro:discord.Member|None=None):await bot.open_register(i,membro)

@@ -73,14 +73,17 @@ class Gate(GuardedView):
         await self.bot.open_private(interaction, self.action, self.query, self.member_id, self.attachment)
 
 class Paginator(GuardedView):
-    def __init__(self, bot, user_id, records, mode="list", *, actor=None, guild_id=None, owner=None):
+    def __init__(self, bot, user_id, records, mode="list", *, actor=None, guild_id=None, owner=None, title=None):
         super().__init__(bot, user_id)
         # owner: membro quando a lista é de uma pessoa só (foto no canto, sem repetir a menção em cada linha).
+        # title: busca por obra; cada linha mostra a grafia da obra, que pode variar dentro do grupo.
+        # mode "works": records são os grupos de obras de domain.work_groups.
         self.records, self.mode, self.page, self.actor, self.guild_id, self.owner = records, mode, 0, actor, guild_id, owner
+        self.title = title
         self.per_page = 1 if mode in ("gallery", "history") else 15
         self.requires_staff = mode == "history"
         self.mutex = asyncio.Lock()
-        if mode == "history":
+        if mode in ("history", "works"):
             self.remove_item(self.toggle)
         else:
             self.toggle.label = "Ver em lista" if mode == "gallery" else "Ver em galeria"
@@ -104,6 +107,14 @@ class Paginator(GuardedView):
                 if before.get(key) != after.get(key):
                     changes.append(f"**{label}:** {clean(before.get(key) or '—',160)} → {clean(after.get(key) or '—',160)}")
             e.description += "\n\n" + ("\n".join(changes)[:3200] or "Alteração registrada na imagem ou em metadados do cadastro.")
+        elif self.mode == "works":
+            lines = []
+            for j, g in enumerate(self.records[self.page*self.per_page:(self.page+1)*self.per_page]):
+                line = f"**{self.page*self.per_page+j+1}. {clean(g['label'],80)}** · {g['count']} aparência(s)"
+                if len(g["names"]) > 1:
+                    line += "\n-# também escrita como " + clean(", ".join(g["names"][1:]), 150)
+                lines.append(line)
+            e = card("Obras do arquivo", "\n".join(lines) + "\n\nUse `AC:obra nome` para ver as aparências de uma obra.")
         elif self.mode == "gallery":
             r = self.records[self.page]
             e = card(clean(r["appearance"], 200), f"**Obra:** {clean(r['work'],200)}\n**Responsável:** <@{r['owner_id']}>")
@@ -114,7 +125,10 @@ class Paginator(GuardedView):
                 e.add_field(name="Imagem", value="Sem imagem disponível no momento.", inline=False)
         else:
             chunk = self.records[self.page*self.per_page:(self.page+1)*self.per_page]
-            if self.owner:
+            if self.title and not self.owner:
+                lines = [f"**{self.page*self.per_page+j+1}. {clean(r['appearance'],100)}** · {clean(r['work'],50)} · <@{r['owner_id']}>" for j,r in enumerate(chunk)]
+                e = card(clean(self.title, 200), "\n".join(lines))
+            elif self.owner:
                 lines = [f"**{self.page*self.per_page+j+1}. {clean(r['appearance'],110)}** · {clean(r['work'],60)}" for j,r in enumerate(chunk)]
                 e = card("Aparências de " + clean(self.owner.display_name, 80), f"<@{self.owner.id}>\n\n" + "\n".join(lines))
             else:

@@ -9,7 +9,9 @@ import time
 import unicodedata
 import uuid
 from dataclasses import dataclass
+from collections import Counter
 from difflib import SequenceMatcher
+from functools import lru_cache
 from typing import Any
 from urllib.parse import urlsplit
 
@@ -25,6 +27,7 @@ SHORT = {
     "editar": ("editar", "ed"),
     "situacao": ("situacao", "situação", "sit"),
     "transferir": ("transferir", "transf", "tr"),
+    "obra": ("obra", "obras", "ob"),
     "remover": ("remover", "rem", "rm"),
     "limpar": ("limpar", "apagar"),
     "historico": ("historico", "histórico", "hist"),
@@ -119,6 +122,116 @@ def ranked(records: list[dict], query: str, limit: int | None = None) -> list[di
                 scores.append((score, search_text(r.get("appearance")), r))
         result = [r for _, _, r in sorted(scores, key=lambda t: (-t[0], t[1]))]
     return result if limit is None else result[:limit]
+
+# ---------------- obras com grafias diferentes
+# Cada pessoa escreve a obra de um jeito ("Arknights", "Arknights Endfield", "Endfield", "arknighs").
+# Duas grafias ficam juntas quando as palavras de uma estão todas na outra (com erro de digitação
+# tolerado) ou quando o nome inteiro é quase igual. O agrupamento é transitivo, como uma franquia.
+WORD_STOP = frozenset(("the", "of", "a", "an", "and", "to", "in", "no", "wo", "ga", "de", "do", "da", "dos", "das", "e", "o", "os", "as"))
+
+# Palavra comum em título não junta obras sozinha ("Love Live" e "Live A Live" ficam separadas).
+WORD_COMMON = frozenset(("live", "love", "online", "story", "stories", "world", "fantasy", "saga", "legend", "legends",
+    "chronicle", "chronicles", "tale", "tales", "project", "game", "games", "academy", "school", "war", "wars", "hero",
+    "heroes", "quest", "impact", "collection", "new", "last", "final", "dark", "black", "blue", "red", "white", "girl",
+    "girls", "boy", "boys", "life", "star", "stars", "sword", "princess", "king", "queen", "lord", "art", "night",
+    "day", "days", "high", "super", "big", "little", "my", "your", "one", "two", "zero", "world", "z", "x", "ii", "iii",
+    "vida", "amor", "mundo", "guerra", "jogo", "escola", "anime", "manga", "novel", "movie", "filme", "serie", "series"))
+
+def work_words(name: Any) -> tuple[str, ...]:
+    words = list(dict.fromkeys(re.findall(r"[a-z0-9]+", search_text(name))))
+    return tuple(w for w in words if w not in WORD_STOP) or tuple(words)
+
+@lru_cache(maxsize=4096)
+def _letters(a: str) -> Counter:
+    return Counter(a)
+
+def _close(a: str, b: str, limit: float) -> bool:
+    # Corta antes da conta cara: a semelhança nunca passa de 2*(letras em comum)/(soma dos tamanhos).
+    total = len(a) + len(b)
+    if 2 * min(len(a), len(b)) < limit * total or 2 * sum((_letters(a) & _letters(b)).values()) < limit * total:
+        return False
+    return SequenceMatcher(None, a, b, autojunk=False).ratio() >= limit
+
+def _same_word(a: str, b: str) -> bool:
+    if a == b:
+        return True
+    # Erro de digitação só em palavra comprida; número e palavra curta precisam bater.
+    return min(len(a), len(b)) >= 5 and not (a.isdigit() or b.isdigit()) and _close(a, b, .85)
+
+def _related(wa: tuple[str, ...], wb: tuple[str, ...]) -> bool:
+    if not wa or not wb:
+        return False
+    ja, jb = "".join(wa), "".join(wb)
+    if ja == jb or (min(len(ja), len(jb)) >= 6 and (ja in jb or jb in ja or _close(ja, jb, .9))):
+        return True  # mesmo nome com espaço ou pontuação diferente; "Umamusume" e "Uma Musume Pretty Derby"
+    small, big = sorted((wa, wb), key=len)
+    if len(small) == 1 and len(big) >= 3 and small[0].isalpha() and small[0] == "".join(w[0] for w in big):
+        return True  # sigla: "HSR" e "Honkai Star Rail"
+    return (sum(map(len, small)) >= 4 and any(x not in WORD_COMMON and not x.isdigit() for x in small)
+            and all(any(_same_word(x, y) for y in big) for x in small))
+
+def related_works(a: Any, b: Any) -> bool:
+    return _related(work_words(a), work_words(b))
+
+def work_key(name: Any) -> str:
+    return " ".join(work_words(name)) or normalized(name)
+
+def work_groups(works: list[str]) -> list[dict]:
+    """Junta as grafias parecidas. Devolve [{label, names, count, keys}] do grupo com mais cadastros para o menor;
+    label é a grafia mais usada do grupo. Não altere o resultado: ele fica em cache."""
+    return _work_groups(tuple(sorted(works)))
+
+@lru_cache(maxsize=64)
+def _work_groups(works: tuple[str, ...]) -> list[dict]:
+    count: dict[str, int] = {}
+    spelling: dict[str, dict[str, int]] = {}
+    for w in works:
+        key = work_key(w)
+        if not key:
+            continue
+        count[key] = count.get(key, 0) + 1
+        spelling.setdefault(key, {})
+        spelling[key][w.strip()] = spelling[key].get(w.strip(), 0) + 1
+    keys = sorted(count)
+    parent = {k: k for k in keys}
+    def root(k):
+        while parent[k] != k:
+            parent[k] = parent[parent[k]]
+            k = parent[k]
+        return k
+    words = {k: tuple(k.split()) for k in keys}
+    for i, a in enumerate(keys):
+        for b in keys[i + 1:]:
+            if root(a) != root(b) and _related(words[a], words[b]):
+                parent[root(b)] = root(a)
+    groups: dict[str, list[str]] = {}
+    for k in keys:
+        groups.setdefault(root(k), []).append(k)
+    out = []
+    for members in groups.values():
+        # Nome do grupo: a grafia mais usada; no empate, a que mais aparece dentro das outras ("Arknights"
+        # está em "Arknights Endfield"), depois a que começa como as outras (franquia antes do subtítulo),
+        # depois a de palavras mais repetidas ("Arknights" ganha de "arknighs"),
+        # sem preferir sigla. Dentro da grafia, a forma com maiúscula mais comum.
+        words: dict[str, int] = {}
+        for k in members:
+            for w in k.split():
+                words[w] = words.get(w, 0) + count[k]
+        base = lambda k: sum(count[o] for o in members if all(any(_same_word(x, y) for y in o.split()) for x in k.split()))
+        lead = lambda k: sum(count[o] for o in members if _same_word(k.split()[0], o.split()[0]))
+        best = lambda k: (-count[k], -base(k), -lead(k), -sum(words[w] for w in k.split()) / len(k.split()), len(k) <= 4, len(k), k)
+        ordered = sorted(members, key=best)
+        shown = lambda k: sorted(spelling[k], key=lambda n: (-spelling[k][n], n == n.lower(), n))[0]
+        out.append({"label": shown(ordered[0]), "names": [shown(k) for k in ordered],
+                    "count": sum(count[k] for k in members), "keys": members})
+    return sorted(out, key=lambda g: (-g["count"], search_text(g["label"])))
+
+def find_work(groups: list[dict], query: str) -> list[dict]:
+    """Grupos que a busca alcança: a busca parecida com alguma grafia, ou contida nela."""
+    q = " ".join(work_words(query))
+    if not q:
+        return []
+    return [g for g in groups if any(related_works(q, k) or (len(q) >= 3 and q in k) for k in g["keys"])]
 
 def safe_image_url(value: str) -> str:
     value = value.strip()

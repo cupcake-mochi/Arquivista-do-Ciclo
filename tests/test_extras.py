@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 from arquivista import media
 from arquivista.archive import Archive
-from arquivista.domain import Actor
+from arquivista.domain import Actor, find_work, work_groups
 from arquivista.store import Store
 
 G1 = "111111111111111111"
@@ -119,6 +119,31 @@ class PurgeTests(unittest.TestCase):
         with self.assertRaises(Exception) as ctx:
             self.run_("purge", self.staff, {"owner_id": "abc", "ids": [first]})
         self.assertEqual(ctx.exception.code, "INVALID")
+
+
+class WorkTests(unittest.TestCase):
+    def labels(self, works):
+        return {g["label"]: g["names"] for g in work_groups(works)}
+
+    def test_spellings_of_one_work_group_together(self):
+        g = self.labels(["Arknights", "arknights", "Arknights Endfield", "Endfield", "arknighs", "Azur Lane",
+                         "Honkai: Star Rail", "Honkai Star Rail", "HSR", "Umamusume", "Uma Musume Pretty Derby"])
+        self.assertEqual(sorted(g["Arknights"]), ["Arknights", "Arknights Endfield", "Endfield", "arknighs"])
+        self.assertEqual(sorted(g["Honkai Star Rail"]), ["HSR", "Honkai Star Rail"])
+        self.assertIn("Uma Musume Pretty Derby", g["Umamusume"])
+        self.assertEqual(g["Azur Lane"], ["Azur Lane"])
+
+    def test_different_works_stay_apart(self):
+        g = self.labels(["Love Live", "Live A Live", "Date A Live", "Persona 4", "Persona 5", "Genshin Impact",
+                         "Honkai Impact 3rd", "Fate/stay night", "Fate/Grand Order", "Final Fantasy VII", "Dragon Quest"])
+        self.assertEqual(len(g), 11)
+
+    def test_search_reaches_whole_group(self):
+        groups = work_groups(["Arknights", "Arknights Endfield", "Endfield", "Azur Lane"])
+        for q in ("endfield", "ARKNIGHS", "ark", "arknights endfield"):
+            self.assertEqual([g["label"] for g in find_work(groups, q)], ["Arknights"], q)
+        self.assertEqual(find_work(groups, "nikke"), [])
+        self.assertEqual(find_work(groups, "  "), [])
 
 
 if __name__ == "__main__":

@@ -420,7 +420,7 @@ class FilesTests(unittest.TestCase):
         self.assertEqual(names,list(SLASH))
         # Todo comando de chat cai num comando de barra ou numa consulta pública.
         self.assertTrue(set(ALIASES.values())<=set(SLASH)|PUBLIC)
-        self.assertEqual(len(names),11)
+        self.assertEqual(len(names),12)
 
 
 class SetupTests(unittest.TestCase):
@@ -451,7 +451,7 @@ class DiscordImportTests(unittest.IsolatedAsyncioTestCase):
         with tempfile.TemporaryDirectory() as d:
             cfg=Config('FAKE',Path(d)/'t.sqlite')
             bot=Arquivista(cfg)
-            self.assertEqual(len(bot.tree.get_commands()),11)
+            self.assertEqual(len(bot.tree.get_commands()),12)
             # Um método do bot com nome de método do discord.py derrubava o login (dispatch).
             from discord.ext import commands
             mine={n for n in vars(Arquivista) if not n.startswith('__')}
@@ -474,6 +474,16 @@ class DiscordImportTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(e['thumbnail']['url'],Avatar.url);self.assertTrue(e['title'].startswith('Aparências de'))
             self.assertIn('Takao** · Azur Lane',e['description']);self.assertEqual(e['description'].count('<@'),1)
             self.assertNotIn('thumbnail',(await Paginator(bot,1,[r]).embed()).to_dict())
+            from arquivista.domain import work_groups
+            groups=work_groups(['Arknights','Arknights Endfield','Azur Lane'])
+            w=Paginator(bot,1,groups,'works')
+            self.assertEqual(labels(w),['Anterior','Próxima'])
+            d=(await w.embed()).to_dict()['description']
+            self.assertIn('Arknights** · 2 aparência(s)',d);self.assertIn('também escrita como Arknights Endfield',d)
+            e=(await Paginator(bot,1,[r],title='Obra: Azur Lane').embed()).to_dict()
+            self.assertEqual(e['title'],'Obra: Azur Lane');self.assertIn('Takao** · Azur Lane · <@',e['description'])
+            purge=Confirm(bot,1,'purge',{'owner_id':U1,'ids':['a']})
+            self.assertTrue(purge.requires_staff);self.assertEqual(labels(purge),['Apagar tudo','Cancelar'])
             m=RecordModal(bot,1,'create').to_components()
             self.assertNotIn('remover',json.dumps(m,ensure_ascii=False))
             self.assertIn('remover',json.dumps(RecordModal(bot,1,'edit',record=r).to_components(),ensure_ascii=False))
