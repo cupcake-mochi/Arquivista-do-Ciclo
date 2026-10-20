@@ -300,7 +300,7 @@ class Confirm(GuardedView):
     def __init__(self,bot,user_id,action,payload,attachment=None):
         super().__init__(bot,user_id,timeout=600)
         self.action,self.payload,self.attachment=action,payload,attachment
-        self.requires_staff=action in ("change_status","transfer","remove")
+        self.requires_staff=action in ("change_status","transfer","remove","purge")
         self.request_id=str(uuid.uuid4())
         self.busy=False
         self.completed=False
@@ -311,9 +311,9 @@ class Confirm(GuardedView):
                 label=s,value=s,default=s==payload["status"]) for s in STATUSES])
             self.status.callback=self.choose_status
             self.add_item(self.status)
-        if action=="remove":
+        if action in ("remove","purge"):
             self.confirm.style=discord.ButtonStyle.danger
-            self.confirm.label="Confirmar remoção"
+            self.confirm.label="Apagar tudo" if action=="purge" else "Confirmar remoção"
     async def choose_status(self,i:discord.Interaction):
         # Depois da primeira tentativa o pedido fica fixo: a retentativa precisa ser idêntica pra não duplicar.
         if self.tried or self.completed:
@@ -332,7 +332,7 @@ class Confirm(GuardedView):
         await i.response.defer()  # o resultado entra no lugar da revisão, na mesma mensagem
         try:
             actor=await self.bot.actor(i.user.id,i.guild_id)
-            if self.action in ("change_status","transfer","remove") and not actor.staff:
+            if self.action in ("change_status","transfer","remove","purge") and not actor.staff:
                 raise UserError("Você não tem mais autorização para essa operação.")
             if self.attachment:
                 media=await self.bot.images.save(self.attachment,i.guild_id)
@@ -342,7 +342,8 @@ class Confirm(GuardedView):
             self.completed=True
             if result.get("changed",True):
                 self.bot.notify_soon()
-            text="Registro removido; o histórico foi preservado." if self.action=="remove" else "Salvo no arquivo. Vou manter os registros organizados."
+            text={"remove":"Registro removido; o histórico foi preservado.",
+                  "purge":f"{result.get('removed',0)} cadastro(s) apagado(s); o histórico foi preservado."}.get(self.action,"Salvo no arquivo. Vou manter os registros organizados.")
             if not result.get("changed",True):
                 text="Os dados já estavam assim. Não criei um evento de alteração desnecessário."
             await i.edit_original_response(content=None,embed=self.bot.carteiro.decorate(card("Amiya · Confirmação",text)),view=None)

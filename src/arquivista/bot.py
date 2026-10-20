@@ -4,6 +4,7 @@ import hashlib
 import io
 import json
 import logging
+import re
 import time
 from datetime import datetime
 
@@ -20,11 +21,11 @@ from .media import Images
 from .sheet import SheetSync
 from .store import Store
 from .transport import Carteiro, MENTIONS
-from .views import Gate, Picker, Paginator, RecordModal, Settings, backup_problem, private_reply, card, clean
+from .views import Confirm, Gate, Picker, Paginator, RecordModal, Settings, backup_problem, private_reply, card, clean
 
 log = logging.getLogger(__name__)
 PUBLIC = frozenset(("ajuda", "aparencias", "minhas", "galeria", "consultar"))
-SLASH = ("ajuda", "aparencias", "registrar", "editar", "situacao", "transferir", "remover", "historico", "configurar", "diagnostico")
+SLASH = ("ajuda", "aparencias", "registrar", "editar", "situacao", "transferir", "remover", "limpar", "historico", "configurar", "diagnostico")
 
 HELP = """**Consultar o arquivo**
 `/aparencias` ou `AC:ap [aparência] [@membro]` — lista; o botão do resultado troca para galeria.
@@ -43,6 +44,7 @@ STAFF_HELP = """
 `/situacao` ou `AC:sit aparência` — situação e justificativa internas.
 `/transferir` ou `AC:tr aparência @membro` — mudar o responsável, mantendo ID e data.
 `/remover` ou `AC:rm aparência` — remover com confirmação; o histórico fica.
+`/limpar` ou `AC:limpar @membro` — apagar todos os cadastros de alguém (vale o ID de quem já saiu).
 `/historico` ou `AC:hist [aparência]` — histórico privado, inclusive removidos.
 `/diagnostico` ou `AC:diag` — estado do arquivo, dos canais e da planilha.
 
@@ -192,6 +194,11 @@ class Arquivista(commands.Bot):
             if action not in PUBLIC:
                 if action=="transferir" and not member_id:
                     raise UserError("Use AC:tr aparência @responsável.")
+                if action=="limpar":
+                    member_id=member_id or (query.strip() if re.fullmatch(r"\d{17,20}",query.strip()) else None)
+                    if not member_id:
+                        raise UserError("Use AC:limpar @membro ou AC:limpar ID (o ID serve para quem já saiu do servidor).")
+                    query=""
                 if action in ("editar","situacao","transferir","remover") and not query.strip():
                     raise UserError("Informe o nome da aparência depois do comando. O bot apresentará opções quando houver mais de uma.")
                 if isinstance(source,discord.Interaction):
@@ -255,6 +262,18 @@ class Arquivista(commands.Bot):
                     raise UserError("Não encontrei um cadastro correspondente que você possa gerenciar.")
                 v=Picker(self,i.user.id,records,action,member_id,attachment)
                 await private_reply(i,content=f"Encontrei {len(records)} opção(ões). Selecione pela aparência e obra; nenhuma alteração foi feita.",view=v)
+            elif action=="limpar":
+                data=await archive.call("list",actor,{"owner_id":str(member_id),"include_released":True})
+                records=data["records"]
+                if not records:
+                    raise UserError("Esse membro não tem nenhum cadastro neste servidor.")
+                names="\n".join(f"• {clean(r['appearance'],80)} · {clean(r['work'],60)}" for r in records[:15])
+                if len(records)>15:
+                    names+=f"\n… e mais {len(records)-15}"
+                v=Confirm(self,i.user.id,"purge",{"owner_id":str(member_id),"ids":sorted(r["id"] for r in records)})
+                await private_reply(i,embed=self.carteiro.decorate(card("Confirmar limpeza",
+                    f"Apagar **todos os {len(records)} cadastro(s)** de <@{member_id}>?\n\n{names}\n\n"
+                    "As aparências ficam livres e saem da planilha. A auditoria do /historico fica guardada.")),view=v)
             elif action=="historico":
                 data=await archive.call("history",actor,{"query":query})
                 v=Paginator(self,i.user.id,data["events"],"history",actor=actor,guild_id=i.guild_id)
@@ -382,8 +401,12 @@ class Arquivista(commands.Bot):
                 if found is None:
                     titles={"created":"Aparência registrada","removed":"Cadastro removido","transferred":"Responsável alterado","updated":"Cadastro atualizado"}
                     actor=f"<@{event['actor_id']}>" if event.get("actor_id") else "Planilha; autor não identificado"
-                    e=card(titles.get(event["kind"],"Cadastro atualizado"),
-                        f"**Aparência:** {clean(event['appearance'],200)}\n**Obra:** {clean(event['work'],200)}\n**Responsável:** <@{event['owner_id']}>\n**Registro da alteração:** {actor}")
+                    if event["kind"]=="purged":
+                        e=card("Cadastros de um membro apagados",
+                            f"**Membro:** <@{event['owner_id']}>\n**Cadastros apagados:** {event['count']}\n**Registro da alteração:** {actor}")
+                    else:
+                        e=card(titles.get(event["kind"],"Cadastro atualizado"),
+                            f"**Aparência:** {clean(event['appearance'],200)}\n**Obra:** {clean(event['work'],200)}\n**Responsável:** <@{event['owner_id']}>\n**Registro da alteração:** {actor}")
                     e.set_footer(text=f"Evento {event['event_id']}")
                     try:e.timestamp=datetime.fromisoformat(event["at"].replace("Z","+00:00"))
                     except ValueError:pass
@@ -426,6 +449,11 @@ def install_slash_commands(bot):
     @bot.tree.command(name="remover",description="Staff: remova o cadastro com confirmação; o histórico fica.")
     @app_commands.guild_only()
     async def remover(i:discord.Interaction,aparencia:str):await bot.run_action(i,"remover",aparencia)
+    @bot.tree.command(name="limpar",description="Staff: apague todos os cadastros de um membro, com confirmação.")
+    @app_commands.guild_only()
+    @app_commands.describe(membro="Quem ainda está no servidor",id="ID do Discord, para quem já saiu")
+    async def limpar(i:discord.Interaction,membro:discord.User|None=None,id:str=""):
+        await bot.run_action(i,"limpar",id,membro.id if membro else None)
     @bot.tree.command(name="historico",description="Staff: histórico detalhado em privado.")
     @app_commands.guild_only()
     async def historico(i:discord.Interaction,aparencia:str=""):await bot.run_action(i,"historico",aparencia)

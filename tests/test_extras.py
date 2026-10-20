@@ -71,5 +71,55 @@ class RenewTests(unittest.TestCase):
         return asyncio.run(self.a.call("create", Actor(owner, "x", True), {"fields": fields}))["record"]["id"]
 
 
+class PurgeTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.s = Store(Path(self.tmp.name) / "d.sqlite")
+        self.a = Archive(self.s, G1)
+        self.staff, self.member = Actor("5" * 18, "staff", True), Actor(U1, "m", False)
+    def tearDown(self):
+        self.s.close(); self.tmp.cleanup()
+    def run_(self, action, actor, data, rid=None):
+        return asyncio.run(self.a.call(action, actor, data, rid))
+    def make(self, owner, name):
+        return self.run_("create", self.staff, {"owner": {"id": owner, "name": "x"}, "fields": {"appearance": name, "work": "Azur Lane"}})["record"]["id"]
+
+    def test_purge_removes_all_of_one_member_and_keeps_audit(self):
+        self.s.set_guild(G1, log_channel="7" * 18, sheet_url="https://script.google.com/macros/s/" + "a" * 30 + "/exec", sheet_key="x")
+        mine = [self.make(U1, n) for n in ("Takao", "Atago", "Kaga")]
+        other = self.make(U2, "Akagi")
+        self.run_("change_status", self.staff, {"id": mine[2], "revision": 1, "status": "Liberado"})
+        self.s.db.execute("UPDATE notices SET sent=1"); self.s.db.commit()
+        data = {"owner_id": U1, "ids": sorted(mine)}
+        with self.assertRaises(Exception) as ctx:
+            self.run_("purge", self.member, data)
+        self.assertEqual(ctx.exception.code, "FORBIDDEN")
+        res = self.run_("purge", self.staff, data, "req-1")
+        self.assertEqual(res, {"changed": True, "removed": 3})
+        self.assertEqual([r["id"] for r in self.s.records(G1)], [other])
+        # Um aviso só no canal de histórico; a auditoria guarda um evento por cadastro.
+        notices = self.s.pending()
+        self.assertEqual([n["data"].count('"purged"') for n in notices], [1])
+        kinds = [r[0] for r in self.s.db.execute("SELECT kind FROM events WHERE record_id IN (?,?,?) ORDER BY seq", mine)]
+        self.assertEqual(kinds.count("remove"), 3)
+        # A planilha recebe uma limpeza por cadastro.
+        ops = [r["payload"] for r in self.s.db.execute("SELECT payload FROM sheet_outbox WHERE guild_id=?", (G1,))]
+        self.assertEqual(sum('"clear"' in o for o in ops), 3)
+        # Repetir a mesma confirmação não apaga de novo nem duplica aviso.
+        self.assertEqual(self.run_("purge", self.staff, data, "req-1"), res)
+        self.assertEqual(len(self.s.pending()), 1)
+
+    def test_purge_refuses_when_list_changed(self):
+        first = self.make(U1, "Takao")
+        self.make(U1, "Atago")  # cadastrado depois que a confirmação abriu
+        with self.assertRaises(Exception) as ctx:
+            self.run_("purge", self.staff, {"owner_id": U1, "ids": [first]})
+        self.assertEqual(ctx.exception.code, "STALE")
+        self.assertEqual(len(self.s.records(G1)), 2)
+        with self.assertRaises(Exception) as ctx:
+            self.run_("purge", self.staff, {"owner_id": "abc", "ids": [first]})
+        self.assertEqual(ctx.exception.code, "INVALID")
+
+
 if __name__ == "__main__":
     unittest.main()

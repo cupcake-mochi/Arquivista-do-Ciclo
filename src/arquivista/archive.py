@@ -94,6 +94,9 @@ class Archive:
         if action == "history":
             if not actor.staff: fail("FORBIDDEN")
             return self.history(str(d.get("query") or ""))
+        if action == "purge":
+            if not actor.staff: fail("FORBIDDEN")
+            return self.purge(actor, d, rid)
         if action not in ("create", "edit", "change_status", "transfer", "remove"): fail("INVALID")
         if action in ("change_status", "transfer", "remove") and not actor.staff: fail("FORBIDDEN")
         return self.mutate(action, actor, d, rid)
@@ -152,14 +155,44 @@ class Archive:
             return False
         return bool(self.db.execute("SELECT 1 FROM appearances WHERE guild_id=? AND key=? AND id<>? AND status<>'Liberado'",
                                     (self.guild, exact_key(r["appearance"], r["work"]), r["id"])).fetchone())
-    def mutate(self, action: str, actor: Actor, d: dict, rid: str) -> dict:
+    def saved(self, action: str, actor: Actor, d: dict, rid: str) -> tuple[str, dict | None]:
         digest = hashlib.sha256(json.dumps([action, self.guild, actor.id, actor.staff, d],
                                            ensure_ascii=False, sort_keys=True).encode()).hexdigest()
         saved = self.db.execute("SELECT digest,result FROM requests WHERE guild_id=? AND request_id=?", (self.guild, rid)).fetchone()
         if saved:
             # Repetir a mesma confirmação devolve o resultado original sem gravar de novo.
             if saved["digest"] != digest: fail("REUSED_REQUEST")
-            return json.loads(saved["result"])
+            return digest, json.loads(saved["result"])
+        return digest, None
+    def purge(self, actor: Actor, d: dict, rid: str) -> dict:
+        """Apaga todos os cadastros de um membro (inclusive quem já saiu do servidor). A auditoria fica,
+        e o canal de histórico recebe um aviso só, em vez de um por cadastro."""
+        owner, ids = str(d.get("owner_id") or ""), d.get("ids")
+        if not owner.isdigit() or not isinstance(ids, list) or not ids or not all(isinstance(x, str) for x in ids):
+            fail("INVALID")
+        digest, done = self.saved("purge", actor, d, rid)
+        if done is not None:
+            return done
+        rows = [{k: r[k] for k in FIELDS} for r in
+                self.db.execute("SELECT * FROM appearances WHERE guild_id=? AND owner_id=? ORDER BY created", (self.guild, owner))]
+        # A confirmação mostrou uma lista; se alguém cadastrou ou removeu algo no meio, confirma de novo.
+        if sorted(r["id"] for r in rows) != sorted(ids): fail("STALE")
+        result = {"changed": True, "removed": len(rows)}
+        now = time.time()
+        with self.db:
+            for r in rows:
+                self.write(r, None, now)
+                self.log("remove", rid, actor, r, None, "discord", notify=False)
+                self.sheet(r, None)
+            self.notice({"kind": "purged", "count": len(rows), "appearance": "", "work": "", "owner_id": owner,
+                         "actor_id": actor.id, "source": "discord"})
+            self.db.execute("INSERT INTO requests VALUES(?,?,?,?,?)",
+                            (self.guild, rid, digest, json.dumps(result, ensure_ascii=False), now))
+        return result
+    def mutate(self, action: str, actor: Actor, d: dict, rid: str) -> dict:
+        digest, done = self.saved(action, actor, d, rid)
+        if done is not None:
+            return done
         before = after = None
         if action == "create":
             owner = d.get("owner") or actor.wire()
@@ -251,7 +284,7 @@ class Archive:
             # Remoção não tem revisão própria no banco; a seguinte à última serve de ordem.
             rev = before["revision"] + 1
             self.store.queue_sheet(self.guild, before["id"], rev, {"op": "clear", "id": before["id"], "revision": rev})
-    def log(self, kind, rid, actor, before, after, source) -> None:
+    def log(self, kind, rid, actor, before, after, source, notify: bool = True) -> None:
         """Auditoria e aviso no canal de histórico no mesmo commit da gravação."""
         event_id = "EV-" + str(uuid.uuid4())
         at = datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
@@ -260,12 +293,20 @@ class Archive:
                               (event_id, self.guild, rid, at, kind, (after or before)["id"], actor.id, source,
                                json.dumps(before, ensure_ascii=False) if before else None,
                                json.dumps(after, ensure_ascii=False) if after else None))
+        if not notify:
+            return
+        r = after or before
+        self.notice({"kind": {"create": "created", "remove": "removed", "transfer": "transferred"}.get(kind, "updated"),
+                     "appearance": r["appearance"], "work": r["work"], "owner_id": r["owner_id"],
+                     "actor_id": actor.id, "source": source}, event_id, at, cur.lastrowid)
+    def notice(self, data: dict, event_id: str | None = None, at: str | None = None, seq: int | None = None) -> None:
+        """Aviso para o canal de histórico. Sem evento próprio (resumo da limpeza), usa a ordem do último evento."""
         if not self.store.guild(self.guild).get("log_channel"):
             return  # sem canal configurado não há aviso; ligar o canal depois não republica o passado
-        r = after or before
-        notice = {"seq": cur.lastrowid, "event_id": event_id, "at": at,
-                  "kind": {"create": "created", "remove": "removed", "transfer": "transferred"}.get(kind, "updated"),
-                  "appearance": r["appearance"], "work": r["work"], "owner_id": r["owner_id"],
-                  "actor_id": actor.id, "source": source}
+        event_id = event_id or "EV-" + str(uuid.uuid4())
+        at = at or datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+        if seq is None:
+            seq = self.db.execute("SELECT COALESCE(MAX(seq),0) FROM events WHERE guild_id=?", (self.guild,)).fetchone()[0]
+        notice = {"seq": seq, "event_id": event_id, "at": at, **data}
         self.db.execute("INSERT INTO notices(event_id,guild_id,seq,data) VALUES(?,?,?,?)",
-                        (event_id, self.guild, cur.lastrowid, json.dumps(notice, ensure_ascii=False)))
+                        (event_id, self.guild, seq, json.dumps(notice, ensure_ascii=False)))
