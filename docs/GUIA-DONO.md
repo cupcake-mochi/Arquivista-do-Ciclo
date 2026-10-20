@@ -32,7 +32,7 @@ Tudo isso é opcional. Sem nada configurado o bot já cadastra e consulta.
 A planilha mostra o arquivo de um jeito fácil de ler, uma guia por membro, e o que a staff mudar nela volta pro bot.
 
 1. Crie uma planilha **nova e vazia** no Google Sheets.
-2. Extensões → Apps Script. Apague o conteúdo e cole o `Planilha.gs`. Em **Serviços (+)**, adicione **Google Sheets API**. Salve.
+2. Extensões → Apps Script. Apague o conteúdo e cole o [código da planilha](https://drive.google.com/file/d/1-2UMIJg4TKzjXS5mFsy16221SVtZEncA/view) inteiro, do começo ao fim. Em **Serviços (+)**, adicione **Google Sheets API**. Salve.
 3. Volte na planilha e recarregue. No menu **Arquivista → Instalar ou reinstalar**, informe o ID do servidor (botão direito no servidor → Copiar ID, com o Modo Desenvolvedor ligado) e autorize.
 4. No Apps Script: **Implantar → Nova implantação → App da Web**, executar como **você**, acesso **Qualquer pessoa**. Copie o link que termina em `/exec`.
 5. Na planilha: **Arquivista → Mostrar a chave da conexão** e copie.
@@ -59,4 +59,4 @@ A staff usa `/situacao`, `/transferir`, `/remover`, `/limpar`, `/apelido` e `/hi
 - **A planilha parou de atualizar:** veja o `/diagnostico`. Ele diz o motivo (chave errada, script antigo, linha inserida no meio das fichas...).
 - **Precisa voltar no tempo:** `/restaurar` com o `.json` de um backup.
 
-Dados e regras: [PRIVACIDADE.md](PRIVACIDADE.md) e [TERMOS.md](TERMOS.md).
+Dados e regras: [política de privacidade](https://docs.google.com/document/d/1nMsutdyyrtb-YKCKziW3SmDY3ViKN31yO1OOW3zSRcw/view) e [termos de uso](https://docs.google.com/document/d/1uZlohyKEn7eOlM1wP5TbSeDBm_PkpLc13YnGmPYpZx8/view).

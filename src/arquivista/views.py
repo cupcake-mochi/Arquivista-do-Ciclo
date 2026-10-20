@@ -7,6 +7,7 @@ from typing import Callable, Awaitable
 import discord
 from .domain import Actor, UserError, BridgeError, STAFF_ACTIONS, STATUSES, safe_image_url
 from .transport import MENTIONS
+from .docs import SETUP_LINK
 
 log = logging.getLogger(__name__)
 
@@ -599,7 +600,7 @@ class Settings(GuardedView):
             f"**Planilha:** {'conectada' if cfg.get('sheet_url') else 'não conectada'}\n"
             f"**Backup:** {channel(cfg.get('backup_channel'))}\n\n"
             "O histórico recebe só cadastros e alterações daqui pra frente, sem situação, justificativa ou nome interno. "
-            "O canal de imagens guarda os anexos dos cadastros; não apague essas mensagens.")
+            "O canal de imagens guarda os anexos dos cadastros; não apague essas mensagens.\n\n" + SETUP_LINK)
         return self.bot.carteiro.decorate(e)
     async def refresh(self, i: discord.Interaction, note: str | None = None):
         await i.response.edit_message(content=note, embed=self.embed(), view=self, allowed_mentions=MENTIONS)
