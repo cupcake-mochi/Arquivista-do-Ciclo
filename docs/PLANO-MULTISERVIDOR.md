@@ -118,11 +118,15 @@ importação.
 
 ## Para ser público
 
-- **Verificação:** a partir de 100 servidores o Discord exige verificação, e o
-  Message Content Intent (usado pelo `AC:`) precisa de aprovação. Os comandos
-  `/` e as menções funcionam sem ele.
+- **Verificação do app:** a partir de 100 servidores o Discord pede a
+  verificação (identidade do dono). Desde 10/06/2026 ela é separada da revisão
+  de intents.
+- **Message Content Intent** (usado pelo `AC:`): desde 10/06/2026 a revisão é
+  por usuários, não por servidores. Passando de 10.000 usuários somando os
+  servidores, o Discord avisa e dá 90 dias pra pedir; aprovado, renova todo
+  ano. Sem ele, os comandos `/` e as menções continuam funcionando.
 - **Sharding:** obrigatório a partir de 2.500 servidores (`AutoShardedClient`).
-- **Política de privacidade e termos**, exigidos pra verificação.
+- **Política de privacidade e termos:** `docs/PRIVACIDADE.md` e `docs/TERMOS.md`.
 - **Limites por servidor:** taxa de comandos, tamanho de anexos (já existe) e
   limite de polling às pontes.
 - **Backups** do banco.
