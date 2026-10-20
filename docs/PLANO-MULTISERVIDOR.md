@@ -87,8 +87,10 @@ como o espaço é reservado:
 
 - **Guias por faixa de membros** ("FICHAS 1–20", "FICHAS 21–40"…), criadas só
   quando necessário, no lugar de uma guia única de 41 mil linhas.
-- **Posições sob demanda:** cada membro começa com 50 posições e ganha mais 50
-  quando chega perto do fim (ex.: posição 48), até 200. Os blocos + / − ficam.
+- **Posições sob demanda:** cada membro começa com 20 posições e ganha mais 20
+  quando chega perto do fim (ex.: posição 18), até 200. Os blocos + / − ficam.
+  Pior caso (todos com 200): ~9 mil células por membro, como hoje, mas em guias
+  de 20 membros (~8 mil linhas cada) em vez de uma guia de 41 mil.
 - **Expansão automática:** o gatilho de edição que já existe acrescenta o
   bloco, copiando um modelo pequeno de uma guia escondida. Membro novo em
   MEMBROS ganha bloco (e guia nova, se a faixa estiver cheia). O bot pede a
@@ -100,7 +102,7 @@ como o espaço é reservado:
 - **Uma regra de cor por coluna em cada guia**, em vez dos milhares de pedaços
   atuais; duplicata conferida pelo banco quando conectado, com aviso leve na
   planilha.
-- Estimativa: uns mil membros por arquivo antes de pesar. Servidor maior usa
+- Estimativa: uns mil membros com as 200 posições cheias por arquivo. Servidor maior usa
   só o banco.
 
 A migração da planilha atual pra esse modelo é feita por script, preservando
