@@ -1,6 +1,6 @@
 # Instalação — Arquivista do Ciclo
 
-> **v0.3 · multi-servidor:** configure o Discord com `python configurar.py`, confira com `python verificar.py` e inicie com `python iniciar.py`. A gerência de cada servidor usa `/configurar`. Para oferecer `/planilha criar`, o mantenedor faz uma única vez a [configuração Google](GOOGLE-MANTENEDOR.md); donos de servidor não instalam scripts. As seções numeradas 2, 3 e 4 abaixo documentam a ponte antiga da v0.2, preservada para suporte e importação.
+> **v1.0 · multi-servidor:** configure o Discord com `python configurar.py`, confira com `python verificar.py` e inicie com `python iniciar.py`. A gerência de cada servidor usa `/configurar`. Para oferecer `/planilha criar`, o mantenedor faz uma única vez a [configuração Google](GOOGLE-MANTENEDOR.md); donos de servidor não instalam scripts. As seções numeradas 2, 3 e 4 abaixo documentam a ponte antiga da v0.2, preservada para suporte e importação.
 
 ## Planilha pronta (novo fluxo)
 

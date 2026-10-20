@@ -1,6 +1,6 @@
 # Arquivista do Ciclo · Amiya
 
-**Versão 0.4.1 · projeto independente dos Guias do Ciclo.**
+**Versão 1.0.0 · projeto independente dos Guias do Ciclo.**
 
 > **Pra dono de servidor:** o passo a passo de convidar, configurar e ligar a planilha está no [guia público no Google Docs](https://docs.google.com/document/d/1xuehlkhU3EhMsSE4hjLIfQY9p-eEF6ynS5ikAmlqnhw/view). Quem usa o bot encontra os comandos e o passo a passo em `/ajuda` e `/guia`.
 >
@@ -11,6 +11,8 @@ Bot de cadastro de aparências com comandos `AC:` e `/`, consultas públicas, fo
 **Estado:** multi-servidor, com banco próprio, criação automática de planilhas e sincronização nos dois sentidos, backup e restauração pelo Discord. Testes automáticos em `tests/` (rodam no CI a cada envio). A criação automática exige a configuração Google única do mantenedor; sem ela o restante do bot continua funcionando.
 
 **Planilha pronta:** `/planilha criar` pede um e-mail em privado e entrega o arquivo montado, conectado e com edição para esse e-mail. A planilha pertence à conta do Arquivista. `/planilha membro` exige selecionar um membro real do servidor e prepara uma aba para preenchimento manual; cadastros pelo bot também criam as abas. Não é preciso instalar script. Para ativar na hospedagem, veja [a configuração única do mantenedor](docs/GOOGLE-MANTENEDOR.md).
+
+**Abrir novamente:** `/planilha abrir` ou `AC:planilha` recupera o painel privado com o link do arquivo já conectado.
 
 ## O que está incluído
 

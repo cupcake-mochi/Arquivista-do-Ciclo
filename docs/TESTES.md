@@ -1,4 +1,4 @@
-# Validação · Arquivista 0.4.1 · 20/10/2026
+# Validação · Arquivista 1.0.0 · 20/10/2026
 
 ## O que foi executado nesta entrega
 
@@ -10,9 +10,9 @@ Também foram verificadas a sintaxe Python/JavaScript, a ausência de token Disc
 
 ## Conferência real no Discord e no Sheets
 
-No servidor de testes, foram conferidos cadastro por slash e prefixo, anexo PNG preservado, consulta com prefixo minúsculo, lista/galeria, edição, duplicidade por caixa/espaços, busca por obra, situação/justificativa privadas, cancelamento de remoção e paginação da auditoria. As duas fichas fictícias foram deixadas como Liberado, sem editar os seis cadastros preexistentes.
+No servidor de testes, foram conferidos cadastro por slash e prefixo, anexo PNG preservado, consulta com prefixo minúsculo, lista/galeria, edição, duplicidade por caixa/espaços, busca por obra, situação/justificativa privadas, cancelamento de remoção e paginação da auditoria. Na conclusão da 1.0, as duas fichas fictícias foram removidas pela confirmação do bot, preservando os seis cadastros preexistentes e a auditoria dos testes.
 
-O cadastro e a edição pelo bot chegaram à planilha conectada. A edição manual de nome e situação no Sheets voltou ao bot, mantendo ID/data e criando evento de origem planilha. O diagnóstico terminou sem erros e sem mudanças esperando envio. Histórico em canal e backup periódico estavam desligados; isso é configuração do servidor.
+O cadastro e a edição pelo bot chegaram à planilha conectada. A edição manual de nome e situação no Sheets voltou ao bot, mantendo ID/data e criando evento de origem planilha. A fila terminou sem mudanças esperando envio. O backup diário foi ativado em canal privado e enviou JSON e XLSX. O canal de notificações continua opcional e desligado; a auditoria no banco permanece ativa.
 
 O layout gerado pelo código também foi aplicado pela API ao [ensaio isolado no Google Sheets](https://docs.google.com/spreadsheets/d/11XYpi_yJT5Nf7mBIp0VeOBDFb1O5ZtoBL_b_zEMl4L0/edit#gid=1001), com dados fictícios. Aos 18 cadastros, a aba passou de 98 para 178 linhas e mostrou `18 / 40`; aos 38, passou a 258 linhas e mostrou `38 / 60`. A aba de controle manteve todos os valores e fórmulas. O visor selecionando a posição 38 mostrou nome, aparência, obra, situação, data e justificativa corretos. A API confirmou 61 grupos de linhas (um externo e 60 fichas), mesclas e validações preservadas. O teste usa a conta conectada à ferramenta; não usa nem valida as credenciais Google dedicadas do bot. A captura visual do navegador não ficou disponível; a conferência foi feita pelos valores calculados e metadados nativos da API.
 
@@ -51,7 +51,11 @@ O OAuth dedicado foi autorizado com `drive.file` e público em produção. O tes
 
 A configuração de acesso externo para imagens foi validada na API real num arquivo isolado. O teste automatizado também força uma retomada da inicialização quando essa propriedade já está habilitada, recusando nova escrita do campo que o Google torna somente leitura. Conexões antigas não recebem essa alteração automaticamente.
 
-Uma segunda conta sem staff, transferência entre pessoas e restauração de backup não foram exercitadas ao vivo; as permissões, a persistência e essas operações são cobertas pelos testes locais. A remoção foi testada até a confirmação e cancelamento; não houve exclusão definitiva dos registros reais.
+Uma segunda conta Discord sem staff consultou a galeria e foi impedida de acessar configuração, planilha, auditoria, painel de outra pessoa e edição de ficha alheia. A staff transferiu uma ficha fictícia para essa conta, preservando ID/data; o novo responsável editou somente os campos permitidos, enquanto a remoção continuou exclusiva da staff. A API do Sheets confirmou transferência e edição na aba correta, sem duplicar a ficha. As duas fichas fictícias foram removidas e a planilha terminou com os seis cadastros originais, sem estrutura quebrada.
+
+O JSON realmente enviado pelo backup diário foi baixado e restaurado pelo importador do produto em um SQLite temporário vazio; depois foi restaurado novamente com substituição. Os oito registros do arquivo mantiveram campos, IDs e datas; as revisões subiram e o histórico anterior foi preservado. O XLSX foi validado como ZIP/XML, com duas guias de membros. Nenhuma restauração substituiu o banco de produção. Também foi criada uma cópia completa do SQLite na hospedagem pela API de backup, com `integrity_check` aprovado. A comparação final com essa cópia confirmou os seis registros originais intactos, descontando apenas URLs temporárias de imagem.
+
+`tests/test_permissions.py` cobre permissões individuais de canal (inclusive membro fora do cache), cargos comuns, gerência, staff configurada, painéis de outro usuário e perda de cargo antes da confirmação. São nove testes novos, totalizando 130 Python + 28 JavaScript da ponte + 7 do script da planilha: 165 aprovados.
 
 A simulação JavaScript não prova latência, cotas, concessão real de permissões nem entrega de gatilhos. O checklist abaixo continua necessário antes de anunciar a criação automática para outros servidores.
 

@@ -23,7 +23,7 @@ Use `/configurar` (só o dono, quem é Administrador ou quem tem Gerenciar Servi
 1. **Cargos de staff:** quem pode mudar situação, transferir, remover, limpar e ver o histórico. Dono e administradores já contam.
 2. **Canal de histórico:** cada cadastro, mudança e remoção gera um aviso aqui. Não mostra justificativa nem situação.
 3. **Canal de imagens:** onde o bot guarda as imagens enviadas por anexo. Sem ele, só dá pra usar link de imagem.
-4. **Backup:** um canal que **só a staff vê** e a frequência. O bot recusa canal que algum cargo fora da staff consegue ver, porque o backup tem dados internos.
+4. **Backup:** um canal que **só a staff vê** e a frequência. O bot recusa acesso de cargos ou membros individuais sem autorização de staff, porque o backup tem dados internos. Use **Fazer backup agora** para conferir o primeiro envio; guarde o `.json` para restaurar os cadastros. Ele não substitui o backup completo da hospedagem.
 
 Tudo isso é opcional. Sem nada configurado o bot já cadastra e consulta.
 
@@ -36,6 +36,8 @@ A planilha permite preencher as fichas à mão e pelo Discord, com sincronizaç�
 3. Abra o link que o bot entregar. A planilha já estará montada e conectada; a sua aba terá posições vazias para preencher.
 
 A planilha pertence à conta Google do Arquivista; você recebe acesso de editor. Repetir `/planilha criar` abre o mesmo arquivo. Se desconectar a sincronização, o arquivo e as permissões continuam no Google; use o comando de criação para reconectar.
+
+Para recuperar o link depois, use **`/planilha abrir`** ou **`AC:planilha`** e clique em **Abrir planilha** no painel privado.
 
 Para preencher para outra pessoa, use **`/planilha membro` e selecione o @membro do servidor** no campo. Texto livre, apelido digitado ou pessoa que já saiu não cria uma aba. Os cadastros pelo bot também criam a aba da pessoa automaticamente.
 

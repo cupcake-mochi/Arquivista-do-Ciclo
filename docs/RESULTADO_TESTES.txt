@@ -1,9 +1,9 @@
-VALIDAÇÃO FINAL — ARQUIVISTA DO CICLO 0.4.1 — 20/10/2026
+VALIDAÇÃO FINAL — ARQUIVISTA DO CICLO 1.0.0 — 20/10/2026
 
-121 testes Python aprovados, incluindo discord.py 2.7.1 real; nenhum pulado.
+130 testes Python aprovados, incluindo discord.py 2.7.1 real; nenhum pulado.
 28 testes JavaScript da ponte aprovados, com serviços Google simulados.
 7 testes JavaScript do script da planilha aprovados, incluindo pedidos reais do layout.
-TOTAL: 156 aprovados, nenhuma falha. Sintaxe dos três scripts e git diff --check aprovados.
+TOTAL: 165 aprovados, nenhuma falha. Sintaxe dos três scripts e git diff --check aprovados.
 
 Comandos: python -m unittest discover -s tests -q
           node tests/test_bridge.js
@@ -13,7 +13,7 @@ PLANILHA_CENARIO definido para conferir a lista de pedidos do bot.
 Discord real: cadastro slash/prefixo, anexo, lista/galeria, edição, duplicidade,
 cancelamento de remoção, situação privada, paginação e auditoria.
 Sheets conectado: bot → planilha e planilha → bot, ID/data preservados.
-Duas fichas de teste Liberadas; seis cadastros preexistentes preservados.
+Duas fichas de teste removidas após transferência/edição; seis cadastros preexistentes preservados.
 
 Ensaio separado no Google real com o código de layout:
 20 posições iniciais → 40 aos 18 cadastros → 60 aos 38 cadastros.
@@ -29,4 +29,16 @@ Ensaio isolado pela conta dedicada: 18 / 40, visor e recuperação do mesmo arqu
 Propriedade de liberação de imagens externas validada na API real; retomada coberta
 por teste que recusa regravar o campo quando ele já está habilitado.
 
-Ainda pendente: segunda conta Discord sem staff, restauração e transferência ao vivo.
+Segunda conta Discord sem staff: galeria permitida; configuração, planilha, auditoria,
+painel de outro usuário, edição de ficha alheia e remoção bloqueados.
+Transferência real de ficha fictícia para essa conta: ID/data preservados; edição
+dos campos permitidos pelo novo responsável confirmada também no Sheets.
+Remoção real das duas fichas fictícias: banco e Sheets com seis cadastros originais,
+22 eventos preservados e fila de sincronização vazia.
+Backup diário ativo em canal privado: JSON e XLSX enviados; JSON real restaurado
+em banco temporário vazio e com substituição, preservando campos, IDs, datas e
+auditoria anterior. XLSX conferido como ZIP/XML com duas guias de membros.
+Banco completo copiado pela API SQLite na hospedagem; integrity_check aprovado.
+Comparação com o backup confirmou os seis registros originais intactos,
+desconsiderando somente URLs temporárias das imagens.
+Restauração exercitada em cópia isolada, sem substituir produção.
