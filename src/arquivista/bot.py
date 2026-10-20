@@ -11,13 +11,13 @@ import discord
 from discord import app_commands
 from discord.ext import commands, tasks
 
-from .bridge import Bridge
+from .archive import Archive
 from .config import Config, ROOT
 from .domain import Actor, UserError, STAFF_ACTIONS, parse_prefix, ranked, public_record
 from .media import Images
 from .store import Store
 from .transport import Carteiro, MENTIONS
-from .views import Gate, FormLauncher, Picker, Paginator, private_reply, card, clean
+from .views import Gate, FormLauncher, Picker, Paginator, Settings, private_reply, card, clean, channel_problem
 
 log = logging.getLogger(__name__)
 PUBLIC = frozenset(("ajuda", "aparencias", "minhas", "galeria", "consultar"))
@@ -45,7 +45,10 @@ STAFF_HELP = """
 `AC:historico nome` — histórico privado, inclusive removidos.
 `AC:registrarhistorico` / `AC:desativarhistorico` — canal de notificações.
 `AC:registrarimagens` / `AC:desativarimagens` — canal para preservar anexos.
-`AC:status` — diagnóstico privado da integração.
+`AC:status` — diagnóstico privado do arquivo deste servidor.
+
+**Gerência do servidor**
+`AC:configurar` — cargos de staff e canais de histórico e imagens.
 """
 
 class Arquivista(commands.Bot):
@@ -60,7 +63,7 @@ class Arquivista(commands.Bot):
         self.carteiro = Carteiro(self)
         self.images = Images(self)
         self.session: aiohttp.ClientSession | None = None
-        self.bridge: Bridge | None = None
+        self.notice_lock = asyncio.Lock()
         self.last_use: dict[int, float] = {}
         self.last_mention: dict[int, float] = {}
         self.last_sync: str | None = None
@@ -69,14 +72,19 @@ class Arquivista(commands.Bot):
         install_slash_commands(self)
     async def setup_hook(self):
         self.session = aiohttp.ClientSession(headers={"User-Agent":"ArquivistaDoCiclo/0.2"})
-        self.bridge = Bridge(self.session, self.config.bridge_url, self.config.bridge_secret, self.config.guild_id)
-        guild = discord.Object(id=self.config.guild_id)
-        self.tree.copy_global_to(guild=guild)
-        await self.tree.sync(guild=guild)
+        if self.config.dev_guild_id:
+            # Servidor de testes: comandos só nele e na hora. Sem ele, valem em todos (o Discord leva até 1 h).
+            if self.store.adopt_legacy(self.config.dev_guild_id, self.config.legacy_staff_roles):
+                log.info("Configuração da v0.2 levada para o servidor %s.", self.config.dev_guild_id)
+            guild = discord.Object(id=self.config.dev_guild_id)
+            self.tree.copy_global_to(guild=guild)
+            await self.tree.sync(guild=guild)
+        else:
+            await self.tree.sync()
         self.worker.change_interval(seconds=self.config.poll_seconds)
         self.worker.start()
     async def on_ready(self):
-        log.info("Arquivista conectado; servidor autorizado %s.", self.config.guild_id)
+        log.info("Arquivista conectado em %d servidor(es).", len(self.guilds))
         if self.avatar_checked:
             return
         self.avatar_checked = True
@@ -90,16 +98,24 @@ class Arquivista(commands.Bot):
                 except discord.HTTPException:
                     log.warning("Não foi possível atualizar o avatar automaticamente. Ajuste-o no Developer Portal.")
         await self.change_presence(activity=discord.Game(name="AC:ajuda · arquivos do Ciclo"))
+    def archive(self, guild_id: int) -> Archive:
+        if not guild_id:
+            raise UserError("Use este comando dentro de um servidor.")
+        return Archive(self.store, guild_id, self.config.timezone)
+    def can_configure(self, member) -> bool:
+        guild = getattr(member, "guild", None)
+        perms = getattr(member, "guild_permissions", None)
+        return bool(guild and perms and (member.id == guild.owner_id or perms.administrator or perms.manage_guild))
     def is_staff_member(self, member) -> bool:
         guild = getattr(member, "guild", None)
-        if not guild or guild.id != self.config.guild_id:
+        if not guild or not hasattr(member, "roles"):
             return False
-        return (member.id == guild.owner_id or member.guild_permissions.administrator
-                or any(role.id in self.config.staff_roles for role in member.roles))
-    async def actor(self, user_id: int | str) -> Actor:
-        guild = self.get_guild(self.config.guild_id)
+        roles = set(self.store.guild(guild.id)["staff_roles"])
+        return self.can_configure(member) or any(str(role.id) in roles for role in member.roles)
+    async def actor(self, user_id: int | str, guild_id: int | None) -> Actor:
+        guild = self.get_guild(guild_id) if guild_id else None
         if not guild:
-            raise UserError("Ainda não encontrei o servidor configurado. Confira o convite do bot.")
+            raise UserError("Não encontrei este servidor. Confira se o Arquivista ainda está nele.")
         try:
             # Revalida no Discord em vez de confiar em um painel aberto antes da remoção de um cargo.
             member = await guild.fetch_member(int(user_id))
@@ -109,7 +125,7 @@ class Arquivista(commands.Bot):
     def service_actor(self) -> Actor:
         return Actor(str(self.user.id), "Arquivista · sincronização", True)
     async def on_message(self, message: discord.Message):
-        if message.author.bot or message.webhook_id or not message.guild or message.guild.id != self.config.guild_id:
+        if message.author.bot or message.webhook_id or not message.guild:
             return
         parsed = parse_prefix(message.content)
         if parsed:
@@ -145,7 +161,7 @@ class Arquivista(commands.Bot):
     async def dispatch(self, source, action, query="", member_id=None, attachment=None):
         user = source.user if isinstance(source,discord.Interaction) else source.author
         gid = source.guild_id if isinstance(source,discord.Interaction) else source.guild.id
-        if gid != self.config.guild_id:
+        if not gid:
             return
         try:
             now=time.monotonic()
@@ -156,7 +172,7 @@ class Arquivista(commands.Bot):
                 raise UserError("Não reconheci esse comando. Use AC:ajuda para abrir o índice.")
             if isinstance(source,discord.Interaction) and not source.response.is_done():
                 await source.response.defer(ephemeral=True,thinking=True)
-            actor=await self.actor(user.id)
+            actor=await self.actor(user.id,gid)
             if action in STAFF_ACTIONS and not actor.staff:
                 raise UserError("Esse comando é exclusivo da staff.")
             if action not in PUBLIC:
@@ -175,61 +191,67 @@ class Arquivista(commands.Bot):
                 return
             owner_id=str(user.id) if action=="minhas" else (str(member_id) if member_id else "")
             # Consultar mostra somente registros ocupados. Ausência não prova nome não padronizado.
-            data=await self.bridge.call("list",actor,{"owner_id":owner_id,"include_released":False})
+            data=await self.archive(gid).call("list",actor,{"owner_id":owner_id,"include_released":False})
             records=ranked([public_record(r) for r in data["records"]],query)
             mode="gallery" if action in ("galeria","consultar") else "list"
-            view=Paginator(self,user.id,records,mode,actor=actor)
+            view=Paginator(self,user.id,records,mode,actor=actor,guild_id=gid)
             await self.reply_public(source,embed=await view.embed(),view=view if records else None)
         except Exception as exc:
             await self.failure(source,exc)
     async def open_private(self, i, action, query="", member_id=None, attachment=None):
         try:
-            actor=await self.actor(i.user.id)
+            actor=await self.actor(i.user.id,i.guild_id)
+            archive=self.archive(i.guild_id)
             if action in STAFF_ACTIONS and not actor.staff:
                 raise UserError("Esse comando é exclusivo da staff.")
-            if action=="registrar":
-                owner=await self.actor(member_id) if member_id else actor
+            if action=="configurar":
+                if not self.can_configure(i.user):
+                    raise UserError("Só quem pode gerenciar o servidor configura o Arquivista.")
+                v=Settings(self,i.user.id,i.guild)
+                await private_reply(i,embed=v.embed(),view=v)
+            elif action=="registrar":
+                owner=await self.actor(member_id,i.guild_id) if member_id else actor
                 if owner.id!=actor.id and not actor.staff:
                     raise UserError("Você pode cadastrar para si. Apenas a staff cadastra para terceiros.")
                 v=FormLauncher(self,i.user.id,"create",owner={"id":owner.id,"name":owner.name},attachment=attachment)
                 await private_reply(i,embed=self.carteiro.decorate(card("Nova aparência",f"Responsável: <@{owner.id}>.\nPreencha os dados, revise e confirme. Vou conferir a disponibilidade antes de salvar.")),view=v)
             elif action in ("editar","situacao","transferir","remover"):
-                data=await self.bridge.call("list",actor,{"owner_id":"" if actor.staff else actor.id,"include_released":True})
+                data=await archive.call("list",actor,{"owner_id":"" if actor.staff else actor.id,"include_released":True})
                 records=ranked(data["records"],query,limit=250)
                 if not records:
                     raise UserError("Não encontrei um cadastro correspondente que você possa gerenciar.")
                 v=Picker(self,i.user.id,records,action,member_id,attachment)
                 await private_reply(i,content=f"Encontrei {len(records)} opção(ões). Selecione pela aparência e obra; nenhuma alteração foi feita.",view=v)
             elif action=="historico":
-                data=await self.bridge.call("history",actor,{"query":query})
-                v=Paginator(self,i.user.id,data["events"],"history",actor=actor)
+                data=await archive.call("history",actor,{"query":query})
+                v=Paginator(self,i.user.id,data["events"],"history",actor=actor,guild_id=i.guild_id)
                 await private_reply(i,content="Exibindo os eventos mais recentes; a auditoria original foi preservada." if data.get("truncated") else None,embed=await v.embed(),view=v if data["events"] else None)
             elif action=="status":
-                data=await self.bridge.call("status",actor)
-                body=f"**Ponte:** {data['version']}\n**Grupos preparados:** {data['capacity']}\n**Base histórica pronta:** {'sim' if data['ready'] else 'não'}\n**Manutenção pendente:** {'sim' if data['maintenance'] else 'não'}\n**Última sincronização do bot:** {self.last_sync or 'ainda não realizada'}\n**Situação operacional:** {self.sync_problem or 'sem erro registrado nesta sessão'}"
+                data=await archive.call("status",actor)
+                cfg=self.store.guild(i.guild_id)
+                channel=lambda c:f"<#{c}>" if c else "não configurado"
+                body=(f"**Cadastros:** {data['records']} ({data['occupied']} ocupando aparência)\n**Membros com cadastro:** {data['members']}\n"
+                      f"**Eventos na auditoria:** {data['events']}\n**Avisos esperando envio:** {data['pending_notices']}\n"
+                      f"**Canal de histórico:** {channel(cfg['log_channel'])}\n**Canal de imagens:** {channel(cfg['image_channel'])}\n"
+                      f"**Cargos de staff:** {', '.join(f'<@&{r}>' for r in cfg['staff_roles']) or 'só dono e quem gerencia o servidor'}\n"
+                      f"**Último envio de avisos:** {self.last_sync or 'ainda não realizado'}\n**Situação operacional:** {self.sync_problem or 'sem erro registrado nesta sessão'}")
                 await private_reply(i,embed=self.carteiro.decorate(card("Diagnóstico privado",body)))
             elif action in ("registrar_historico","registrar_imagens"):
                 channel=i.channel
                 if not isinstance(channel,(discord.TextChannel,discord.Thread)):
                     raise UserError("Use um canal de texto ou um tópico deste servidor.")
-                perms=channel.permissions_for(channel.guild.me)
-                required=perms.view_channel and perms.embed_links and perms.read_message_history
-                required=required and (perms.send_messages_in_threads if isinstance(channel,discord.Thread) else perms.send_messages)
-                if action=="registrar_imagens":
-                    required=required and perms.attach_files
-                if not required:
-                    raise UserError("Faltam permissões de ver/enviar, incorporar links, ler histórico ou anexar arquivos neste canal.")
+                problem=channel_problem(channel,images=action=="registrar_imagens")
+                if problem:
+                    raise UserError(problem)
                 if action=="registrar_historico":
-                    status=await self.bridge.call("status",actor)
-                    self.store.set("log_channel",str(channel.id))
-                    self.store.set("log_from_seq",status["events_last_seq"])
+                    self.store.set_guild(i.guild_id,log_channel=channel.id)
                     message="Este canal receberá os próximos cadastros e alterações. Situação, justificativa e nome interno não aparecem nas notificações públicas. Não vou republicar o passado."
                 else:
-                    self.store.set("image_channel",str(channel.id))
+                    self.store.set_guild(i.guild_id,image_channel=channel.id)
                     message="Este canal preservará as imagens anexadas nos futuros cadastros. Não apague essas mensagens: elas são a fonte recuperável dos arquivos."
                 await private_reply(i,embed=self.carteiro.decorate(card("Canal configurado",message)))
             elif action in ("desativar_historico","desativar_imagens"):
-                self.store.set("log_channel" if action=="desativar_historico" else "image_channel",None)
+                self.store.set_guild(i.guild_id,**{"log_channel" if action=="desativar_historico" else "image_channel":None})
                 await private_reply(i,content="Configuração desativada. Nenhum registro histórico ou arquivo antigo foi apagado.")
             else:
                 raise UserError("Operação não reconhecida.")
@@ -237,47 +259,36 @@ class Arquivista(commands.Bot):
             await self.failure(i,exc)
     @tasks.loop(seconds=90)
     async def worker(self):
-        try:
-            actor=self.service_actor()
-            status=await self.bridge.call("status",actor)
-            if not status["ready"] or status["maintenance"]:
-                self.sync_problem="Aguardando preparação/revisão da planilha."
-                return
-            if self.store.get("cursor") is None:
-                self.store.set("cursor",status["events_last_seq"])
-            await self.bridge.call("reconcile",actor)
-            # Consome até 500 eventos por ciclo, sem perder os seguintes.
-            for _ in range(5):
-                cursor=self.store.get("cursor",0)
-                data=await self.bridge.call("events",actor,{"after":cursor})
-                self.store.ingest(data["events"],data["cursor"])
-                if len(data["events"])<100:
-                    break
-            await self.deliver_events()
-            self.last_sync=datetime.now().astimezone().isoformat(timespec="seconds")
-            self.sync_problem=None
-        except UserError as exc:
-            self.sync_problem=str(exc)
-            log.warning("Sincronização pausada: %s",type(exc).__name__)
-        except Exception as exc:
-            self.sync_problem="Falha operacional de sincronização; verifique os registros da hospedagem."
-            log.warning("Falha de sincronização: %s",type(exc).__name__)
+        # Rede de segurança: cada gravação já pede o envio na hora; aqui saem as retentativas.
+        await self.deliver_events()
     @worker.before_loop
     async def before_worker(self):
         await self.wait_until_ready()
+    def notify_soon(self):
+        asyncio.get_running_loop().create_task(self.deliver_events())
     async def deliver_events(self):
-        channel_id=self.store.get("log_channel")
-        cutoff=self.store.get("log_from_seq",0)
+        if self.notice_lock.locked():
+            return  # já tem um envio rodando; ele pega os avisos novos
+        async with self.notice_lock:
+            try:
+                await self.deliver_pending()
+                self.last_sync=datetime.now().astimezone().isoformat(timespec="seconds")
+                self.sync_problem=None
+            except Exception as exc:
+                self.sync_problem="Falha ao enviar avisos de histórico; verifique os registros da hospedagem."
+                log.warning("Falha nos avisos: %s",type(exc).__name__)
+    async def deliver_pending(self):
         for row in self.store.pending():
             event=json.loads(row["data"])
-            if not channel_id or event["seq"]<=cutoff:
-                self.store.delivered(event["event_id"])
+            channel_id=self.store.guild(row["guild_id"]).get("log_channel")
+            if not channel_id:
+                self.store.delivered(event["event_id"])  # canal desligado depois do evento
                 continue
             try:
                 self.store.attempt(event["event_id"])
                 channel=self.get_channel(int(channel_id)) or await self.fetch_channel(int(channel_id))
-                if not getattr(channel,"guild",None) or channel.guild.id!=self.config.guild_id:
-                    raise UserError("Canal de histórico fora do servidor autorizado.")
+                if not getattr(channel,"guild",None) or str(channel.guild.id)!=row["guild_id"]:
+                    raise UserError("Canal de histórico fora do servidor do evento.")
                 # Recuperação do pequeno intervalo entre Discord aceitar e SQLite confirmar.
                 found=None
                 if row["tries"]:
@@ -359,6 +370,10 @@ def install_slash_commands(bot):
     @bot.tree.command(name="desativar_imagens",description="Staff: pare novos uploads sem apagar os arquivos existentes.")
     @app_commands.guild_only()
     async def desativar_imagens(i:discord.Interaction):await bot.dispatch(i,"desativar_imagens")
+    @bot.tree.command(name="configurar",description="Gerência: cargos de staff e canais do Arquivista neste servidor.")
+    @app_commands.guild_only()
+    @app_commands.default_permissions(manage_guild=True)
+    async def configurar(i:discord.Interaction):await bot.dispatch(i,"configurar")
     @bot.tree.command(name="status",description="Staff: diagnóstico privado da ponte e do histórico.")
     @app_commands.guild_only()
     async def status(i:discord.Interaction):await bot.dispatch(i,"status")
@@ -379,7 +394,7 @@ def main():
     try:config=Config.load()
     except (ValueError,OSError) as exc:raise SystemExit(str(exc)) from None
     handler=logging.StreamHandler()
-    handler.addFilter(Redact(config.token,config.bridge_secret))
+    handler.addFilter(Redact(config.token))
     handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s"))
     logging.basicConfig(level=logging.INFO,handlers=[handler])
     Arquivista(config).run(config.token,log_handler=None)

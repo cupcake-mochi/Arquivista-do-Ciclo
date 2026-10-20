@@ -1,6 +1,8 @@
 # Arquivista do Ciclo · Amiya
 
-**Versão 0.2.0 · projeto independente dos Guias do Ciclo.**
+**Versão 0.3.0 (em desenvolvimento) · projeto independente dos Guias do Ciclo.**
+
+> **Multi-servidor (etapa 1 do [plano](docs/PLANO-MULTISERVIDOR.md)):** os cadastros agora ficam num banco próprio do bot, separados por servidor, e cada servidor se configura com `/configurar`. O `.env` só precisa de `DISCORD_TOKEN` (e, opcional, `DISCORD_DEV_GUILD_ID` pra testar). A ponte com a planilha volta na etapa 3; até lá as seções de Apps Script da instalação não se aplicam.
 
 Bot de cadastro de aparências com comandos `AC:` e `/`, consultas públicas, formulários privados e integração com a Planilha Aparências. A imagem fornecida da Amiya está em `assets/amiya.png`, sem alteração. Não usa um modelo de IA nem a chave de outro provedor.
 

@@ -35,7 +35,7 @@ class GuardedView(discord.ui.View):
         self.bot, self.author_id, self.message = bot, author_id, None
         self.requires_staff = False
     async def interaction_check(self, i: discord.Interaction) -> bool:
-        if i.user.id != self.author_id or i.guild_id != self.bot.config.guild_id:
+        if i.user.id != self.author_id or i.guild_id is None:
             await private_reply(i, content="Este painel pertence a outra pessoa. Abra seu próprio comando.")
             return False
         if self.requires_staff and not self.bot.is_staff_member(i.user):
@@ -67,9 +67,9 @@ class Gate(GuardedView):
         await self.bot.open_private(interaction, self.action, self.query, self.member_id, self.attachment)
 
 class Paginator(GuardedView):
-    def __init__(self, bot, user_id, records, mode="list", *, actor=None):
+    def __init__(self, bot, user_id, records, mode="list", *, actor=None, guild_id=None):
         super().__init__(bot, user_id)
-        self.records, self.mode, self.page, self.actor = records, mode, 0, actor
+        self.records, self.mode, self.page, self.actor, self.guild_id = records, mode, 0, actor, guild_id
         self.per_page = 1 if mode in ("gallery", "history") else 15
         self.requires_staff = mode == "history"
         self.mutex = asyncio.Lock()
@@ -96,7 +96,7 @@ class Paginator(GuardedView):
         elif self.mode == "gallery":
             r = self.records[self.page]
             e = card(clean(r["appearance"], 200), f"**Obra:** {clean(r['work'],200)}\n**Responsável:** <@{r['owner_id']}>")
-            url = await self.bot.images.resolve(r["id"], self.actor)
+            url = await self.bot.images.resolve(r["id"], self.actor, self.guild_id)
             if url:
                 e.set_image(url=url)
             else:
@@ -137,10 +137,10 @@ class Picker(GuardedView):
         self.more.disabled = (self.page+1)*25 >= len(self.records)
     async def choose(self, i):
         await i.response.defer(ephemeral=True, thinking=True)
-        actor = await self.bot.actor(i.user.id)
+        actor = await self.bot.actor(i.user.id, i.guild_id)
         if self.action in STAFF_ACTIONS and not actor.staff:
             raise UserError("Esta operação é reservada à staff.")
-        data = await self.bot.bridge.call("get", actor, {"id": self.select.values[0]})
+        data = await self.bot.archive(i.guild_id).call("get", actor, {"id": self.select.values[0]})
         record = data["record"]
         if self.action == "editar":
             v = FormLauncher(self.bot, self.author_id, "edit", record=record, attachment=self.attachment)
@@ -149,7 +149,7 @@ class Picker(GuardedView):
             v = StatusPicker(self.bot, self.author_id, record)
             await private_reply(i, content="Escolha a situação interna. Arquivar não libera a aparência.", view=v)
         elif self.action == "transferir":
-            target = await self.bot.actor(self.member_id)
+            target = await self.bot.actor(self.member_id, i.guild_id)
             payload = {"id": record["id"], "revision": record["revision"], "owner": {"id":target.id,"name":target.name}}
             v = Confirm(self.bot, self.author_id, "transfer", payload)
             await private_reply(i, embed=self.bot.carteiro.decorate(card("Confirmar transferência", f"**{clean(record['appearance'])}** será transferida para <@{target.id}>. O ID e a data original serão preservados.")), view=v)
@@ -190,11 +190,11 @@ class RecordModal(discord.ui.Modal):
             self.fields[key] = item
             self.add_item(item)
     async def on_submit(self, i: discord.Interaction):
-        if i.user.id != self.author_id or i.guild_id != self.bot.config.guild_id:
+        if i.user.id != self.author_id or i.guild_id is None:
             return await private_reply(i, content="Este formulário não pertence a você.")
         await i.response.defer(ephemeral=True, thinking=True)
         try:
-            actor = await self.bot.actor(i.user.id)
+            actor = await self.bot.actor(i.user.id, i.guild_id)
             fields = {k:str(v.value).strip() for k,v in self.fields.items()}
             remove_image = fields.get("image_url")=="-"
             fields["image_url"] = "" if remove_image else safe_image_url(fields.get("image_url", ""))
@@ -242,10 +242,10 @@ class StatusModal(discord.ui.Modal):
         self.text=discord.ui.TextInput(label="Observação / justificativa (interna)",style=discord.TextStyle.paragraph,required=False,max_length=2000,default=record.get("justification", ""))
         self.add_item(self.text)
     async def on_submit(self,i):
-        if i.user.id!=self.author_id or i.guild_id!=self.bot.config.guild_id:
+        if i.user.id!=self.author_id or i.guild_id is None:
             return await private_reply(i,content="Este formulário não pertence a você.")
         await i.response.defer(ephemeral=True,thinking=True)
-        actor=await self.bot.actor(i.user.id)
+        actor=await self.bot.actor(i.user.id,i.guild_id)
         if not actor.staff:
             return await private_reply(i,content="Somente a staff pode alterar a situação.")
         payload={"id":self.record["id"],"revision":self.record["revision"],"status":self.status,"justification":str(self.text.value).strip()}
@@ -276,15 +276,17 @@ class Confirm(GuardedView):
         self.busy=True
         await i.response.defer(ephemeral=True,thinking=True)
         try:
-            actor=await self.bot.actor(i.user.id)
+            actor=await self.bot.actor(i.user.id,i.guild_id)
             if self.action in ("change_status","transfer","remove") and not actor.staff:
                 raise UserError("Você não tem mais autorização para essa operação.")
             if self.attachment:
-                media=await self.bot.images.save(self.attachment)
+                media=await self.bot.images.save(self.attachment,i.guild_id)
                 self.payload.setdefault("fields",{}).update(media)
                 self.attachment=None  # retentar não faz outro upload
-            result=await self.bot.bridge.call(self.action,actor,self.payload,self.request_id)
+            result=await self.bot.archive(i.guild_id).call(self.action,actor,self.payload,self.request_id)
             self.completed=True
+            if result.get("changed",True):
+                self.bot.notify_soon()
             for item in self.children:
                 item.disabled=True
             if self.message:
@@ -310,3 +312,73 @@ class Confirm(GuardedView):
             child.disabled=True
         await i.response.edit_message(content="Cancelado. Nenhum novo pedido de gravação foi enviado.",view=self)
         self.stop()
+
+
+def channel_problem(channel, *, images=False) -> str | None:
+    """O que falta pro Arquivista usar o canal; None quando está tudo certo."""
+    if not isinstance(channel, (discord.TextChannel, discord.Thread)):
+        return "Use um canal de texto ou um tópico deste servidor."
+    perms = channel.permissions_for(channel.guild.me)
+    ok = perms.view_channel and perms.embed_links and perms.read_message_history
+    ok = ok and (perms.send_messages_in_threads if isinstance(channel, discord.Thread) else perms.send_messages)
+    if images:
+        ok = ok and perms.attach_files
+    if not ok:
+        return "Faltam permissões de ver/enviar, incorporar links, ler histórico ou anexar arquivos em " + channel.mention + "."
+    return None
+
+class Settings(GuardedView):
+    """Painel de configuração do servidor: cargos de staff e canais."""
+    def __init__(self, bot, user_id, guild):
+        super().__init__(bot, user_id)
+        self.guild = guild
+        cfg = bot.store.guild(guild.id)
+        self.roles = discord.ui.RoleSelect(placeholder="Cargos de staff (além de dono e gerência)", min_values=0, max_values=25, row=0,
+            default_values=[r for r in (guild.get_role(int(x)) for x in cfg["staff_roles"]) if r])
+        self.roles.callback = self.save_roles
+        self.log = discord.ui.ChannelSelect(placeholder="Canal de histórico", channel_types=[discord.ChannelType.text], row=1)
+        self.log.callback = self.save_log
+        self.images = discord.ui.ChannelSelect(placeholder="Canal de imagens", channel_types=[discord.ChannelType.text], row=2)
+        self.images.callback = self.save_images
+        for item in (self.roles, self.log, self.images):
+            self.add_item(item)
+    async def interaction_check(self, i: discord.Interaction) -> bool:
+        if not await super().interaction_check(i):
+            return False
+        if not self.bot.can_configure(i.user):
+            await private_reply(i, content="Só quem pode gerenciar o servidor muda essa configuração.")
+            return False
+        return True
+    def embed(self) -> discord.Embed:
+        cfg = self.bot.store.guild(self.guild.id)
+        channel = lambda c: f"<#{c}>" if c else "desligado"
+        roles = ", ".join(f"<@&{r}>" for r in cfg["staff_roles"]) or "nenhum (só dono e quem gerencia o servidor)"
+        e = card("Configuração do Arquivista",
+            f"**Cargos de staff:** {roles}\n**Canal de histórico:** {channel(cfg['log_channel'])}\n**Canal de imagens:** {channel(cfg['image_channel'])}\n\n"
+            "O histórico recebe só cadastros e alterações daqui pra frente, sem situação, justificativa ou nome interno. "
+            "O canal de imagens guarda os anexos dos cadastros; não apague essas mensagens.")
+        return self.bot.carteiro.decorate(e)
+    async def refresh(self, i: discord.Interaction, note: str | None = None):
+        await i.response.edit_message(content=note, embed=self.embed(), view=self, allowed_mentions=MENTIONS)
+    async def save_roles(self, i: discord.Interaction):
+        self.bot.store.set_guild(self.guild.id, staff_roles=[r.id for r in self.roles.values])
+        await self.refresh(i, "Cargos de staff salvos.")
+    async def pick(self, i: discord.Interaction, select, field: str):
+        channel = self.guild.get_channel(select.values[0].id)
+        problem = channel_problem(channel, images=field == "image_channel") if channel else "Não encontrei esse canal."
+        if problem:
+            return await self.refresh(i, problem)
+        self.bot.store.set_guild(self.guild.id, **{field: channel.id})
+        await self.refresh(i, "Canal salvo.")
+    async def save_log(self, i: discord.Interaction):
+        await self.pick(i, self.log, "log_channel")
+    async def save_images(self, i: discord.Interaction):
+        await self.pick(i, self.images, "image_channel")
+    @discord.ui.button(label="Desligar histórico", style=discord.ButtonStyle.secondary, row=3)
+    async def log_off(self, i: discord.Interaction, b: discord.ui.Button):
+        self.bot.store.set_guild(self.guild.id, log_channel=None)
+        await self.refresh(i, "Histórico desligado. Nada que já foi publicado foi apagado.")
+    @discord.ui.button(label="Desligar imagens", style=discord.ButtonStyle.secondary, row=3)
+    async def images_off(self, i: discord.Interaction, b: discord.ui.Button):
+        self.bot.store.set_guild(self.guild.id, image_channel=None)
+        await self.refresh(i, "Novos anexos desligados. As imagens já guardadas continuam valendo.")

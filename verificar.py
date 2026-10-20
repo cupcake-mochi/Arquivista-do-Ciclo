@@ -1,4 +1,4 @@
-"""Diagnóstico de configuração: só leituras em Discord e Apps Script."""
+"""Diagnóstico de configuração: só leituras no Discord e no banco local."""
 from __future__ import annotations
 import asyncio
 import importlib.metadata
@@ -11,8 +11,7 @@ async def check() -> int:
     try:
         import aiohttp
         from arquivista.config import Config
-        from arquivista.bridge import Bridge
-        from arquivista.domain import Actor, UserError
+        from arquivista.store import Store
         config = Config.load()
     except (ImportError, ValueError, OSError) as exc:
         print('Configuração incompleta:', str(exc))
@@ -24,10 +23,20 @@ async def check() -> int:
     except importlib.metadata.PackageNotFoundError:
         print('Instale discord.py com python -m pip install -r requirements.txt.')
         return 1
-    async with aiohttp.ClientSession(headers={'User-Agent':'ArquivistaDoCiclo/0.2 preflight'}) as session:
+    try:
+        store = Store(config.db_path)
+        count = store.db.execute('SELECT COUNT(*) FROM appearances').fetchone()[0]
+        servers = store.db.execute('SELECT COUNT(DISTINCT guild_id) FROM appearances').fetchone()[0]
+        store.close()
+        print(f'Banco aberto: {count} cadastro(s) em {servers} servidor(es).')
+    except Exception as exc:
+        print('Não consegui abrir o banco em', config.db_path, '· tipo do problema:', type(exc).__name__)
+        return 1
+    headers = {'Authorization': 'Bot ' + config.token}
+    async with aiohttp.ClientSession(headers={'User-Agent':'ArquivistaDoCiclo/0.3 preflight'}) as session:
         try:
-            async with session.get('https://discord.com/api/v10/users/@me',
-                    headers={'Authorization':'Bot '+config.token}, timeout=aiohttp.ClientTimeout(total=25)) as response:
+            async with session.get('https://discord.com/api/v10/users/@me', headers=headers,
+                    timeout=aiohttp.ClientTimeout(total=25)) as response:
                 if response.status != 200:
                     print('Discord não autorizou a leitura da conta. Confira o token e tente novamente.')
                     return 1
@@ -36,31 +45,25 @@ async def check() -> int:
                 print('A credencial não pertence a um bot. Use somente o token do aplicativo Arquivista.')
                 return 1
             print('Conta do bot:', me.get('username', 'não informado'), '· ID', me['id'])
-            async with session.get(f'https://discord.com/api/v10/guilds/{config.guild_id}',
-                    headers={'Authorization':'Bot '+config.token}, timeout=aiohttp.ClientTimeout(total=25)) as response:
-                if response.status != 200:
-                    print('O bot não conseguiu ler o servidor configurado. Confira o convite e DISCORD_GUILD_ID.')
+            async with session.get('https://discord.com/api/v10/users/@me/guilds', headers=headers,
+                    timeout=aiohttp.ClientTimeout(total=25)) as response:
+                guilds = await response.json() if response.status == 200 else []
+            print('Servidores com o bot:', len(guilds))
+            for g in guilds[:10]:
+                print(' ·', g.get('name', 'sem nome'), g.get('id'))
+            if config.dev_guild_id:
+                if not any(str(g.get('id')) == str(config.dev_guild_id) for g in guilds):
+                    print('O bot não está no servidor de testes configurado. Confira o convite e DISCORD_DEV_GUILD_ID.')
                     return 1
-                guild = await response.json()
-            print('Servidor autorizado:', guild.get('name', 'não informado'))
-            bridge = Bridge(session, config.bridge_url, config.bridge_secret, config.guild_id)
-            status = await bridge.call('status', Actor(me['id'], 'Arquivista · diagnóstico', True))
-            print('Ponte:', status['version'])
-            print('Grupos preparados:', status['capacity'])
-            print('Base histórica pronta:', 'sim' if status['ready'] else 'não')
-            print('Manutenção pendente:', 'sim' if status['maintenance'] else 'não')
-            if not status['ready'] or status['maintenance']:
-                print('Aguarde a preparação/revisão da planilha antes de abrir os cadastros.')
-                return 2
+                print('Modo de testes: os comandos / aparecem só no servidor', config.dev_guild_id)
+            else:
+                print('Modo público: comandos / em todos os servidores (o Discord pode levar até 1 h na primeira vez).')
             print('Leituras autorizadas. Nenhuma mensagem foi enviada; nada foi cadastrado.')
-            print('Próximo: python iniciar.py. Teste comandos, formulários e permissões com a staff.')
+            print('Próximo: python iniciar.py. Em cada servidor, a gerência usa /configurar.')
             return 0
-        except UserError as exc:
-            print('Ponte:', str(exc))
-            return 1
         except (aiohttp.ClientError, asyncio.TimeoutError, ValueError, KeyError) as exc:
             print('A verificação não terminou. Tipo do problema:', type(exc).__name__)
-            print('Confira a rede, a implantação /exec e o diagnóstico do Apps Script. Nenhuma credencial foi impressa.')
+            print('Confira a rede e o token. Nenhuma credencial foi impressa.')
             return 1
 
 if __name__ == '__main__':

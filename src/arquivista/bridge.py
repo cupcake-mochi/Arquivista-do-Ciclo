@@ -6,22 +6,8 @@ import random
 import uuid
 from urllib.parse import urlsplit
 import aiohttp
-from .domain import Actor, BridgeError, signed_envelope
+from .domain import Actor, BridgeError, ERRORS, signed_envelope
 
-ERRORS = {
-    "AUTH": "A conexão com o arquivo não foi autorizada. A staff precisa conferir a configuração.",
-    "BUSY": "O arquivo está ocupado com outra operação. Aguarde um pouco e tente novamente.",
-    "MAINTENANCE": "A planilha está em preparação ou revisão. Vou aguardar antes de alterar cadastros.",
-    "DUPLICATE": "Essa aparência e obra já estão ocupadas. Consulte o arquivo antes de registrar.",
-    "FORBIDDEN": "Você não tem autorização para essa alteração.",
-    "NOT_FOUND": "Não encontrei mais esse cadastro. Faça uma nova consulta.",
-    "STALE": "O cadastro mudou enquanto você preenchia. Abra a edição novamente para não sobrescrever outra alteração.",
-    "CAPACITY": "Os espaços preparados para esse membro ou servidor estão ocupados. A staff precisa ampliar a estrutura.",
-    "REUSED_REQUEST": "Essa confirmação já foi utilizada para outra operação. Abra o comando novamente.",
-    "INVALID": "Um dos dados não passou na validação. Confira os campos e tente novamente.",
-    "NOT_READY": "A integração do Arquivista ainda não foi ativada na planilha.",
-    "INTERNAL": "Não consegui confirmar a operação. A staff pode verificar o diagnóstico sem repetir o cadastro às cegas.",
-}
 
 class Bridge:
     def __init__(self, session: aiohttp.ClientSession, url: str, secret: str, guild_id: int):

@@ -15,6 +15,9 @@ sys.path.insert(0,str(ROOT/'src'))
 from arquivista.domain import (Actor, UserError, normalized, exact_key, parse_prefix,
     ranked, public_record, safe_image_url, signed_envelope, valid_attachment, can_manage, ALIASES)
 from arquivista.store import Store
+from arquivista.archive import Archive
+from arquivista.domain import BridgeError
+import asyncio
 from arquivista.config import load_env
 
 class DomainTests(unittest.TestCase):
@@ -77,29 +80,157 @@ class DomainTests(unittest.TestCase):
     def test_attachment_max_size(self):
         with self.assertRaises(UserError):valid_attachment(b'\x89PNG\r\n\x1a\n'+b'x'*(8*1024*1024))
 
+G1='111111111111111111';G2='222222222222222222'
+U1='333333333333333333';U2='444444444444444444';STAFF='555555555555555555'
+
 class StoreTests(unittest.TestCase):
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory();self.path=Path(self.tmp.name)/'data.sqlite';self.s=Store(self.path)
     def tearDown(self):
         self.s.close();self.tmp.cleanup()
     def test_settings_persist(self):
-        self.s.set('log_channel','123');self.s.close();self.s=Store(self.path)
-        self.assertEqual(self.s.get('log_channel'),'123')
-    def test_no_duplicate_event(self):
-        event={'event_id':'EV1','seq':1}
-        self.s.ingest([event],1);self.s.ingest([event],1)
-        self.assertEqual(len(self.s.pending()),1)
-        self.assertEqual(self.s.get('cursor'),1)
-    def test_retry_and_delivery(self):
-        self.s.ingest([{'event_id':'EV1','seq':1}],1)
-        self.s.failed('EV1',0);self.assertEqual(self.s.pending(),[])
-        self.s.delivered('EV1','2','3');self.assertEqual(self.s.pending(),[])
-    def test_interrupted_attempt_survives_restart(self):
-        self.s.ingest([{'event_id':'EV2','seq':2}],2)
-        self.s.attempt('EV2');self.s.close();self.s=Store(self.path)
-        self.assertEqual(self.s.pending()[0]['tries'],1)
+        self.s.set('avatar_hash','abc');self.s.close();self.s=Store(self.path)
+        self.assertEqual(self.s.get('avatar_hash'),'abc')
+    def test_guild_settings_are_separate(self):
+        self.s.set_guild(G1,log_channel=10,staff_roles=[7,8]);self.s.set_guild(G2,image_channel=20)
+        self.s.close();self.s=Store(self.path)
+        self.assertEqual(self.s.guild(G1)['log_channel'],'10');self.assertEqual(self.s.guild(G1)['staff_roles'],['7','8'])
+        self.assertIsNone(self.s.guild(G2)['log_channel']);self.assertEqual(self.s.guild(G2)['image_channel'],'20')
+        self.s.set_guild(G1,log_channel=None);self.assertIsNone(self.s.guild(G1)['log_channel'])
+        with self.assertRaises(ValueError):self.s.set_guild(G1,token='x')
+    def test_legacy_settings_adopted_once(self):
+        self.s.set('log_channel','99');self.s.set('image_channel','98')
+        self.assertTrue(self.s.adopt_legacy(int(G1),[5]))
+        self.assertEqual(self.s.guild(G1),{**self.s.guild(G1),'log_channel':'99','image_channel':'98','staff_roles':['5']})
+        self.s.set_guild(G1,log_channel=None)
+        self.assertFalse(self.s.adopt_legacy(int(G1),[5]));self.assertIsNone(self.s.guild(G1)['log_channel'])
     def test_messages(self):
         self.s.remember(123);self.assertTrue(self.s.is_ours(123));self.assertFalse(self.s.is_ours(456))
+
+class ArchiveTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp=tempfile.TemporaryDirectory();self.path=Path(self.tmp.name)/'data.sqlite';self.s=Store(self.path)
+        self.a=Archive(self.s,G1);self.b=Archive(self.s,G2)
+        self.user=Actor(U1,'User');self.other=Actor(U2,'Other');self.staff=Actor(STAFF,'Staff',True)
+    def tearDown(self):
+        self.s.close();self.tmp.cleanup()
+    def call(self,archive,action,actor,data=None,rid=None):
+        return asyncio.run(archive.call(action,actor,data or {},rid))
+    def code(self,archive,action,actor,data=None,rid=None):
+        with self.assertRaises(BridgeError) as ctx:self.call(archive,action,actor,data,rid)
+        return ctx.exception.code
+    def create(self,archive=None,actor=None,appearance='Takao',work='Azur Lane',**extra):
+        actor=actor or self.user
+        return self.call(archive or self.a,'create',actor,{'fields':{'appearance':appearance,'work':work,**extra}})['record']
+    def test_create_defaults(self):
+        r=self.create(server_name='Kai')
+        self.assertTrue(r['id'].startswith('AP-'));self.assertEqual(r['owner_id'],U1)
+        self.assertEqual(r['status'],'Em preparação');self.assertEqual(r['revision'],1);self.assertRegex(r['date'],r'^\d{4}-\d\d-\d\d$')
+    def test_duplicate_per_guild_only(self):
+        self.create()
+        self.assertEqual(self.code(self.a,'create',self.other,{'fields':{'appearance':' TAKAO ','work':'azur  lane'}}),'DUPLICATE')
+        self.create(archive=self.b,actor=self.other)  # outro servidor, cadastro independente
+        self.assertEqual(len(self.call(self.b,'list',self.other)['records']),1)
+    def test_archived_still_occupies_released_frees(self):
+        r=self.create()
+        r=self.call(self.a,'change_status',self.staff,{'id':r['id'],'revision':r['revision'],'status':'Arquivado'})['record']
+        self.assertEqual(self.code(self.a,'create',self.other,{'fields':{'appearance':'Takao','work':'Azur Lane'}}),'DUPLICATE')
+        r=self.call(self.a,'change_status',self.staff,{'id':r['id'],'revision':r['revision'],'status':'Liberado'})['record']
+        self.create(actor=self.other)
+        # Voltar o liberado para ocupado com outra pessoa já no nome é duplicata.
+        self.assertEqual(self.code(self.a,'change_status',self.staff,{'id':r['id'],'revision':r['revision'],'status':'Em uso'}),'DUPLICATE')
+    def test_guilds_cannot_see_each_other(self):
+        r=self.create()
+        self.assertEqual(self.code(self.b,'get',self.staff,{'id':r['id']}),'NOT_FOUND')
+        self.assertEqual(self.code(self.b,'remove',self.staff,{'id':r['id'],'revision':1}),'NOT_FOUND')
+        self.assertEqual(self.call(self.b,'list',self.staff,{'include_released':True})['records'],[])
+    def test_list_is_public_projection(self):
+        self.create(server_name='SEGREDO')
+        records=self.call(self.a,'list',self.other)['records']
+        self.assertEqual(set(records[0]),{'id','appearance','work','owner_id','occupied'})
+    def test_permissions(self):
+        r=self.create()
+        self.assertEqual(self.code(self.a,'get',self.other,{'id':r['id']}),'FORBIDDEN')
+        self.assertEqual(self.code(self.a,'edit',self.other,{'id':r['id'],'revision':1,'fields':{'server_name':'x'}}),'FORBIDDEN')
+        self.assertEqual(self.code(self.a,'edit',self.user,{'id':r['id'],'revision':1,'fields':{'work':'x'}}),'FORBIDDEN')
+        for action in ('change_status','transfer','remove','history','status'):
+            self.assertEqual(self.code(self.a,action,self.user,{'id':r['id'],'revision':1}),'FORBIDDEN')
+        self.assertEqual(self.code(self.a,'create',self.user,{'fields':{'appearance':'A','work':'B'},'owner':{'id':U2,'name':'x'}}),'FORBIDDEN')
+    def test_edit_revision_and_stale(self):
+        r=self.create()
+        out=self.call(self.a,'edit',self.user,{'id':r['id'],'revision':1,'fields':{'server_name':'Kai'}})
+        self.assertTrue(out['changed']);self.assertEqual(out['record']['revision'],2)
+        self.assertEqual(self.code(self.a,'edit',self.user,{'id':r['id'],'revision':1,'fields':{'server_name':'Outro'}}),'STALE')
+        same=self.call(self.a,'edit',self.user,{'id':r['id'],'revision':2,'fields':{'server_name':'Kai'}})
+        self.assertFalse(same['changed']);self.assertEqual(same['record']['revision'],2)
+    def test_image_clear_and_media_reset(self):
+        ref=f'discord://{G1}/{G1}/{G1}/{G1}'
+        r=self.create(image_url='https://cdn.discordapp.com/a.png',media_ref=ref)
+        r=self.call(self.a,'edit',self.user,{'id':r['id'],'revision':1,'fields':{'image_url':'https://i.pinimg.com/b.png'}})['record']
+        self.assertEqual(r['media_ref'],'')
+        r=self.call(self.a,'edit',self.user,{'id':r['id'],'revision':2,'fields':{'clear_image':True}})['record']
+        self.assertEqual(r['image_url'],'')
+    def test_media_ref_must_be_same_guild(self):
+        ref=f'discord://{G2}/{G2}/{G2}/{G2}'
+        self.assertEqual(self.code(self.a,'create',self.user,{'fields':{'appearance':'A','work':'B','media_ref':ref}}),'INVALID')
+    def test_invalid_inputs(self):
+        for fields in ({'appearance':'','work':'B'},{'appearance':'A'*101,'work':'B'},{'appearance':'A\x00','work':'B'},
+                       {'appearance':'A','work':'B','image_url':'http://x.com/a'},{'appearance':'A','work':'B','status':'Em uso'}):
+            with self.subTest(fields=fields):
+                self.assertEqual(self.code(self.a,'create',self.user,{'fields':fields}),'INVALID')
+    def test_idempotent_confirmation(self):
+        data={'fields':{'appearance':'Amiya','work':'Arknights'}}
+        first=self.call(self.a,'create',self.user,data,'req-1');again=self.call(self.a,'create',self.user,data,'req-1')
+        self.assertEqual(first,again);self.assertEqual(len(self.call(self.a,'list',self.user)['records']),1)
+        self.assertEqual(self.code(self.a,'create',self.user,{'fields':{'appearance':'Outra','work':'X'}},'req-1'),'REUSED_REQUEST')
+        # O mesmo request_id em outro servidor é outro pedido.
+        self.call(self.b,'create',self.user,data,'req-1')
+    def test_transfer_and_remove_keep_history(self):
+        r=self.create()
+        r=self.call(self.a,'transfer',self.staff,{'id':r['id'],'revision':1,'owner':{'id':U2,'name':'Other'}})['record']
+        self.assertEqual(r['owner_id'],U2);self.assertEqual(r['date'],self.create(appearance='X')['date'])
+        self.assertEqual(self.code(self.a,'transfer',self.staff,{'id':r['id'],'revision':2,'owner':{'id':U2,'name':'Other'}}),'INVALID')
+        out=self.call(self.a,'remove',self.staff,{'id':r['id'],'revision':2})
+        self.assertEqual(out['removed_id'],r['id'])
+        events=self.call(self.a,'history',self.staff,{'query':'takao azur'})['events']
+        self.assertEqual([e['kind'] for e in events],['remove','transfer','create'])
+        self.assertIsNone(events[0]['after']);self.assertEqual(events[2]['actor_id'],U1)
+        self.assertEqual(self.call(self.b,'history',self.staff)['events'],[])
+    def test_capacity_per_member(self):
+        from arquivista import archive as module
+        old=module.MAX_PER_MEMBER;module.MAX_PER_MEMBER=2
+        try:
+            self.create(appearance='A');self.create(appearance='B')
+            self.assertEqual(self.code(self.a,'create',self.user,{'fields':{'appearance':'C','work':'W'}}),'CAPACITY')
+            self.create(archive=self.b,appearance='C')
+        finally:module.MAX_PER_MEMBER=old
+    def test_notices_only_with_log_channel(self):
+        self.create(appearance='Antes')
+        self.assertEqual(self.s.pending(),[])
+        self.s.set_guild(G1,log_channel=10)
+        r=self.create(appearance='Depois',server_name='SEGREDO')
+        self.call(self.a,'change_status',self.staff,{'id':r['id'],'revision':1,'status':'Em uso','justification':'INTERNO'})
+        pending=self.s.pending()
+        self.assertEqual([json.loads(p['data'])['kind'] for p in pending],['created','updated'])
+        self.assertTrue(all(p['guild_id']==G1 for p in pending))
+        self.assertNotIn('SEGREDO',json.dumps(pending));self.assertNotIn('INTERNO',json.dumps(pending))
+    def test_notice_retry_and_delivery(self):
+        self.s.set_guild(G1,log_channel=10);self.create()
+        eid=self.s.pending()[0]['event_id']
+        self.s.attempt(eid);self.s.failed(eid,0);self.assertEqual(self.s.pending(),[])
+        self.s.close();self.s=Store(self.path)
+        self.assertEqual(self.s.db.execute('SELECT tries FROM notices').fetchone()[0],1)
+        self.s.delivered(eid,'2','3');self.assertEqual(self.s.db.execute('SELECT sent FROM notices').fetchone()[0],1)
+    def test_status_counts(self):
+        self.create();self.create(appearance='B',actor=self.other)
+        s=self.call(self.a,'status',self.staff)
+        self.assertEqual((s['records'],s['occupied'],s['members'],s['events']),(2,2,2,2))
+    def test_refresh_image_needs_same_media(self):
+        ref=f'discord://{G1}/{G1}/{G1}/{G1}'
+        r=self.create(image_url='https://cdn.discordapp.com/a.png',media_ref=ref)
+        self.call(self.a,'refresh_image',self.staff,{'id':r['id'],'media_ref':ref,'url':'https://cdn.discordapp.com/b.png'})
+        self.assertEqual(self.call(self.a,'image',self.user,{'id':r['id']})['url'],'https://cdn.discordapp.com/b.png')
+        self.assertEqual(self.code(self.a,'refresh_image',self.staff,{'id':r['id'],'media_ref':'x','url':'https://a.com/b'}),'STALE')
 
 class FilesTests(unittest.TestCase):
     def test_python_syntax(self):
@@ -129,7 +260,7 @@ class FilesTests(unittest.TestCase):
                 for kw in node.keywords:
                     if kw.arg=='name':names.append(ast.literal_eval(kw.value))
         self.assertEqual(set(names),set(ALIASES.values()))
-        self.assertEqual(len(names),16)
+        self.assertEqual(len(names),17)
 
 
 class SetupTests(unittest.TestCase):
@@ -156,17 +287,21 @@ class DiscordImportTests(unittest.IsolatedAsyncioTestCase):
     async def test_commands_and_views_construct(self):
         from arquivista.bot import Arquivista
         from arquivista.config import Config
-        from arquivista.views import RecordModal,Confirm,Gate,StatusPicker,Picker,Paginator
+        from arquivista.views import RecordModal,Confirm,Gate,StatusPicker,Picker,Paginator,Settings
         with tempfile.TemporaryDirectory() as d:
-            cfg=Config('FAKE',123456789012345678,'https://script.google.com/macros/s/test/exec','x'*48,frozenset(),Path(d)/'t.sqlite')
+            cfg=Config('FAKE',Path(d)/'t.sqlite')
             bot=Arquivista(cfg)
-            self.assertEqual(len(bot.tree.get_commands()),16)
+            self.assertEqual(len(bot.tree.get_commands()),17)
             for c in bot.tree.get_commands():c.to_dict(bot.tree)
             r={'id':'AP-test','appearance':'Takao','work':'Azur Lane','owner_id':'123456789012345678',
                'status':'Em uso','revision':'r','justification':''}
             for obj in (Gate(bot,1,'editar'),RecordModal(bot,1,'create'),RecordModal(bot,1,'edit',record=r),
                         Confirm(bot,1,'remove',{}),StatusPicker(bot,1,r),Picker(bot,1,[r],'editar'),Paginator(bot,1,[r])):
                 self.assertTrue(obj.to_components())
+            class Guild:
+                id=int(G1)
+                def get_role(self,_):return None
+            self.assertTrue(Settings(bot,1,Guild()).to_components())
             await bot.close()
 
 if __name__=='__main__':unittest.main(verbosity=2)

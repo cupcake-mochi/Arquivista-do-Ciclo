@@ -46,11 +46,12 @@ Não é preciso decorar UUID. Editar, remover e transferir apresentam uma seleç
 | `AC:desativarhistorico` | `/desativar_historico` | Desliga o envio sem apagar histórico. |
 | `AC:registrarimagens` | `/registrar_imagens` | Usa o canal atual para preservar os futuros anexos do cadastro. |
 | `AC:desativarimagens` | `/desativar_imagens` | Interrompe novos uploads; preserva os antigos. |
-| `AC:status` | `/status` | Estado da ponte, capacidade real, manutenção e sincronização. |
+| `AC:status` | `/status` | Contagem de cadastros, membros e eventos deste servidor, canais e avisos pendentes. |
+| `AC:configurar` | `/configurar` | Só dono, Administrador ou quem gerencia o servidor: cargos de staff, canal de histórico e canal de imagens num painel privado. |
 
 Os comandos de configuração exibem um botão de atendimento privado quando usados por `AC:`; abrir esse painel executa a configuração com nova checagem de permissão. Não criam/deletam canais nem alteram permissões do servidor.
 
-**Staff** = dono do servidor, Administrador ou membro de um dos cargos definidos por `STAFF_ROLE_IDS`. A permissão é checada novamente nas operações finais; ter aberto um painel antes não mantém um privilégio removido.
+**Staff** = dono do servidor, Administrador, quem tem Gerenciar Servidor ou membro de um dos cargos escolhidos no `/configurar` daquele servidor. A permissão é checada novamente nas operações finais; ter aberto um painel antes não mantém um privilégio removido.
 
 ## Situações
 

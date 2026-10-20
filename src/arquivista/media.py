@@ -11,14 +11,14 @@ class Images:
     def __init__(self, bot):
         self.bot = bot
         self.cache: dict[str, tuple[float, str]] = {}
-    async def save(self, attachment: discord.Attachment) -> dict[str, str]:
-        cid = self.bot.store.get("image_channel")
+    async def save(self, attachment: discord.Attachment, guild_id: int) -> dict[str, str]:
+        cid = self.bot.store.guild(guild_id).get("image_channel")
         if not cid:
             raise UserError("Para usar anexos, a staff precisa definir um canal com AC:registrarimagens. Por enquanto, use um link direto.")
         if attachment.size > 8 * 1024 * 1024:
             raise UserError("Envie uma imagem de até 8 MB.")
         channel = self.bot.get_channel(int(cid)) or await self.bot.fetch_channel(int(cid))
-        if not getattr(channel, "guild", None) or channel.guild.id != self.bot.config.guild_id:
+        if not getattr(channel, "guild", None) or channel.guild.id != guild_id:
             raise UserError("O canal de imagens configurado não está disponível neste servidor.")
         data = await attachment.read()
         ext = valid_attachment(data)
@@ -28,17 +28,19 @@ class Images:
         item = message.attachments[0]
         return {"image_url": item.url,
                 "media_ref": f"discord://{channel.guild.id}/{channel.id}/{message.id}/{item.id}"}
-    async def resolve(self, record_id: str, actor: Actor) -> str:
-        old = self.cache.get(record_id)
+    async def resolve(self, record_id: str, actor: Actor, guild_id: int) -> str:
+        key = f"{guild_id}/{record_id}"
+        old = self.cache.get(key)
         if old and old[0] > time.monotonic():
             return old[1]
         try:
-            result = await self.bot.bridge.call("image", actor, {"id": record_id})
+            archive = self.bot.archive(guild_id)
+            result = await archive.call("image", actor, {"id": record_id})
             url = result.get("url", "")
             ref = result.get("media_ref", "")
             if ref:
-                guild_id, channel_id, message_id, attachment_id = ref[len("discord://"):].split("/")
-                if int(guild_id) != self.bot.config.guild_id:
+                ref_guild, channel_id, message_id, attachment_id = ref[len("discord://"):].split("/")
+                if int(ref_guild) != int(guild_id):
                     return ""
                 channel = self.bot.get_channel(int(channel_id)) or await self.bot.fetch_channel(int(channel_id))
                 message = await channel.fetch_message(int(message_id))
@@ -49,11 +51,11 @@ class Images:
                     return ""
                 url = image.url
                 if url != result.get("url"):
-                    await self.bot.bridge.call("refresh_image", self.bot.service_actor(),
+                    await archive.call("refresh_image", self.bot.service_actor(),
                         {"id": record_id, "media_ref": ref, "url": url})
             if not url.startswith("https://"):
                 return ""
-            self.cache[record_id] = (time.monotonic() + (300 if ref else 45), url)
+            self.cache[key] = (time.monotonic() + (300 if ref else 45), url)
             return url
         except (discord.HTTPException, UserError, ValueError, AttributeError):
             return ""

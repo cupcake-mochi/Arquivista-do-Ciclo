@@ -1,5 +1,7 @@
 # Instalação — Arquivista do Ciclo
 
+> **v0.3 (multi-servidor, sem planilha ainda):** pule as seções 2, 3 e 4. Rode `python configurar.py` (token e, opcional, servidor de testes), `python verificar.py` e `python iniciar.py`. No Discord, a gerência de cada servidor usa `/configurar` pra escolher cargos de staff e os canais de histórico e imagens. O restante deste guia descreve a ponte da v0.2, que volta na etapa 3 do plano.
+
 ## Antes de começar
 
 Este é um **novo bot**, separado dos Guias do Ciclo. Não substitua a pasta, o token, os comandos nem o processo dos Guias.

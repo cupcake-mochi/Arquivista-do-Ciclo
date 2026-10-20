@@ -26,9 +26,25 @@ ALIASES = {
     "registrarimagens": "registrar_imagens", "registrar_imagens": "registrar_imagens",
     "desativarimagens": "desativar_imagens", "desativar_imagens": "desativar_imagens",
     "ajuda": "ajuda", "help": "ajuda", "status": "status",
+    "configurar": "configurar", "config": "configurar",
 }
 STAFF_ACTIONS = frozenset(("situacao", "transferir", "remover", "historico", "status",
     "registrar_historico", "desativar_historico", "registrar_imagens", "desativar_imagens"))
+
+ERRORS = {
+    "AUTH": "A conexão com o arquivo não foi autorizada. A staff precisa conferir a configuração.",
+    "BUSY": "O arquivo está ocupado com outra operação. Aguarde um pouco e tente novamente.",
+    "MAINTENANCE": "A planilha está em preparação ou revisão. Vou aguardar antes de alterar cadastros.",
+    "DUPLICATE": "Essa aparência e obra já estão ocupadas. Consulte o arquivo antes de registrar.",
+    "FORBIDDEN": "Você não tem autorização para essa alteração.",
+    "NOT_FOUND": "Não encontrei mais esse cadastro. Faça uma nova consulta.",
+    "STALE": "O cadastro mudou enquanto você preenchia. Abra a edição novamente para não sobrescrever outra alteração.",
+    "CAPACITY": "Os espaços preparados para esse membro ou servidor estão ocupados. A staff precisa ampliar a estrutura.",
+    "REUSED_REQUEST": "Essa confirmação já foi utilizada para outra operação. Abra o comando novamente.",
+    "INVALID": "Um dos dados não passou na validação. Confira os campos e tente novamente.",
+    "NOT_READY": "A integração do Arquivista ainda não foi ativada na planilha.",
+    "INTERNAL": "Não consegui confirmar a operação. A staff pode verificar o diagnóstico sem repetir o cadastro às cegas.",
+}
 
 class UserError(Exception):
     """Mensagem deliberadamente segura para o usuário; não contém segredos ou tracebacks."""
