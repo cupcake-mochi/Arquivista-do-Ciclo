@@ -23,7 +23,7 @@ O bot é um projeto pessoal e gratuito. Ele pode ficar fora do ar, mudar ou acab
 
 ## Seus dados
 
-O que o bot guarda e como apagar está na política de privacidade: https://github.com/cupcake-mochi/Arquivista-do-Ciclo/blob/main/docs/PRIVACIDADE.md
+O que o bot guarda e como apagar está na política de privacidade do Arquivista, com link no perfil do bot.
 
 ## Personagens
 
@@ -31,4 +31,4 @@ Amiya é personagem de Arknights, da Hypergryph. O Arquivista do Ciclo é um bot
 
 ## Mudanças e contato
 
-Quando estes termos mudarem, a data do começo muda junto. Para falar comigo, me chame no servidor da guilda ou abra uma issue em https://github.com/cupcake-mochi/Arquivista-do-Ciclo/issues.
+Quando estes termos mudarem, a data do começo muda junto. Para falar comigo, me chame no servidor da guilda.

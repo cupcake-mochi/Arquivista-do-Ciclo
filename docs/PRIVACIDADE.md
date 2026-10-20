@@ -2,7 +2,7 @@
 
 Atualizada em 20/10/2026.
 
-Eu sou o Mizuki e mantenho o Arquivista do Ciclo, o bot da Amiya. Aqui está o que ele faz com os dados de quem usa o arquivo de aparências. Qualquer pedido sobre isso, me chame no servidor da guilda ou abra uma issue em https://github.com/cupcake-mochi/Arquivista-do-Ciclo/issues.
+Eu sou o Mizuki e mantenho o Arquivista do Ciclo, o bot da Amiya. Aqui está o que ele faz com os dados de quem usa o arquivo de aparências. Qualquer pedido sobre isso, me chame no servidor da guilda.
 
 ## O que o bot lê
 
