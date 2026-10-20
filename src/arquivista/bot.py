@@ -16,6 +16,7 @@ from discord.ext import commands, tasks
 from . import backup
 from .archive import Archive
 from .config import Config, ROOT
+from .docs import DATA_LINKS, SETUP_LINK, SCRIPT_UPDATE
 from .domain import Actor, UserError, STAFF_ACTIONS, find_work, parse_prefix, ranked, public_record, search_text, work_groups, work_key
 from .importer import apply, check
 from .media import Images
@@ -40,7 +41,7 @@ HELP = """**Consultar o arquivo**
 `/editar` ou `AC:ed aparência` — mudar nome no servidor e imagem.
 
 Os nomes completos também valem (`AC:registrar`, `AC:galeria`...). `ac:` minúsculo funciona.
-Situação e justificativa ficam só nos painéis privados."""
+Situação e justificativa ficam só nos painéis privados.""" + "\n\n" + DATA_LINKS
 STAFF_HELP = """
 
 **Staff**
@@ -56,14 +57,14 @@ STAFF_HELP = """
 **Gerência do servidor**
 `/configurar` ou `AC:cfg` — cargos de staff, canais de histórico e imagens, planilha.
 `/restaurar` ou `AC:restaurar` com o .json do backup anexado — volta o arquivo para o backup, com confirmação.
-"""
+""" + "\n" + SETUP_LINK
 
 # Guia em páginas (AC:guia). As duas últimas só aparecem para a staff.
 GUIDE = (
     ("O que é o arquivo",
      "Aqui fica registrado quem usa cada **aparência**: o personagem (ou a pessoa) que você usa no servidor, junto com a **obra** de onde ele vem.\n\n"
      "Cada aparência + obra só pode ter um dono por vez. Antes de escolher a sua, confira se ela está livre; o cadastro faz a conferência final.\n\n"
-     "Use os botões abaixo para seguir o guia."),
+     "Use os botões abaixo para seguir o guia.\n\n" + DATA_LINKS),
     ("Consultar",
      "`AC:ap Takao` ou `/aparencias` — procura pelo nome (aproximado vale) e mostra o responsável.\n"
      "`AC:gal` — o mesmo, mas uma por página, com imagem.\n"
@@ -93,7 +94,7 @@ GUIDE = (
      "`/configurar` (dono, Administrador ou Gerenciar Servidor):\n"
      "• cargos de staff;\n• canal de histórico (avisos de cada mudança);\n• canal de imagens (guarda os anexos);\n"
      "• planilha conectada (cópia de tudo, e o que a staff mudar nela volta pro bot);\n• backup automático num canal fechado.\n\n"
-     "Para as mensagens saírem com a foto da Amiya, o bot precisa da permissão **Gerenciar Webhooks**."),
+     "Para as mensagens saírem com a foto da Amiya, o bot precisa da permissão **Gerenciar Webhooks**.\n\n" + SETUP_LINK),
 )
 STAFF_PAGES = 2
 
@@ -103,7 +104,7 @@ SHEET_ERRORS = {"AUTH": "a planilha recusou a chave ou a URL; conecte de novo no
     "BUSY": "a planilha demorou a responder; vou tentar de novo", "NOT_READY": "o script da planilha não foi instalado",
     "KEY": "a chave guardada não abre mais (o token do bot mudou?); conecte de novo no /configurar",
     "INVALID": "a planilha recusou o pedido; confira se o script está na versão nova",
-    "OLD_SCRIPT": "o script da planilha é antigo; cole o Planilha.gs novo e faça Nova versão na implantação",
+    "OLD_SCRIPT": SCRIPT_UPDATE,
     "OLD_BOT": "o script da planilha é mais novo que o bot; atualize o bot",
     "CHANGED": "a planilha mudou enquanto eu gravava; vou tentar de novo", "INTERNAL": "erro dentro do script da planilha"}
 

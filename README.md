@@ -2,7 +2,9 @@
 
 **Versão 0.3.0 (em desenvolvimento) · projeto independente dos Guias do Ciclo.**
 
-> **Pra dono de servidor:** o passo a passo de convidar, configurar e ligar a planilha está em [docs/GUIA-DONO.md](docs/GUIA-DONO.md). Os comandos estão em [docs/COMANDOS.md](docs/COMANDOS.md).
+> **Pra dono de servidor:** o passo a passo de convidar, configurar e ligar a planilha está no [guia público no Google Docs](https://docs.google.com/document/d/1xuehlkhU3EhMsSE4hjLIfQY9p-eEF6ynS5ikAmlqnhw/view). Quem usa o bot encontra os comandos e o passo a passo em `/ajuda` e `/guia`.
+>
+> [Política de privacidade](https://docs.google.com/document/d/1nMsutdyyrtb-YKCKziW3SmDY3ViKN31yO1OOW3zSRcw/view) · [Termos de uso](https://docs.google.com/document/d/1uZlohyKEn7eOlM1wP5TbSeDBm_PkpLc13YnGmPYpZx8/view) · [Código da planilha](https://drive.google.com/file/d/1-2UMIJg4TKzjXS5mFsy16221SVtZEncA/view)
 
 Bot de cadastro de aparências com comandos `AC:` e `/`, consultas públicas, formulários privados e integração com a Planilha Aparências. A imagem fornecida da Amiya está em `assets/amiya.png`, sem alteração. Não usa um modelo de IA nem a chave de outro provedor.
 
