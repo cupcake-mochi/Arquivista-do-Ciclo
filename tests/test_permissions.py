@@ -1,0 +1,122 @@
+"""Permissões de canal e de painéis com os objetos reais do discord.py, sem login."""
+import tempfile
+import unittest
+from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, MagicMock
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
+import discord
+from arquivista.bot import Arquivista
+from arquivista.config import Config
+from arquivista.views import GuardedView, backup_problem
+
+
+class BackupAccessTests(unittest.TestCase):
+    def setUp(self):
+        self.everyone = MagicMock(spec=discord.Role)
+        self.everyone.id = 1
+        self.everyone.managed = False
+        self.guild = SimpleNamespace(default_role=self.everyone, roles=[self.everyone],
+                                     owner_id=10, me=SimpleNamespace(id=20))
+        self.channel = MagicMock(spec=discord.TextChannel)
+        self.channel.guild = self.guild
+        self.channel.mention = '#backup'
+        self.channel.overwrites = {}
+        self.channel.permissions_for.side_effect = lambda target: discord.Permissions.all() if target is self.guild.me else discord.Permissions.none()
+
+    def member(self, uid=30, **permissions):
+        member = MagicMock(spec=discord.Member)
+        member.id, member.roles = uid, []
+        member.guild_permissions = discord.Permissions(**permissions)
+        self.channel.overwrites[member] = discord.PermissionOverwrite(view_channel=True)
+        return member
+
+    def test_private_channel_allows_bot_and_owner(self):
+        self.member(10)
+        self.member(20)
+        self.assertIsNone(backup_problem(self.channel))
+
+    def test_public_channel_refused(self):
+        self.channel.permissions_for.return_value = discord.Permissions.all()
+        self.channel.permissions_for.side_effect = None
+        self.assertIn('todo mundo', backup_problem(self.channel))
+
+    def test_nonstaff_role_refused(self):
+        role = MagicMock(spec=discord.Role)
+        role.id, role.managed, role.mention = 40, False, '@Membro'
+        role.permissions = discord.Permissions.none()
+        self.guild.roles.append(role)
+        self.channel.permissions_for.side_effect = lambda target: discord.Permissions.all() if target is self.guild.me or target is role else discord.Permissions.none()
+        self.assertIn('@Membro', backup_problem(self.channel))
+        self.assertIsNone(backup_problem(self.channel, [40]))
+
+    def test_individual_member_allow_refused(self):
+        self.member()
+        self.assertIn('acesso individual', backup_problem(self.channel))
+
+    def test_uncached_individual_allow_refused(self):
+        self.channel.overwrites[discord.Object(id=30, type=discord.User)] = discord.PermissionOverwrite(view_channel=True)
+        self.assertIn('acesso individual', backup_problem(self.channel))
+
+    def test_individual_deny_does_not_grant_access(self):
+        member = self.member()
+        self.channel.overwrites[member] = discord.PermissionOverwrite(view_channel=False)
+        self.assertIsNone(backup_problem(self.channel))
+
+    def test_managers_and_configured_staff_allowed(self):
+        for permission in ('administrator', 'manage_guild'):
+            with self.subTest(permission=permission):
+                self.channel.overwrites = {}
+                self.member(**{permission: True})
+                self.assertIsNone(backup_problem(self.channel))
+        member = self.member(31)
+        member.roles = [SimpleNamespace(id=40)]
+        self.assertIsNone(backup_problem(self.channel, ['40']))
+        self.assertIsNotNone(backup_problem(self.channel, []))
+
+
+class PanelAccessTests(unittest.IsolatedAsyncioTestCase):
+    async def test_other_user_and_lost_staff_cannot_use_panel(self):
+        with tempfile.TemporaryDirectory() as directory:
+            bot = Arquivista(Config('FAKE', Path(directory) / 'test.sqlite'))
+            try:
+                guild = SimpleNamespace(id=123, owner_id=10)
+                member = SimpleNamespace(id=30, guild=guild, guild_permissions=discord.Permissions.none(), roles=[])
+                i = SimpleNamespace(user=member, guild_id=123, response=SimpleNamespace(
+                    is_done=lambda: False, send_message=AsyncMock()), original_response=AsyncMock())
+                view = GuardedView(bot, 99)
+                self.assertFalse(await view.interaction_check(i))
+                self.assertTrue(i.response.send_message.call_args.kwargs['ephemeral'])
+                view.author_id, view.requires_staff = 30, True
+                bot.store.set_guild(123, staff_roles=['40'])
+                member.roles = [SimpleNamespace(id=40)]
+                self.assertTrue(await view.interaction_check(i))
+                member.roles = []
+                self.assertFalse(await view.interaction_check(i))
+                self.assertFalse(bot.can_configure(member))
+                member.roles = [SimpleNamespace(id=40)]
+                self.assertTrue(bot.is_staff_member(member))
+                self.assertFalse(bot.can_configure(member))
+            finally:
+                await bot.close()
+
+    async def test_actor_refetches_permission_before_mutation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            bot = Arquivista(Config('FAKE', Path(directory) / 'test.sqlite'))
+            try:
+                guild = SimpleNamespace(id=123, owner_id=10)
+                member = SimpleNamespace(id=30, display_name='Teste', guild=guild,
+                    guild_permissions=discord.Permissions.none(), roles=[])
+                guild.fetch_member = AsyncMock(return_value=member)
+                bot.get_guild = lambda _: guild
+                bot.store.set_guild(123, staff_roles=['40'])
+                self.assertFalse((await bot.actor(30, 123)).staff)
+                member.roles = [SimpleNamespace(id=40)]
+                self.assertTrue((await bot.actor(30, 123)).staff)
+                member.roles = []
+                self.assertFalse((await bot.actor(30, 123)).staff)
+                self.assertEqual(guild.fetch_member.await_count, 3)
+            finally:
+                await bot.close()

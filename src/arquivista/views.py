@@ -444,8 +444,7 @@ def channel_problem(channel, *, images=False) -> str | None:
     return None
 
 def backup_problem(channel, staff_roles=()) -> str | None:
-    """O backup leva justificativas e nomes internos: só a staff pode ver o canal. Vale @everyone e
-    também qualquer outro cargo (o comum é fechar @everyone e abrir para um cargo "Membro")."""
+    """Recusa acesso público, de cargos comuns ou de membros autorizados individualmente."""
     if channel is None:
         return "O canal de backup não existe mais. Escolha outro no /configurar."
     problem = channel_problem(channel, images=True)
@@ -461,6 +460,20 @@ def backup_problem(channel, staff_roles=()) -> str | None:
         names = ", ".join(r.mention for r in open_to[:5]) + (" e outros" if len(open_to) > 5 else "")
         return (f"{channel.mention} pode ser visto por {names}, que não são da staff. O backup tem dados internos: "
                 "feche o canal para esses cargos ou marque-os como staff no /configurar.")
+    # Um allow individual de Ver canal vence o deny de @everyone. Não basta conferir cargos.
+    # Objetos sem membro no cache são recusados quando permitem ver o canal: não presumir staff.
+    permissions_channel = channel.parent if isinstance(channel, discord.Thread) else channel
+    for target, overwrite in permissions_channel.overwrites.items():
+        if isinstance(target, discord.Role) or getattr(target, "type", None) is discord.Role:
+            continue
+        if overwrite.view_channel is not True or target.id in (guild.owner_id, guild.me.id):
+            continue
+        perms = getattr(target, "guild_permissions", None)
+        authorized = perms and (perms.administrator or perms.manage_guild)
+        authorized = authorized or any(str(r.id) in staff for r in getattr(target, "roles", ()))
+        if not authorized:
+            return (f"{channel.mention} permite acesso individual a <@{target.id}>, sem autorização de staff. "
+                    "Retire esse acesso antes de usar o canal para backups.")
     return None
 
 class BackupPanel(GuardedView):
