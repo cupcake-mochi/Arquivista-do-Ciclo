@@ -192,6 +192,12 @@ class Picker(GuardedView):
         await i.response.edit_message(view=self)
 
 class RecordModal(discord.ui.Modal):
+    def hint(self, key: str) -> str | None:
+        if key == "server_name":
+            return "Opcional: o nome do seu personagem aqui no servidor"
+        if key == "image_url" and self.mode != "create":
+            return "Digite - para remover a imagem"
+        return None
     def __init__(self, bot, user_id, mode, *, staff=False, record=None, owner=None, attachment=None, uploads=False):
         super().__init__(title="Amiya · Cadastro de aparência", timeout=600)
         self.bot, self.author_id, self.mode, self.record, self.owner, self.attachment = bot, user_id, mode, record or {}, owner, attachment
@@ -200,7 +206,7 @@ class RecordModal(discord.ui.Modal):
         definitions += [("server_name","Nome no servidor (como se chama aqui)",100,False),("image_url","Link HTTPS da imagem (opcional)",1500,False)]
         for key,label,limit,required in definitions:
             item = discord.ui.TextInput(label=label, max_length=limit, required=required,
-                default=str(self.record.get(key) or ""), placeholder="Digite - para remover a imagem" if key=="image_url" else None)
+                default=str(self.record.get(key) or ""), placeholder=self.hint(key))
             self.fields[key] = item
             self.add_item(item)
         # Anexo dentro do formulário: só com canal de imagens, que guarda o arquivo (link de anexo expira).
