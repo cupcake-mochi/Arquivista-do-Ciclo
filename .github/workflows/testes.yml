@@ -18,3 +18,5 @@ jobs:
       - run: node tests/test_bridge.js
       - run: node --check < apps_script/Arquivista.gs
       - run: node --check < apps_script/Aparencias.gs
+      - run: node tests/test_planilha.js
+      - run: node --check < apps_script/Planilha.gs

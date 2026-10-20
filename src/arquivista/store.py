@@ -32,7 +32,19 @@ SCHEMA = '''
   CREATE TABLE IF NOT EXISTS notices(event_id TEXT PRIMARY KEY,guild_id TEXT NOT NULL,seq INTEGER NOT NULL,
     data TEXT NOT NULL,sent INTEGER NOT NULL DEFAULT 0,tries INTEGER NOT NULL DEFAULT 0,
     next_try REAL NOT NULL DEFAULT 0,message_id TEXT,channel_id TEXT);
+  -- Fila bot→planilha: uma linha por cadastro, sempre com a última versão (a mais nova substitui).
+  CREATE TABLE IF NOT EXISTS sheet_outbox(guild_id TEXT NOT NULL,record_id TEXT NOT NULL,revision INTEGER NOT NULL,
+    payload TEXT NOT NULL,tries INTEGER NOT NULL DEFAULT 0,next_try REAL NOT NULL DEFAULT 0,error TEXT,
+    PRIMARY KEY(guild_id,record_id));
 '''
+# Colunas acrescentadas depois da primeira versão do banco; ALTER TABLE preserva o que já existe.
+COLUMNS = {"guilds": (("sheet_url", "TEXT"), ("sheet_key", "TEXT"), ("sheet_error", "TEXT"), ("sheet_ok", "TEXT"))}
+
+SHEET_FIELDS = ("id", "owner_id", "appearance", "work", "server_name", "status", "justification", "image_url", "date", "revision")
+
+def sheet_upsert(record: dict) -> dict:
+    """Pedido da planilha para um cadastro. media_ref fica no banco; a planilha só precisa do link."""
+    return {"op": "upsert", "record": {k: record[k] for k in SHEET_FIELDS}}
 
 class Store:
     def __init__(self, path: Path):
@@ -40,6 +52,11 @@ class Store:
         self.db = sqlite3.connect(path)
         self.db.row_factory = sqlite3.Row
         self.db.executescript(SCHEMA)
+        for table, columns in COLUMNS.items():
+            have = {r[1] for r in self.db.execute(f"PRAGMA table_info({table})")}
+            for name, kind in columns:
+                if name not in have:
+                    self.db.execute(f"ALTER TABLE {table} ADD COLUMN {name} {kind}")
         self.db.commit()
     # ---- valores globais do processo (ex.: hash do avatar)
     def get(self, key: str, default=None):
@@ -53,12 +70,13 @@ class Store:
     def guild(self, guild_id: int | str) -> dict:
         row = self.db.execute("SELECT * FROM guilds WHERE guild_id=?", (str(guild_id),)).fetchone()
         if not row:
-            return {"guild_id": str(guild_id), "staff_roles": [], "log_channel": None, "image_channel": None}
+            return {"guild_id": str(guild_id), "staff_roles": [], "log_channel": None, "image_channel": None,
+                    "sheet_url": None, "sheet_key": None, "sheet_error": None, "sheet_ok": None}
         data = dict(row)
         data["staff_roles"] = [str(x) for x in json.loads(data["staff_roles"])]
         return data
     def set_guild(self, guild_id: int | str, **fields) -> None:
-        allowed = {"staff_roles", "log_channel", "image_channel"}
+        allowed = {"staff_roles", "log_channel", "image_channel", "sheet_url", "sheet_key", "sheet_error", "sheet_ok"}
         if not fields or set(fields) - allowed:
             raise ValueError("campo de servidor desconhecido")
         if "staff_roles" in fields:
@@ -91,6 +109,50 @@ class Store:
         delay = min(3600, 15 * 2 ** min(tries, 8))
         with self.db:
             self.db.execute("UPDATE notices SET next_try=? WHERE event_id=?", (time.time()+delay, event_id))
+    # ---- fila bot→planilha
+    def queue_sheet(self, guild_id: str, record_id: str, revision: int, op: dict) -> None:
+        """Sem commit: roda dentro da transação da gravação do cadastro."""
+        self.db.execute("INSERT OR REPLACE INTO sheet_outbox(guild_id,record_id,revision,payload) VALUES(?,?,?,?)",
+                        (str(guild_id), record_id, revision, json.dumps(op, ensure_ascii=False)))
+    def queue_full_sync(self, guild_id: str) -> int:
+        """Planilha recém-conectada: manda todos os cadastros do servidor."""
+        rows = self.db.execute("SELECT * FROM appearances WHERE guild_id=? ORDER BY created", (str(guild_id),)).fetchall()
+        with self.db:
+            for r in rows:
+                self.queue_sheet(guild_id, r["id"], r["revision"], sheet_upsert(dict(r)))
+        return len(rows)
+    def sheet_due(self) -> list[str]:
+        rows = self.db.execute("SELECT DISTINCT o.guild_id FROM sheet_outbox o JOIN guilds g ON g.guild_id=o.guild_id "
+                               "WHERE o.next_try<=? AND g.sheet_url IS NOT NULL", (time.time(),)).fetchall()
+        return [r[0] for r in rows]
+    def sheet_batch(self, guild_id: str, limit: int = 50) -> list[dict]:
+        # rowid crescente = ordem das mudanças (INSERT OR REPLACE dá rowid novo à versão mais recente).
+        rows = self.db.execute("SELECT * FROM sheet_outbox WHERE guild_id=? AND next_try<=? ORDER BY rowid LIMIT ?",
+                               (str(guild_id), time.time(), limit)).fetchall()
+        return [dict(r) for r in rows]
+    def sheet_done(self, guild_id: str, record_id: str, revision: int) -> None:
+        # Só apaga se nada mais novo entrou na fila enquanto o envio estava em andamento.
+        with self.db:
+            self.db.execute("DELETE FROM sheet_outbox WHERE guild_id=? AND record_id=? AND revision=?",
+                            (str(guild_id), record_id, revision))
+    def sheet_retry(self, guild_id: str, record_ids: list[str], error: str | None = None, long: bool = False) -> None:
+        with self.db:
+            for rid in record_ids:
+                row = self.db.execute("SELECT tries FROM sheet_outbox WHERE guild_id=? AND record_id=?", (str(guild_id), rid)).fetchone()
+                if not row:
+                    continue
+                delay = 6 * 3600 if long else min(3600, 30 * 2 ** min(row[0], 7))
+                self.db.execute("UPDATE sheet_outbox SET tries=tries+1,next_try=?,error=? WHERE guild_id=? AND record_id=?",
+                                (time.time() + delay, error, str(guild_id), rid))
+    def sheet_pending(self, guild_id: str) -> tuple[int, int]:
+        """(na fila, com erro de dado que não vai resolver sozinho)."""
+        total = self.db.execute("SELECT COUNT(*) FROM sheet_outbox WHERE guild_id=?", (str(guild_id),)).fetchone()[0]
+        bad = self.db.execute("SELECT COUNT(*) FROM sheet_outbox WHERE guild_id=? AND error='invalid'", (str(guild_id),)).fetchone()[0]
+        return total, bad
+    def drop_sheet(self, guild_id: str) -> None:
+        with self.db:
+            self.db.execute("DELETE FROM sheet_outbox WHERE guild_id=?", (str(guild_id),))
+            self.db.execute("UPDATE guilds SET sheet_url=NULL,sheet_key=NULL,sheet_error=NULL,sheet_ok=NULL WHERE guild_id=?", (str(guild_id),))
     # ---- mensagens da própria Amiya (respostas a ela recebem a saudação)
     def remember(self, message_id: int) -> None:
         with self.db:

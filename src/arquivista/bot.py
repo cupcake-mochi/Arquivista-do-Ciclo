@@ -15,6 +15,7 @@ from .archive import Archive
 from .config import Config, ROOT
 from .domain import Actor, UserError, STAFF_ACTIONS, parse_prefix, ranked, public_record
 from .media import Images
+from .sheet import SheetSync
 from .store import Store
 from .transport import Carteiro, MENTIONS
 from .views import Gate, FormLauncher, Picker, Paginator, Settings, private_reply, card, clean, channel_problem
@@ -51,6 +52,11 @@ STAFF_HELP = """
 `AC:configurar` — cargos de staff e canais de histórico e imagens.
 """
 
+SHEET_ERRORS = {"AUTH": "a planilha recusou a chave ou a URL; conecte de novo no /configurar",
+    "BUSY": "a planilha demorou a responder; vou tentar de novo", "NOT_READY": "o script da planilha não foi instalado",
+    "KEY": "a chave guardada não abre mais (o token do bot mudou?); conecte de novo no /configurar",
+    "INVALID": "a planilha recusou o pedido; confira se o script está na versão nova", "INTERNAL": "erro dentro do script da planilha"}
+
 class Arquivista(commands.Bot):
     def __init__(self, config: Config):
         intents = discord.Intents.default()
@@ -64,6 +70,8 @@ class Arquivista(commands.Bot):
         self.images = Images(self)
         self.session: aiohttp.ClientSession | None = None
         self.notice_lock = asyncio.Lock()
+        self.sheets = SheetSync(self)
+        self.sheet_lock = asyncio.Lock()
         self.last_use: dict[int, float] = {}
         self.last_mention: dict[int, float] = {}
         self.last_sync: str | None = None
@@ -235,6 +243,13 @@ class Arquivista(commands.Bot):
                       f"**Canal de histórico:** {channel(cfg['log_channel'])}\n**Canal de imagens:** {channel(cfg['image_channel'])}\n"
                       f"**Cargos de staff:** {', '.join(f'<@&{r}>' for r in cfg['staff_roles']) or 'só dono e quem gerencia o servidor'}\n"
                       f"**Último envio de avisos:** {self.last_sync or 'ainda não realizado'}\n**Situação operacional:** {self.sync_problem or 'sem erro registrado nesta sessão'}")
+                if cfg.get("sheet_url"):
+                    queued,bad=self.store.sheet_pending(i.guild_id)
+                    body+=(f"\n**Planilha:** conectada · {queued} mudança(s) esperando envio"+(f", {bad} recusada(s) pela planilha" if bad else "")+
+                           f"\n**Último envio para a planilha:** {cfg.get('sheet_ok') or 'ainda não realizado'}"+
+                           (f"\n**Último erro da planilha:** {SHEET_ERRORS.get(cfg['sheet_error'],cfg['sheet_error'])}" if cfg.get("sheet_error") else ""))
+                else:
+                    body+="\n**Planilha:** não conectada"
                 await private_reply(i,embed=self.carteiro.decorate(card("Diagnóstico privado",body)))
             elif action in ("registrar_historico","registrar_imagens"):
                 channel=i.channel
@@ -261,11 +276,21 @@ class Arquivista(commands.Bot):
     async def worker(self):
         # Rede de segurança: cada gravação já pede o envio na hora; aqui saem as retentativas.
         await self.deliver_events()
+        await self.sync_sheets()
     @worker.before_loop
     async def before_worker(self):
         await self.wait_until_ready()
     def notify_soon(self):
-        asyncio.get_running_loop().create_task(self.deliver_events())
+        loop=asyncio.get_running_loop()
+        loop.create_task(self.deliver_events())
+        loop.create_task(self.sync_sheets())
+    def now_text(self)->str:
+        return datetime.now().astimezone().isoformat(timespec="seconds")
+    async def sync_sheets(self):
+        if self.sheet_lock.locked():
+            return  # o envio em andamento pega o que entrou na fila
+        async with self.sheet_lock:
+            await self.sheets.run()
     async def deliver_events(self):
         if self.notice_lock.locked():
             return  # já tem um envio rodando; ele pega os avisos novos

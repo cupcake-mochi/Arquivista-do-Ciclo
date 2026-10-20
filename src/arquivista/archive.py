@@ -15,7 +15,7 @@ from datetime import datetime, timezone
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from .domain import Actor, BridgeError, ERRORS, STATUSES, exact_key, normalized, public_record
-from .store import Store
+from .store import Store, sheet_upsert
 
 FIELDS = ("id", "owner_id", "appearance", "work", "server_name", "status", "justification",
           "image_url", "media_ref", "date", "revision")
@@ -83,8 +83,13 @@ class Archive:
             if not actor.staff: fail("FORBIDDEN")
             r = self.record(str(d.get("id", "")))
             if not r["media_ref"] or r["media_ref"] != d.get("media_ref"): fail("STALE")
+            fresh = url(d.get("url"))
             with self.db:
-                self.db.execute("UPDATE appearances SET image_url=? WHERE guild_id=? AND id=?", (url(d.get("url")), self.guild, r["id"]))
+                self.db.execute("UPDATE appearances SET image_url=? WHERE guild_id=? AND id=?", (fresh, self.guild, r["id"]))
+                if self.connected():
+                    # Mesma revisão: a planilha troca só o link, sem contar como alteração.
+                    self.store.queue_sheet(self.guild, r["id"], r["revision"],
+                                           {"op": "image", "id": r["id"], "revision": r["revision"], "image_url": fresh})
             return {}
         if action == "history":
             if not actor.staff: fail("FORBIDDEN")
@@ -207,6 +212,7 @@ class Archive:
                 if changed:
                     self.write(before, after, now)
                     self.log(action, rid, actor, before, after, "discord")
+                    self.sheet(before, after)
                 self.db.execute("INSERT INTO requests VALUES(?,?,?,?,?)",
                                 (self.guild, rid, digest, json.dumps(result, ensure_ascii=False), now))
         except sqlite3.IntegrityError:
@@ -230,6 +236,18 @@ class Archive:
                             (after["owner_id"], after["appearance"], after["work"], key, after["server_name"], after["status"],
                              after["justification"], after["image_url"], after["media_ref"], after["revision"], now,
                              self.guild, after["id"]))
+    def connected(self) -> bool:
+        return bool(self.store.guild(self.guild).get("sheet_url"))
+    def sheet(self, before, after) -> None:
+        """Fila para a planilha conectada, no mesmo commit da gravação."""
+        if not self.connected():
+            return
+        if after:
+            self.store.queue_sheet(self.guild, after["id"], after["revision"], sheet_upsert(after))
+        else:
+            # Remoção não tem revisão própria no banco; a seguinte à última serve de ordem.
+            rev = before["revision"] + 1
+            self.store.queue_sheet(self.guild, before["id"], rev, {"op": "clear", "id": before["id"], "revision": rev})
     def log(self, kind, rid, actor, before, after, source) -> None:
         """Auditoria e aviso no canal de histórico no mesmo commit da gravação."""
         event_id = "EV-" + str(uuid.uuid4())

@@ -1,6 +1,20 @@
 # Instalação — Arquivista do Ciclo
 
-> **v0.3 (multi-servidor, sem planilha ainda):** pule as seções 2, 3 e 4. Rode `python configurar.py` (token e, opcional, servidor de testes), `python verificar.py` e `python iniciar.py`. No Discord, a gerência de cada servidor usa `/configurar` pra escolher cargos de staff e os canais de histórico e imagens. Pra trazer os cadastros da planilha, rode `exportarParaArquivista` no Apps Script (gera um .json no seu Drive), baixe o arquivo e rode `python importar.py arquivo.json --servidor ID` com o bot desligado; sem `--aplicar` ele só confere. O restante deste guia descreve a ponte da v0.2, que volta na etapa 3 do plano.
+> **v0.3 (multi-servidor, sem planilha ainda):** pule as seções 2, 3 e 4. Rode `python configurar.py` (token e, opcional, servidor de testes), `python verificar.py` e `python iniciar.py`. No Discord, a gerência de cada servidor usa `/configurar` pra escolher cargos de staff e os canais de histórico e imagens. Pra trazer os cadastros da planilha, rode `exportarParaArquivista` no Apps Script (gera um .json no seu Drive), baixe o arquivo e rode `python importar.py arquivo.json --servidor ID` com o bot desligado; sem `--aplicar` ele só confere. Pra ligar uma planilha, veja a seção **Planilha conectada** logo abaixo. O restante deste guia descreve a ponte da v0.2 e não é usado na v0.3.
+
+## Planilha conectada (v0.3, opcional)
+
+A planilha recebe uma cópia de tudo que é cadastrado pelo bot. Por enquanto o caminho é só bot → planilha: o que for editado direto nela não volta pro bot.
+
+1. Crie uma planilha **nova e vazia** no Google Sheets.
+2. Extensões → Apps Script. Apague o conteúdo de `Código.gs` e cole o de `apps_script/Planilha.gs`.
+3. No editor, em Serviços (+), adicione **Google Sheets API**.
+4. Salve, volte pra planilha e recarregue a página. No menu **Arquivista → Instalar ou reinstalar**, informe o ID do servidor do Discord e autorize.
+5. No Apps Script: Implantar → Nova implantação → Tipo **App da Web**, executar como **você**, acesso **Qualquer pessoa**. Copie o link que termina em `/exec`.
+6. Na planilha, **Arquivista → Mostrar a chave da conexão** e copie a chave.
+7. No Discord, `/configurar` → **Conectar planilha**, cole o link e a chave. O bot testa a conexão antes de salvar e manda todos os cadastros do servidor.
+
+A chave fica cifrada no banco do bot. Sem `AC_MASTER_KEY`, a cifra depende do token: se o token mudar, conecte a planilha de novo. Quem tiver a chave consegue escrever na planilha; se ela vazar, use **Trocar a chave da conexão** e reconecte.
 
 ## Antes de começar
 

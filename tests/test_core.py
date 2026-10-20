@@ -272,6 +272,105 @@ class ImportTests(unittest.TestCase):
         records,errors,warnings=check(self.export({'justification':'x'*3000,'image_url':'http://a.com/b.png'}))
         self.assertEqual(errors,[]);self.assertEqual(len(warnings),2);self.assertEqual(records[0]['image_url'],'')
 
+class SheetTests(unittest.TestCase):
+    """Etapa 3: fila bot→planilha, chave cifrada e envio com uma ponte falsa."""
+    def setUp(self):
+        self.tmp=tempfile.TemporaryDirectory();self.s=Store(Path(self.tmp.name)/'data.sqlite')
+        self.a=Archive(self.s,G1);self.user=Actor(U1,'User');self.staff=Actor(STAFF,'Staff',True)
+    def tearDown(self):
+        self.s.close();self.tmp.cleanup()
+    def call(self,action,actor,data=None):
+        return asyncio.run(self.a.call(action,actor,data or {}))
+    def queue(self):
+        return {r['record_id']:(r['revision'],json.loads(r['payload'])) for r in self.s.sheet_batch(G1,100)}
+    def connect(self):
+        self.s.set_guild(G1,sheet_url='https://script.google.com/macros/s/'+'a'*30+'/exec',sheet_key='x')
+    def test_seal_roundtrip_and_tamper(self):
+        from arquivista.sheet import seal,unseal
+        k=hashlib.sha256(b'k').digest();box=seal(k,'f'*64)
+        self.assertEqual(unseal(k,box),'f'*64);self.assertNotIn('f'*16,box)
+        with self.assertRaises(ValueError):unseal(hashlib.sha256(b'outra').digest(),box)
+        v,n,b,t=box.split('.');bad='.'.join((v,n,b[:-2]+('A' if b[-2]!='A' else 'B')+b[-1],t))
+        with self.assertRaises(ValueError):unseal(k,bad)
+    def test_master_key_from_env_or_token(self):
+        from arquivista.config import master_key
+        old=os.environ.pop('AC_MASTER_KEY',None)
+        try:
+            self.assertEqual(master_key('tok'),master_key('tok'));self.assertNotEqual(master_key('tok'),master_key('outro'))
+            os.environ['AC_MASTER_KEY']='m'*40;self.assertEqual(master_key('a'),master_key('b'))  # com a chave explícita, trocar o token não muda nada
+            os.environ['AC_MASTER_KEY']='curta'
+            with self.assertRaises(ValueError):master_key('tok')
+        finally:
+            os.environ.pop('AC_MASTER_KEY',None)
+            if old is not None:os.environ['AC_MASTER_KEY']=old
+    def test_nothing_queued_without_sheet(self):
+        self.call('create',self.user,{'fields':{'appearance':'Takao','work':'Azur Lane'}})
+        self.assertEqual(self.queue(),{})
+    def test_changes_queue_latest_version_only(self):
+        self.connect()
+        r=self.call('create',self.user,{'fields':{'appearance':'Takao','work':'Azur Lane'}})['record']
+        self.assertEqual(self.queue()[r['id']][0],1)
+        r=self.call('change_status',self.staff,{'id':r['id'],'revision':1,'status':'Em uso','justification':'ok'})['record']
+        q=self.queue();self.assertEqual(len(q),1);rev,op=q[r['id']]
+        self.assertEqual(rev,2);self.assertEqual(op['op'],'upsert');self.assertEqual(op['record']['status'],'Em uso')
+        self.assertNotIn('media_ref',op['record'])
+        self.call('remove',self.staff,{'id':r['id'],'revision':2})
+        self.assertEqual(self.queue()[r['id']],(3,{'op':'clear','id':r['id'],'revision':3}))
+    def test_done_keeps_newer_version(self):
+        self.connect()
+        r=self.call('create',self.user,{'fields':{'appearance':'Takao','work':'Azur Lane'}})['record']
+        self.call('change_status',self.staff,{'id':r['id'],'revision':1,'status':'Em uso'})
+        self.s.sheet_done(G1,r['id'],1)  # resposta atrasada da versão 1 não apaga a 2
+        self.assertEqual(self.queue()[r['id']][0],2)
+        self.s.sheet_done(G1,r['id'],2);self.assertEqual(self.queue(),{})
+    def test_full_sync_and_disconnect(self):
+        for name in ('Takao','Atago'):self.call('create',self.user,{'fields':{'appearance':name,'work':'Azur Lane'}})
+        self.connect();self.assertEqual(self.s.queue_full_sync(G1),2);self.assertEqual(len(self.queue()),2)
+        self.s.drop_sheet(G1);self.assertEqual(self.queue(),{});self.assertIsNone(self.s.guild(G1)['sheet_url'])
+    def test_old_database_gets_new_columns(self):
+        path=Path(self.tmp.name)/'velho.sqlite';import sqlite3
+        db=sqlite3.connect(path);db.execute("CREATE TABLE guilds(guild_id TEXT PRIMARY KEY,staff_roles TEXT NOT NULL DEFAULT '[]',log_channel TEXT,image_channel TEXT,created REAL NOT NULL,updated REAL NOT NULL)")
+        db.execute("INSERT INTO guilds VALUES(?,?,?,?,1,1)",(G1,'[]','123',None));db.commit();db.close()
+        s=Store(path);g=s.guild(G1);s.close()
+        self.assertEqual(g['log_channel'],'123');self.assertIsNone(g['sheet_url'])
+    def test_sync_sends_and_handles_results(self):
+        from arquivista.sheet import SheetSync,seal
+        from arquivista.config import Config
+        self.s.set_guild(G1,sheet_url='https://script.google.com/macros/s/'+'a'*30+'/exec',sheet_key=seal(b'k'*32,'f'*64))
+        ids=[self.call('create',self.user,{'fields':{'appearance':n,'work':'Azur Lane'}})['record']['id'] for n in ('Takao','Atago','Kaga')]
+        sent=[]
+        class Member:display_name='Mizuki'
+        class Guild:
+            def get_member(self,_):return Member()
+        class Bot:
+            store=self.s;config=Config('T',Path('x'),master_key=b'k'*32);session=None
+            class user:id=999999999999999999
+            def get_guild(self,_):return Guild()
+            def now_text(self):return 'agora'
+        sync=SheetSync(Bot())
+        class FakeBridge:
+            def __init__(self,answer):self.answer=answer
+            async def call(self,action,actor,data):
+                sent.append((action,data))
+                if isinstance(self.answer,Exception):raise self.answer
+                return self.answer
+        sync.bridge=lambda gid,cfg=None:FakeBridge(BridgeError('BUSY','ocupado'))
+        asyncio.run(sync.run())
+        self.assertEqual(self.s.sheet_pending(G1),(3,0));self.assertEqual(self.s.guild(G1)['sheet_error'],'BUSY')
+        self.assertEqual(self.s.sheet_due(),[])  # em espera depois da falha
+        self.s.db.execute("UPDATE sheet_outbox SET next_try=0");self.s.db.commit()
+        sync.bridge=lambda gid,cfg=None:FakeBridge({'results':[{'id':ids[0],'status':'ok'},{'id':ids[1],'status':'stale'},{'id':ids[2],'status':'invalid'}]})
+        asyncio.run(sync.run())
+        action,data=sent[-1];self.assertEqual(action,'apply');self.assertEqual([o['record']['owner_name'] for o in data['ops']],['Mizuki']*3)
+        self.assertEqual(list(self.queue()),[]);self.assertEqual(self.s.sheet_pending(G1),(1,1))
+        g=self.s.guild(G1);self.assertIsNone(g['sheet_error']);self.assertEqual(g['sheet_ok'],'agora')
+    def test_refresh_image_keeps_revision(self):
+        self.connect()
+        r=self.call('create',self.user,{'fields':{'appearance':'Takao','work':'Azur Lane','media_ref':f'discord://{G1}/1{"0"*17}/1{"0"*17}/1{"0"*17}','image_url':'https://cdn.discordapp.com/a.png'}})['record']
+        self.s.sheet_done(G1,r['id'],1)
+        self.call('refresh_image',self.staff,{'id':r['id'],'media_ref':r['media_ref'],'url':'https://cdn.discordapp.com/b.png'})
+        self.assertEqual(self.queue()[r['id']],(1,{'op':'image','id':r['id'],'revision':1,'image_url':'https://cdn.discordapp.com/b.png'}))
+
 class FilesTests(unittest.TestCase):
     def test_python_syntax(self):
         for p in ROOT.rglob('*.py'):

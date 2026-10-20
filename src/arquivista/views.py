@@ -327,6 +327,43 @@ def channel_problem(channel, *, images=False) -> str | None:
         return "Faltam permissões de ver/enviar, incorporar links, ler histórico ou anexar arquivos em " + channel.mention + "."
     return None
 
+class SheetModal(discord.ui.Modal):
+    """Conectar a planilha: URL /exec da ponte e a chave mostrada na instalação do script."""
+    def __init__(self, bot, user_id, guild):
+        super().__init__(title="Amiya · Conectar planilha", timeout=600)
+        self.bot, self.author_id, self.guild = bot, user_id, guild
+        self.url = discord.ui.TextInput(label="URL do App da Web (termina em /exec)", max_length=300,
+            placeholder="https://script.google.com/macros/s/.../exec")
+        self.key = discord.ui.TextInput(label="Chave da conexão", max_length=128, min_length=32)
+        self.add_item(self.url)
+        self.add_item(self.key)
+    async def on_submit(self, i: discord.Interaction):
+        from .sheet import SHEET_KEY, SHEET_URL, seal
+        if i.user.id != self.author_id or not self.bot.can_configure(i.user):
+            return await private_reply(i, content="Só quem pode gerenciar o servidor conecta a planilha.")
+        url, key = str(self.url.value).strip(), str(self.key.value).strip().lower()
+        if not SHEET_URL.match(url):
+            return await private_reply(i, content="A URL precisa ser a do App da Web, no formato https://script.google.com/macros/s/.../exec.")
+        if not SHEET_KEY.match(key):
+            return await private_reply(i, content="A chave não confere. Copie de novo pelo menu Arquivista > Mostrar a chave da conexão.")
+        await i.response.defer(ephemeral=True, thinking=True)
+        cfg = {"sheet_url": url, "sheet_key": seal(self.bot.config.master_key, key)}
+        try:
+            # Testa antes de salvar: com URL ou chave erradas nada muda na configuração atual.
+            data = await self.bot.sheets.bridge(str(self.guild.id), cfg).call("status", self.bot.sheets.actor(), {})
+        except BridgeError as exc:
+            return await private_reply(i, content="Não consegui falar com a planilha: " + str(exc))
+        self.bot.store.set_guild(self.guild.id, **cfg, sheet_error=None)
+        count = self.bot.store.queue_full_sync(str(self.guild.id))
+        self.bot.notify_soon()
+        found = f" A planilha já tinha {data.get('records', 0)} cadastro(s); os que vierem do bot ficam no lugar certo pelo ID." if data.get("records") else ""
+        await private_reply(i, embed=self.bot.carteiro.decorate(card("Planilha conectada",
+            f"Vou mandar os {count} cadastro(s) deste servidor agora e, daqui pra frente, cada mudança.{found}\n\n"
+            "Por enquanto a planilha só recebe: o que for editado direto nela não volta para o bot.")))
+    async def on_error(self, i, error):
+        log.warning("Conexão da planilha: %s", type(error).__name__)
+        await private_reply(i, content="Não consegui concluir a conexão. Nada foi alterado.")
+
 class Settings(GuardedView):
     """Painel de configuração do servidor: cargos de staff e canais."""
     def __init__(self, bot, user_id, guild):
@@ -354,7 +391,8 @@ class Settings(GuardedView):
         channel = lambda c: f"<#{c}>" if c else "desligado"
         roles = ", ".join(f"<@&{r}>" for r in cfg["staff_roles"]) or "nenhum (só dono e quem gerencia o servidor)"
         e = card("Configuração do Arquivista",
-            f"**Cargos de staff:** {roles}\n**Canal de histórico:** {channel(cfg['log_channel'])}\n**Canal de imagens:** {channel(cfg['image_channel'])}\n\n"
+            f"**Cargos de staff:** {roles}\n**Canal de histórico:** {channel(cfg['log_channel'])}\n**Canal de imagens:** {channel(cfg['image_channel'])}\n"
+            f"**Planilha:** {'conectada' if cfg.get('sheet_url') else 'não conectada'}\n\n"
             "O histórico recebe só cadastros e alterações daqui pra frente, sem situação, justificativa ou nome interno. "
             "O canal de imagens guarda os anexos dos cadastros; não apague essas mensagens.")
         return self.bot.carteiro.decorate(e)
@@ -382,3 +420,10 @@ class Settings(GuardedView):
     async def images_off(self, i: discord.Interaction, b: discord.ui.Button):
         self.bot.store.set_guild(self.guild.id, image_channel=None)
         await self.refresh(i, "Novos anexos desligados. As imagens já guardadas continuam valendo.")
+    @discord.ui.button(label="Conectar planilha", style=discord.ButtonStyle.primary, row=4)
+    async def sheet_on(self, i: discord.Interaction, b: discord.ui.Button):
+        await i.response.send_modal(SheetModal(self.bot, i.user.id, self.guild))
+    @discord.ui.button(label="Desconectar planilha", style=discord.ButtonStyle.secondary, row=4)
+    async def sheet_off(self, i: discord.Interaction, b: discord.ui.Button):
+        self.bot.store.drop_sheet(self.guild.id)
+        await self.refresh(i, "Planilha desconectada. O que já estava nela continua lá; o bot só para de mandar mudanças.")

@@ -8,6 +8,12 @@ Os números e saídas finais estão em `RESULTADO_TESTES.txt`. Incluem um teste 
 
 Também foram verificadas a sintaxe Python/JavaScript, a ausência de token Discord hardcoded e as coordenadas únicas das 20.000 posições do modelo de 100 membros.
 
+## Planilha conectada (v0.3)
+
+- `tests/test_planilha.js` roda o planejador real do `Planilha.gs` contra uma grade simulada e confere, depois de cada gravação, que o modelo interno bate com a grade: criação, separador de fórmula, revisões antigas ignoradas, bloco que cresce empurrando o próximo, transferência, 21ª pessoa abrindo guia nova, operação inválida isolada, imagem e a Web App (assinatura, horário, servidor, tamanho, pedido repetido).
+- Os pedidos de um cenário reduzido foram enviados de verdade pela API do Sheets numa planilha de teste: visor, contagem e grupos funcionaram depois da expansão. O Apps Script em si (menu, implantação, trava) não rodou ao vivo.
+- `tests/test_core.py` (`SheetTests`): cifra da chave, fila guardando só a última versão, envio com ponte falsa, conexão e desconexão, migração de banco antigo.
+
 ## Cobertura local
 
 - Prefixo AC com maiúsculas/minúsculas, espaço, aliases e menções;
@@ -57,6 +63,8 @@ python -m unittest discover -s tests -v
 node tests/test_bridge.js
 node --check < apps_script/Arquivista.gs
 node --check < apps_script/Aparencias.gs
+node tests/test_planilha.js
+node --check < apps_script/Planilha.gs
 ```
 
 Use Node 22 para o simulador. O bot hospedado usa Python; Node não é necessário na Discloud para executar os comandos.

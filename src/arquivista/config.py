@@ -1,4 +1,5 @@
 from __future__ import annotations
+import hashlib
 import os
 from dataclasses import dataclass
 from pathlib import Path
@@ -37,6 +38,8 @@ class Config:
     poll_seconds: int = 90
     configure_avatar: bool = True
     timezone: str = "America/Sao_Paulo"
+    # Cifra as chaves das planilhas conectadas no banco.
+    master_key: bytes = b""
     @classmethod
     def load(cls) -> "Config":
         load_env()
@@ -49,4 +52,13 @@ class Config:
                    dev, roles, os.getenv("PERSONA_NAME", "Amiya")[:64],
                    max(60, int(os.getenv("POLL_SECONDS", "90"))),
                    os.getenv("CONFIGURAR_AVATAR", "true").lower() == "true",
-                   os.getenv("TIMEZONE", "America/Sao_Paulo"))
+                   os.getenv("TIMEZONE", "America/Sao_Paulo"), master_key(os.environ["DISCORD_TOKEN"].strip()))
+
+def master_key(token: str) -> bytes:
+    """AC_MASTER_KEY quando existe; senão derivada do token (trocar o token pede reconectar as planilhas)."""
+    explicit = os.getenv("AC_MASTER_KEY", "").strip()
+    if explicit:
+        if len(explicit) < 32:
+            raise ValueError("AC_MASTER_KEY precisa de pelo menos 32 caracteres.")
+        return hashlib.sha256(b"arquivista:mestra:" + explicit.encode()).digest()
+    return hashlib.sha256(b"arquivista:mestra-do-token:" + token.encode()).digest()

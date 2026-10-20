@@ -3,7 +3,7 @@
 **Decidido com o Mizuki em 19/10/2026:** o bot passa a ser público e funciona em
 vários servidores. Um banco próprio vira a fonte dos dados, e cada servidor pode
 **opcionalmente** conectar a sua própria cópia da Planilha Aparências, com
-sincronização nos dois sentidos. **Etapas 1 e 2 implementadas** (branch `claude/project-thread-zzfh12`, não implantada).
+sincronização nos dois sentidos. **Etapas 1, 2 e 3 implementadas** (branch `claude/project-thread-zzfh12`, não implantada).
 
 ## Como fica
 
@@ -147,6 +147,13 @@ importação.
    grava com `--aplicar`. Em 20/10 a planilha tinha 1 cadastro (Takao, de teste).
 3. **Bot → planilha:** modelo novo da planilha (guias por faixa e posições sob demanda), ação `apply` na ponte, fila e `/configurar planilha`.
    Script sem ID fixo.
+   *Feito:* `apps_script/Planilha.gs` (planilha nova, um bloco vertical por membro,
+   20 blocos por guia, bloco cresce sozinho quando faltam 2 posições), ação `apply`
+   com revisão por cadastro (pedido repetido ou antigo é ignorado), fila
+   `sheet_outbox` no bot que guarda só a última versão de cada cadastro, botão
+   "Conectar planilha" no `/configurar` (testa antes de salvar, chave cifrada no
+   banco) e estado da planilha no `/status`. Edições feitas na planilha ainda não
+   voltam pro bot.
 4. **Planilha → bot:** consumo dos eventos por servidor, eco e conflitos.
 5. **Guia de instalação** pra donos de servidor e planilha modelo pública.
 6. **Público:** privacidade, termos, verificação.

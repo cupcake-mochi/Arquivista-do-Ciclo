@@ -46,8 +46,8 @@ Não é preciso decorar UUID. Editar, remover e transferir apresentam uma seleç
 | `AC:desativarhistorico` | `/desativar_historico` | Desliga o envio sem apagar histórico. |
 | `AC:registrarimagens` | `/registrar_imagens` | Usa o canal atual para preservar os futuros anexos do cadastro. |
 | `AC:desativarimagens` | `/desativar_imagens` | Interrompe novos uploads; preserva os antigos. |
-| `AC:status` | `/status` | Contagem de cadastros, membros e eventos deste servidor, canais e avisos pendentes. |
-| `AC:configurar` | `/configurar` | Só dono, Administrador ou quem gerencia o servidor: cargos de staff, canal de histórico e canal de imagens num painel privado. |
+| `AC:status` | `/status` | Contagem de cadastros, membros e eventos deste servidor, canais, avisos pendentes e estado da planilha (envios pendentes, último envio, último erro). |
+| `AC:configurar` | `/configurar` | Só dono, Administrador ou quem gerencia o servidor: cargos de staff, canal de histórico, canal de imagens e planilha conectada num painel privado. |
 
 Os comandos de configuração exibem um botão de atendimento privado quando usados por `AC:`; abrir esse painel executa a configuração com nova checagem de permissão. Não criam/deletam canais nem alteram permissões do servidor.
 
