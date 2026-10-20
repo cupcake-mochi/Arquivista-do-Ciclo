@@ -18,7 +18,7 @@ Separado por servidor:
 - a configuração do servidor: cargos de staff e canais escolhidos.
 - na criação automática da planilha, o identificador e o endereço do arquivo, o andamento da criação e o e-mail Google informado para receber edição. Esse e-mail fica cifrado no banco e é enviado ao Google para conceder acesso ao arquivo.
 
-Situação, justificativa e nome no servidor só aparecem para a staff. A lista, a galeria e os avisos públicos mostram só aparência, obra e responsável.
+Situação e justificativa são reservadas à staff. O nome no servidor aparece no atendimento privado autorizado, inclusive para o próprio responsável pelo cadastro. A lista, a galeria e os avisos públicos mostram só aparência, obra e responsável.
 
 Quando alguém anexa uma imagem ao cadastro, o bot reenvia o arquivo no canal de imagens que a staff escolheu, dentro do próprio servidor, e guarda o endereço dessa mensagem.
 
