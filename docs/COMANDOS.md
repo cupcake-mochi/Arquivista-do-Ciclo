@@ -30,7 +30,7 @@ No chat, anexe a imagem à mesma mensagem do comando. Por barra, use o parâmetr
 
 Não escreva uma justificativa secreta na mensagem pública. O formulário não publica as respostas no canal: mostra uma revisão privada antes de salvar. No campo de imagem da edição, `-` remove a imagem, inclusive quando ela estava inserida diretamente na célula.
 
-O cadastro inicial recebe **Em preparação**. A staff pode mudar a situação depois. O primeiro cadastro bem-sucedido de alguém cria ou vincula sua linha em MEMBROS e associa um grupo livre, sem exigir ID digitado pelo jogador.
+Quem registra escolhe a situação na revisão, antes de confirmar; sem escolher, fica **Em preparação**. Depois, só a staff muda a situação. O primeiro cadastro bem-sucedido de alguém cria ou vincula sua linha em MEMBROS e associa um grupo livre, sem exigir ID digitado pelo jogador.
 
 Não é preciso decorar UUID. Editar, remover e transferir apresentam uma seleção explícita por aparência/obra; uma correspondência aproximada não escolhe automaticamente o alvo.
 

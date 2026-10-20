@@ -214,6 +214,8 @@ class RecordModal(discord.ui.Modal):
             title = "Revisar antes de salvar"
             display = {**self.record,**fields}
             body = f"**Aparência:** {clean(display.get('appearance'))}\n**Obra:** {clean(display.get('work'))}\n**Nome no servidor:** {clean(display.get('server_name') or 'não informado')}"
+            if self.mode=="create":
+                body += "\nEscolha a situação abaixo. Sem escolher, fica **Em preparação**."
             if self.attachment:
                 body += "\nA imagem anexada será preservada no canal configurado ao confirmar."
             await private_reply(i,embed=self.bot.carteiro.decorate(card(title,body)),view=view)
@@ -264,16 +266,31 @@ class Confirm(GuardedView):
         self.request_id=str(uuid.uuid4())
         self.busy=False
         self.completed=False
+        self.tried=False
+        if action=="create":
+            payload.setdefault("status","Em preparação")
+            self.status=discord.ui.Select(placeholder="Situação", row=0, options=[discord.SelectOption(
+                label=s,value=s,default=s==payload["status"]) for s in STATUSES])
+            self.status.callback=self.choose_status
+            self.add_item(self.status)
         if action=="remove":
             self.confirm.style=discord.ButtonStyle.danger
             self.confirm.label="Confirmar remoção"
-    @discord.ui.button(label="Confirmar e salvar",style=discord.ButtonStyle.success)
+    async def choose_status(self,i:discord.Interaction):
+        # Depois da primeira tentativa o pedido fica fixo: a retentativa precisa ser idêntica pra não duplicar.
+        if self.tried or self.completed:
+            return await private_reply(i,content="A situação já foi enviada com esta confirmação. Abra um novo registro para mudar.")
+        self.payload["status"]=self.status.values[0]
+        for o in self.status.options:
+            o.default=o.value==self.payload["status"]
+        await i.response.edit_message(view=self)
+    @discord.ui.button(label="Confirmar e salvar",style=discord.ButtonStyle.success,row=1)
     async def confirm(self,i:discord.Interaction,b:discord.ui.Button):
         if self.completed:
             return await private_reply(i,content="Esta confirmação já foi concluída.")
         if self.busy:
             return await private_reply(i,content="Ainda estou conferindo esta mesma confirmação. Aguarde.")
-        self.busy=True
+        self.busy=self.tried=True
         await i.response.defer(ephemeral=True,thinking=True)
         try:
             actor=await self.bot.actor(i.user.id,i.guild_id)
@@ -303,7 +320,7 @@ class Confirm(GuardedView):
             await private_reply(i,content=str(exc))
         finally:
             self.busy=False
-    @discord.ui.button(label="Cancelar",style=discord.ButtonStyle.secondary)
+    @discord.ui.button(label="Cancelar",style=discord.ButtonStyle.secondary,row=1)
     async def cancel(self,i:discord.Interaction,b:discord.ui.Button):
         if self.busy:
             return await private_reply(i,content="O salvamento já começou. Aguarde a confirmação antes de continuar.")

@@ -179,6 +179,12 @@ class ArchiveTests(unittest.TestCase):
                        {'appearance':'A','work':'B','image_url':'http://x.com/a'},{'appearance':'A','work':'B','status':'Em uso'}):
             with self.subTest(fields=fields):
                 self.assertEqual(self.code(self.a,'create',self.user,{'fields':fields}),'INVALID')
+    def test_member_picks_initial_status_but_cannot_change_it_later(self):
+        r=self.call(self.a,'create',self.user,{'fields':{'appearance':'Exusiai','work':'Arknights'},'status':'Em uso'})['record']
+        self.assertEqual(r['status'],'Em uso')
+        self.assertEqual(self.create()['status'],'Em preparação')
+        self.assertEqual(self.code(self.a,'create',self.user,{'fields':{'appearance':'X','work':'Y'},'status':'Banido'}),'INVALID')
+        self.assertEqual(self.code(self.a,'change_status',self.user,{'id':r['id'],'revision':r['revision'],'status':'Arquivado'}),'FORBIDDEN')
     def test_idempotent_confirmation(self):
         data={'fields':{'appearance':'Amiya','work':'Arknights'}}
         first=self.call(self.a,'create',self.user,data,'req-1');again=self.call(self.a,'create',self.user,data,'req-1')
@@ -442,6 +448,8 @@ class DiscordImportTests(unittest.IsolatedAsyncioTestCase):
             for obj in (Gate(bot,1,'editar'),RecordModal(bot,1,'create'),RecordModal(bot,1,'edit',record=r),
                         Confirm(bot,1,'remove',{}),StatusPicker(bot,1,r),Picker(bot,1,[r],'editar'),Paginator(bot,1,[r])):
                 self.assertTrue(obj.to_components())
+            rows=Confirm(bot,1,'create',{'fields':{}}).to_components()
+            self.assertEqual([[c['type'] for c in row['components']] for row in rows],[[3],[2,2]])
             class Guild:
                 id=int(G1)
                 def get_role(self,_):return None

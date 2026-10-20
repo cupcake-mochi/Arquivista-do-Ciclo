@@ -166,9 +166,12 @@ class Archive:
             if not isinstance(owner, dict) or not str(owner.get("id", "")).isdigit(): fail("INVALID")
             owner_id = str(owner["id"])
             if not actor.staff and owner_id != actor.id: fail("FORBIDDEN")
+            # Quem registra escolhe a situação inicial; mudar depois continua só com a staff.
+            status = d.get("status", "Em preparação")
+            if status not in STATUSES: fail("INVALID")
             self.room(owner_id)
             after = {"id": "AP-" + str(uuid.uuid4()), "owner_id": owner_id, **self.fields(d.get("fields")),
-                     "status": "Em preparação", "justification": "",
+                     "status": status, "justification": "",
                      "date": datetime.now(self.tz).date().isoformat(), "revision": 1}
         else:
             before = self.record(str(d.get("id", "")))

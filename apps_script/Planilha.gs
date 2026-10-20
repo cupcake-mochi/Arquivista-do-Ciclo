@@ -130,7 +130,7 @@ function plNewTab_(m) {
   const req = m.req;
   req.push({addSheet: {properties: {sheetId: sid, title: tab.name, index: k,
     gridProperties: {rowCount: PL.firstBlock, columnCount: PL.width, frozenRowCount: 3, hideGridlines: true}}}});
-  [48, 160, 160, 140, 110, 100, 155, 225, 180, 180, 70].forEach((px, i) => req.push({updateDimensionProperties: {
+  [48, 160, 160, 140, 135, 100, 155, 225, 290, 180, 70].forEach((px, i) => req.push({updateDimensionProperties: {
     range: {sheetId: sid, dimension: 'COLUMNS', startIndex: i, endIndex: i + 1}, properties: {pixelSize: px}, fields: 'pixelSize'}}));
   req.push({updateDimensionProperties: {range: {sheetId: sid, dimension: 'COLUMNS', startIndex: PC.mark - 1, endIndex: PC.mark},
     properties: {hiddenByUser: true}, fields: 'hiddenByUser'}});
