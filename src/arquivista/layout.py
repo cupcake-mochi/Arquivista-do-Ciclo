@@ -169,8 +169,8 @@ class Model:
                                                   "properties": {"hiddenByUser": True}, "fields": "hiddenByUser"}})
         self.tabs.append(tab)
         self.set(tab, 1, 1, ["CATÁLOGO DE APARÊNCIAS"])
-        self.set(tab, 2, 1, ["Esta planilha é atualizada pelo Arquivista, e o que a staff mudar aqui volta para o bot em alguns minutos. Use + / − para abrir as justificativas. Vermelho: aparência + obra repetida nas fichas desta pessoa."])
-        self.set(tab, 3, 1, ["Cada membro começa com 20 posições e ganha mais 20 quando está perto de encher. O visor mostra a posição escolhida."])
+        self.set(tab, 2, 1, ["Edite as fichas aqui ou pelo bot. As mudanças chegam ao Discord em cerca de 5 minutos. Use + / − para ver as justificativas. Em vermelho: aparência e obra repetidas nas fichas deste membro."])
+        self.set(tab, 3, 1, ["Escolha o número da ficha para vê-la no visor. A aba começa com 20 posições e ganha mais 20 quando restam duas livres."])
         for r in (1, 2, 3):
             _merge(req, sid, r, r, 1, 10)
         _format(req, sid, 1, 1, 1, 10, bg=TITLE, ink=WHITE, bold=True, size=16)
@@ -196,7 +196,7 @@ class Model:
             n, r = start_n + i, first + 4 * i
             self.set(tab, r, N, [n])
             self.set(tab, r, IMAGE, [{"f": self.f(f'=IF(H{r}="","",IFERROR(IMAGE(H{r}),""))')}])
-            self.set(tab, r + 1, APPEARANCE, ["JUSTIFICATIVA / OBSERVAÇÃO   ·   campo interno da equipe"])
+            self.set(tab, r + 1, APPEARANCE, ["JUSTIFICATIVA / OBSERVAÇÃO   ·   só para a staff"])
             # Imagem e link só nas 2 linhas sempre visíveis: mesclar com as linhas recolhidas faz a imagem passar por cima.
             _merge(req, sid, r, r + 3, 1, 1); _merge(req, sid, r, r + 1, 7, 7); _merge(req, sid, r, r + 1, 8, 8)
             _merge(req, sid, r + 1, r + 1, 2, 6); _merge(req, sid, r + 2, r + 3, 2, 6)

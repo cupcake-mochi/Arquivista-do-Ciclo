@@ -1,4 +1,7 @@
-VALIDAÇÃO FINAL — ARQUIVISTA DO CICLO 1.0.0 — 20/10/2026
+VALIDAÇÃO FINAL — ARQUIVISTA DO CICLO 1.0.1 — 20/10/2026
+
+Revisão dos textos, sem mudança nas regras do bot.
+Suíte repetida após a revisão; ensaios reais abaixo feitos na preparação da 1.0.
 
 130 testes Python aprovados, incluindo discord.py 2.7.1 real; nenhum pulado.
 28 testes JavaScript da ponte aprovados, com serviços Google simulados.

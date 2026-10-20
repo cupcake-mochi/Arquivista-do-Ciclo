@@ -1,6 +1,6 @@
 # Comandos e permissões
 
-O prefixo é `AC:`; `ac:`, `Ac:` e espaços após `:` funcionam. Mensagens de bots, webhooks, DMs e outros servidores são ignoradas. Todas as funções abaixo também têm comando de barra.
+Use `AC:` ou os comandos de barra. `ac:`, `Ac:` e espaços após `:` também funcionam. O bot atende nos servidores em que está instalado e ignora mensagens privadas, de bots e de webhooks.
 
 ## Consulta pública
 
@@ -18,7 +18,7 @@ Exemplos: `AC:gal Takao`, `AC:gal @Mizuki Takao`, `AC:busca Takao Azur Lane`, `A
 
 **Como a obra é agrupada:** duas grafias ficam juntas quando todas as palavras de uma estão na outra (com erro de digitação tolerado em palavra de 5+ letras), quando o nome inteiro é quase igual ou contido no outro ("Umamusume" e "Uma Musume Pretty Derby"), ou quando uma é a sigla da outra ("HSR"). Junta como franquia: "Fate" puxa "Fate/stay night" e "Fate/Grand Order". Palavra comum de título sozinha não junta ("Love Live" e "Live A Live" ficam separadas). Apelido sem relação com o nome ("JJK") a staff cadastra com `/apelido`; o apelido junta os grupos e dá o nome do grupo.
 
-O resultado público tem aparência original, obra, responsável e imagem quando disponível. **Não mostra o nome secreto no servidor, situação, justificativa, data interna nem link da planilha.** O cadastro Liberado fica fora dessas listas. A ausência de resultado aproximado não prova disponibilidade: aliases não padronizados continuam exigindo revisão humana.
+As consultas públicas mostram aparência, obra, responsável e imagem quando disponível. **Nome do personagem no servidor, situação, justificativa, data interna e link da planilha ficam fora delas.** Cadastros com situação Liberado não aparecem nessas listas. Se a busca não encontrar um nome, tente também a obra: ele pode ter sido cadastrado com outra grafia. A conferência de duplicidade acontece ao salvar.
 
 Quem abriu uma lista usa seus botões; outra pessoa pode abrir a própria consulta. A Amiya responde quando mencionada ou quando alguém responde a uma mensagem sua lembrada pelo bot, orientando aos comandos. Essa resposta é escrita no código: não é conversa livre com IA.
 
@@ -36,7 +36,7 @@ Não escreva uma justificativa secreta na mensagem pública. O formulário não 
 
 Quem registra escolhe a situação na revisão, antes de confirmar; sem escolher, fica **Em preparação**. Depois, só a staff muda a situação. Na planilha conectada, o primeiro cadastro cria a aba do membro automaticamente. Para preencher antes de cadastrar pelo bot, a gerência usa `/planilha membro` e seleciona o @membro real do servidor.
 
-Não é preciso decorar UUID. Editar, remover e transferir apresentam uma seleção explícita por aparência/obra; uma correspondência aproximada não escolhe automaticamente o alvo.
+Você pode buscar pelo nome, sem decorar o ID da ficha. Antes de editar, remover ou transferir, escolha a aparência e a obra na lista de resultados. A busca não faz essa escolha por você.
 
 ## Administração
 
@@ -57,9 +57,9 @@ Não é preciso decorar UUID. Editar, remover e transferir apresentam uma seleç
 
 Os comandos de configuração exibem um botão de atendimento privado quando usados por `AC:`; abrir esse painel executa a configuração com nova checagem de permissão. Não criam/deletam canais nem alteram permissões do servidor.
 
-**Backup:** no `/configurar` → **Backup**, escolha um canal que só a staff vê e a frequência (6 h, 12 h, 1 dia, 3 dias ou 1 semana). O bot manda um `.json` que restaura o arquivo (`/restaurar`) e, se houver planilha conectada, um `.xlsx` com uma guia por membro. O backup leva justificativas e nomes no servidor; por isso o bot recusa canal que algum cargo fora da staff consegue ver. **Fazer backup agora** manda um na hora. Para voltar a um backup, use `/restaurar` com o .json (não precisa de terminal).
+**Backup:** no `/configurar` → **Backup**, escolha um canal só da staff e a frequência (6 h, 12 h, 1 dia, 3 dias ou 1 semana). O `.json` serve para recuperar os cadastros pelo `/restaurar`. Com a planilha conectada, o bot envia também um `.xlsx`, com uma aba por membro. Como os arquivos incluem justificativas e nomes dos personagens no servidor, o canal não pode ter acesso de cargos ou membros individuais fora da staff. **Fazer backup agora** envia uma cópia na hora. O JSON não inclui todas as configurações e o histórico do banco; o mantenedor também precisa guardar uma cópia completa da hospedagem.
 
-**Staff** = dono do servidor, Administrador, quem tem Gerenciar Servidor ou membro de um dos cargos escolhidos no `/configurar` daquele servidor. A permissão é checada novamente nas operações finais; ter aberto um painel antes não mantém um privilégio removido.
+**Quem conta como staff:** dono do servidor, quem tem Administrador ou Gerenciar Servidor e membros dos cargos escolhidos no `/configurar`. O bot confere o acesso novamente antes de salvar; um painel antigo não mantém uma permissão que foi retirada.
 
 ## Situações
 
@@ -75,4 +75,4 @@ Notificações são normalmente consumidas pelo ciclo de sincronização, config
 
 A mensagem pública informa uma inclusão, remoção ou alteração genérica, com aparência, obra, responsável, autor quando conhecido e horário. Ela **não revela que um personagem está preparado, morto/arquivado ou liberado**, nem o conteúdo da justificativa. O detalhe completo fica em `/historico`, privadamente para staff.
 
-Trocar o visor, abrir +/− e recalcular fórmulas não são alterações de personagem. A configuração do canal não republica todo o passado. A tela de histórico mostra até 200 resultados recentes dentro dos últimos 5.000 eventos, avisando quando houve corte; a auditoria original permanece na aba técnica.
+Trocar o visor, abrir +/− e recalcular fórmulas não cria uma mudança na ficha. Configurar o canal também não republica os avisos antigos. A consulta de histórico mostra até 200 resultados recentes e avisa quando há mais; o histórico completo continua no banco do bot.

@@ -162,7 +162,7 @@ class SheetSync:
             with store.db:
                 for rid in lost:
                     store.queue_sheet(guild_id, rid, records[rid]["revision"], sheet_upsert(records[rid]))
-            notes.append(f"{len(lost)} cadastro(s) apagado(s) à mão na planilha foram regravados; para apagar, use /remover")
+            notes.append(f"Recoloquei as fichas apagadas manualmente na planilha (total: {len(lost)}). Para remover um cadastro, use /remover no Discord.")
         note = "; ".join(notes)[:900] or None
         if note != store.guild(guild_id).get("sheet_note"):
             store.set_guild(guild_id, sheet_note=note)

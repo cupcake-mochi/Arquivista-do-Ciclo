@@ -41,7 +41,7 @@ class GuardedView(discord.ui.View):
             await private_reply(i, content="Este painel pertence a outra pessoa. Abra seu próprio comando.")
             return False
         if self.requires_staff and not self.bot.is_staff_member(i.user):
-            await private_reply(i, content="Esse acesso é exclusivo da staff. Seu cargo foi alterado; abra um novo atendimento.")
+            await private_reply(i, content="Seu acesso de staff mudou. Abra o comando novamente ou fale com a equipe do servidor.")
             return False
         return True
     async def on_timeout(self):
@@ -54,7 +54,7 @@ class GuardedView(discord.ui.View):
             except discord.HTTPException:
                 pass
     async def on_error(self, interaction, error, item):
-        message = str(error) if isinstance(error, UserError) else "O painel não conseguiu concluir essa etapa. Abra novamente ou consulte a staff."
+        message = str(error) if isinstance(error, UserError) else "Não consegui concluir por este painel. Abra o comando novamente; se continuar, avise a staff."
         log.warning("Falha de painel: %s", type(error).__name__)
         await private_reply(interaction, content=message)
 
@@ -95,7 +95,7 @@ class Paginator(GuardedView):
         self.previous.disabled = self.page == 0
         self.next.disabled = self.page >= self.pages-1
         if not self.records:
-            e = card("Arquivo de aparências", "Não encontrei resultados para esta consulta. Não encontrar um nome parecido não garante disponibilidade: o cadastro faz a conferência final.")
+            e = card("Arquivo de aparências", "Não encontrei essa aparência. Tente outro nome ou busque pela obra. Ao cadastrar, eu confiro se a combinação já está ocupada.")
         elif self.mode == "history":
             event = self.records[self.page]
             e = card("Histórico interno", f"**{clean(event.get('kind'))}** · {clean(event.get('at'))}")
@@ -107,11 +107,11 @@ class Paginator(GuardedView):
             for key, label in labels.items():
                 if before.get(key) != after.get(key):
                     changes.append(f"**{label}:** {clean(before.get(key) or '—',160)} → {clean(after.get(key) or '—',160)}")
-            e.description += "\n\n" + ("\n".join(changes)[:3200] or "Alteração registrada na imagem ou em metadados do cadastro.")
+            e.description += "\n\n" + ("\n".join(changes)[:3200] or "A imagem ou outros dados da ficha foram atualizados.")
         elif self.mode == "works":
             lines = []
             for j, g in enumerate(self.records[self.page*self.per_page:(self.page+1)*self.per_page]):
-                line = f"**{self.page*self.per_page+j+1}. {clean(g['label'],80)}** · {g['count']} aparência(s)"
+                line = f"**{self.page*self.per_page+j+1}. {clean(g['label'],80)}** · Cadastros: {g['count']}"
                 if len(g["names"]) > 1:
                     line += "\n-# também escrita como " + clean(", ".join(g["names"][1:])[:120], 150)
                 lines.append(line)
@@ -137,7 +137,7 @@ class Paginator(GuardedView):
                 e = card("Arquivo de aparências", "\n".join(lines))
         if self.owner and self.mode != "history":
             e.set_thumbnail(url=self.owner.display_avatar.url)
-        e.set_footer(text=f"Página {self.page+1}/{self.pages} · {len(self.records)} resultado(s) · abra outro comando para atualizar")
+        e.set_footer(text=f"Página {self.page+1}/{self.pages} · Resultados: {len(self.records)} · refaça a consulta para atualizar")
         return self.bot.carteiro.decorate(e)
     async def turn(self, i, delta):
         await i.response.defer()
@@ -172,7 +172,7 @@ class Guide(GuardedView):
         self.next.disabled = self.page >= len(self.pages) - 1
         title, text = self.pages[self.page]
         e = card(f"Guia · {title}", text)
-        e.set_footer(text=f"Página {self.page+1}/{len(self.pages)} · AC:ajuda tem a lista curta de comandos")
+        e.set_footer(text=f"Página {self.page+1}/{len(self.pages)} · Veja também AC:ajuda para consultar os comandos")
         return self.bot.carteiro.decorate(e)
     async def turn(self, i, delta):
         self.page = max(0, min(len(self.pages)-1, self.page+delta))
@@ -213,7 +213,7 @@ class Picker(GuardedView):
         await i.response.defer(ephemeral=True, thinking=True)
         actor = await self.bot.actor(i.user.id, i.guild_id)
         if self.action in STAFF_ACTIONS and not actor.staff:
-            raise UserError("Esta operação é reservada à staff.")
+            raise UserError("Só a staff pode fazer essa alteração.")
         data = await self.bot.archive(i.guild_id).call("get", actor, {"id": self.select.values[0]})
         record = data["record"]
         if self.action == "situacao":
@@ -226,7 +226,7 @@ class Picker(GuardedView):
             await private_reply(i, embed=self.bot.carteiro.decorate(card("Confirmar transferência", f"**{clean(record['appearance'])}** será transferida para <@{target.id}>. O ID e a data original serão preservados.")), view=v)
         elif self.action == "remover":
             v = Confirm(self.bot, self.author_id, "remove", {"id": record["id"], "revision": record["revision"]})
-            await private_reply(i, embed=self.bot.carteiro.decorate(card("Confirmar remoção", f"Remover **{clean(record['appearance'])}**, de **{clean(record['work'])}**?\nIsso apaga o cadastro ativo, mas preserva a auditoria. Para manter a aparência ocupada, use Arquivado.")), view=v)
+            await private_reply(i, embed=self.bot.carteiro.decorate(card("Confirmar remoção", f"Remover **{clean(record['appearance'])}**, de **{clean(record['work'])}**?\nA ficha sai da lista e da planilha, mas continua no histórico. Se quiser manter a aparência reservada, escolha Arquivado em /situacao.")), view=v)
     @discord.ui.button(label="Anteriores", row=1)
     async def back(self, i: discord.Interaction, b: discord.ui.Button):
         self.page = max(0, self.page-1); self.options()
@@ -278,7 +278,7 @@ class RecordModal(discord.ui.Modal):
                 if remove_image:
                     fields["clear_image"] = True
                 if not actor.staff and any(k in fields for k in ("appearance","work")):
-                    raise UserError("Somente a staff pode mudar a identidade da aparência ou da obra.")
+                    raise UserError("Só a staff pode mudar a aparência ou a obra de um cadastro.")
                 payload = {"id":self.record["id"],"revision":self.record["revision"],"fields":fields}
             else:
                 owner = self.owner or {"id":actor.id,"name":actor.name}
@@ -364,7 +364,7 @@ class Confirm(GuardedView):
         if self.completed:
             return await private_reply(i,content="Esta confirmação já foi concluída.")
         if self.busy:
-            return await private_reply(i,content="Ainda estou conferindo esta mesma confirmação. Aguarde.")
+            return await private_reply(i,content="Ainda estou salvando. Aguarde o resultado antes de clicar de novo.")
         self.busy=self.tried=True
         await i.response.defer()  # o resultado entra no lugar da revisão, na mesma mensagem
         try:
@@ -379,15 +379,15 @@ class Confirm(GuardedView):
             self.completed=True
             if result.get("changed",True):
                 self.bot.notify_soon()
-            text={"remove":"Registro removido; o histórico foi preservado.",
-                  "purge":f"{result.get('removed',0)} cadastro(s) apagado(s); o histórico foi preservado."}.get(self.action,"Salvo no arquivo. Vou manter os registros organizados.")
+            text={"remove":"Cadastro removido. O histórico continua disponível.",
+                  "purge":f"Cadastros removidos: {result.get('removed',0)}. O histórico continua disponível."}.get(self.action,"Pronto, salvei a ficha.")
             if not result.get("changed",True):
-                text="Os dados já estavam assim. Não criei um evento de alteração desnecessário."
+                text="A ficha já estava assim. Não havia nada para mudar."
             await i.edit_original_response(content=None,embed=self.bot.carteiro.decorate(card("Amiya · Confirmação",text)),view=None)
             self.stop()
         except UserError as exc:
             if isinstance(exc,BridgeError) and exc.code in ("BUSY","INTERNAL"):
-                self.confirm.label="Tentar a mesma confirmação"
+                self.confirm.label="Tentar salvar novamente"
             await private_reply(i,content=str(exc))
         finally:
             self.busy=False
@@ -398,7 +398,7 @@ class Confirm(GuardedView):
         self.completed=True
         for child in self.children:
             child.disabled=True
-        await i.response.edit_message(content="Cancelado. Nenhum novo pedido de gravação foi enviado.",view=self)
+        await i.response.edit_message(content="Cancelado. Não enviei outro pedido para salvar.",view=self)
         self.stop()
 
 
@@ -422,7 +422,7 @@ class RestoreConfirm(GuardedView):
             self.done = False
             return await private_reply(i, content=str(exc))
         await i.edit_original_response(embed=self.bot.carteiro.decorate(card("Backup restaurado",
-            f"{n} cadastro(s) de volta no arquivo.")), view=None)
+            f"Cadastros recuperados: {n}.")), view=None)
         self.stop()
     @discord.ui.button(label="Cancelar", style=discord.ButtonStyle.secondary)
     async def cancel(self, i: discord.Interaction, b: discord.ui.Button):
@@ -504,8 +504,8 @@ class BackupPanel(GuardedView):
         where = f"<#{cfg['backup_channel']}>" if cfg.get("backup_channel") else "desligado"
         e = card("Backup automático",
             f"**Canal:** {where}\n**Frequência:** {INTERVALS.get(cfg.get('backup_hours') or 24, 'todo dia')}\n\n"
-            "Manda um .json que restaura o arquivo no bot e, se a planilha estiver conectada, um .xlsx com uma guia por membro. "
-            "O backup tem justificativas e nomes internos, então só a staff pode ver o canal.")
+            "Envia uma cópia dos cadastros em `.json`, para usar no `/restaurar`. Com a planilha conectada, envia também um `.xlsx`, com uma aba por membro. "
+            "Como esses arquivos incluem justificativas e nomes dos personagens no servidor, escolha um canal só da staff.")
         return self.bot.carteiro.decorate(e)
     async def refresh(self, i: discord.Interaction, note: str | None = None):
         await i.response.edit_message(content=note, embed=self.embed(), view=self, allowed_mentions=MENTIONS)
@@ -574,9 +574,9 @@ class SheetModal(discord.ui.Modal):
         self.bot.store.set_guild(self.guild.id, **cfg, sheet_error=None)
         count = self.bot.store.queue_full_sync(str(self.guild.id))
         self.bot.notify_soon()
-        found = f" A planilha já tinha {found_records} cadastro(s); os que vierem do bot ficam no lugar certo pelo ID." if found_records else ""
+        found = f" A planilha já tinha {found_records} registros. Os cadastros do bot são identificados pelo ID para evitar cópias repetidas." if found_records else ""
         await private_reply(i, embed=self.bot.carteiro.decorate(card("Planilha conectada",
-            f"Vou mandar os {count} cadastro(s) deste servidor agora e, daqui pra frente, cada mudança.{found}\n\n"
+            f"Vou enviar os cadastros deste servidor para a planilha (total: {count}). Depois, as mudanças também serão sincronizadas.{found}\n\n"
             "O que a staff mudar direto na planilha volta para o bot em alguns minutos. Deixe a edição da planilha só com a staff.")))
     async def on_error(self, i, error):
         log.warning("Conexão da planilha: %s", type(error).__name__)
@@ -612,7 +612,7 @@ class Settings(GuardedView):
             f"**Cargos de staff:** {roles}\n**Canal de histórico:** {channel(cfg['log_channel'])}\n**Canal de imagens:** {channel(cfg['image_channel'])}\n"
             f"**Planilha:** {'conectada' if cfg.get('sheet_url') else 'não conectada'}\n"
             f"**Backup:** {channel(cfg.get('backup_channel'))}\n\n"
-            "O histórico recebe só cadastros e alterações daqui pra frente, sem situação, justificativa ou nome interno. "
+            "O canal de histórico recebe os avisos de novas mudanças, sem situação, justificativa ou nome do personagem no servidor. "
             "O canal de imagens guarda os anexos dos cadastros; não apague essas mensagens.\n\n"
             "Use **Planilha** ou `/planilha criar` para receber o arquivo pronto e poder editar no Google Sheets.\n\n" + SETUP_LINK)
         return self.bot.carteiro.decorate(e)
@@ -635,11 +635,11 @@ class Settings(GuardedView):
     @discord.ui.button(label="Desligar histórico", style=discord.ButtonStyle.secondary, row=3)
     async def log_off(self, i: discord.Interaction, b: discord.ui.Button):
         self.bot.store.set_guild(self.guild.id, log_channel=None)
-        await self.refresh(i, "Histórico desligado. Nada que já foi publicado foi apagado.")
+        await self.refresh(i, "Avisos desligados. As mensagens anteriores e o histórico dos cadastros continuam guardados.")
     @discord.ui.button(label="Desligar imagens", style=discord.ButtonStyle.secondary, row=3)
     async def images_off(self, i: discord.Interaction, b: discord.ui.Button):
         self.bot.store.set_guild(self.guild.id, image_channel=None)
-        await self.refresh(i, "Novos anexos desligados. As imagens já guardadas continuam valendo.")
+        await self.refresh(i, "Novos anexos desativados. As imagens já guardadas continuam disponíveis.")
     @discord.ui.button(label="Backup", style=discord.ButtonStyle.secondary, row=3)
     async def backup(self, i: discord.Interaction, b: discord.ui.Button):
         panel = BackupPanel(self.bot, i.user.id, self.guild)
@@ -652,4 +652,4 @@ class Settings(GuardedView):
     async def sheet_off(self, i: discord.Interaction, b: discord.ui.Button):
         async with self.bot.sheet_lock:
             self.bot.store.drop_sheet(self.guild.id)
-        await self.refresh(i, "Planilha desconectada. O que já estava nela continua lá; o bot só para de mandar mudanças.")
+        await self.refresh(i, "Sincronização desligada. A planilha e os acessos de edição continuam no Google. Use /planilha para conectar novamente.")

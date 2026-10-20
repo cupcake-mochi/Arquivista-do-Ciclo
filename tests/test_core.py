@@ -480,7 +480,7 @@ class DiscordImportTests(unittest.IsolatedAsyncioTestCase):
             w=Paginator(bot,1,groups,'works')
             self.assertEqual(labels(w),['Anterior','Próxima'])
             d=(await w.embed()).to_dict()['description']
-            self.assertIn('Arknights** · 2 aparência(s)',d);self.assertIn('também escrita como Arknights Endfield',d)
+            self.assertIn('Arknights** · Cadastros: 2',d);self.assertIn('também escrita como Arknights Endfield',d)
             e=(await Paginator(bot,1,[r],title='Obra: Azur Lane').embed()).to_dict()
             self.assertEqual(e['title'],'Obra: Azur Lane');self.assertIn('Takao** · Azur Lane · <@',e['description'])
             from arquivista.views import Guide

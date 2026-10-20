@@ -119,13 +119,13 @@ class ManagedSheets:
         # Na fase de inicialização ninguém recebeu acesso ainda. O conteúdo pode ser repetido após uma queda.
         instructions = [
             ["ARQUIVISTA DO CICLO · " + guild.name],
-            ["Esta planilha pertence à conta do Arquivista. Seu e-mail recebeu acesso de editor."],
-            ["Você pode preencher as fichas aqui ou cadastrar pelo bot. As mudanças sincronizam nos dois sentidos."],
+            ["Esta planilha pertence à conta do Arquivista. O e-mail informado no Discord recebe acesso de editor."],
+            ["Você pode preencher as fichas aqui ou pelo bot. O que mudar em um aparece no outro."],
             ["Abra a aba de um membro e preencha uma posição vazia com Aparência, Obra e Situação."],
-            ["Para preparar outra aba antes de cadastrar: /planilha membro, selecionando o @membro no Discord."],
+            ["Para abrir uma aba para outra pessoa, use /planilha membro no Discord e selecione o @membro."],
             ["Campos editáveis: aparência, nome no servidor, obra, situação, data, link da imagem e justificativa."],
             ["Use as posições prontas. Não apague nem insira linhas; preserve as colunas de identificação e as fórmulas."],
-            ["As edições feitas aqui entram no bot em cerca de 5 minutos. Dados inválidos aparecem no /diagnostico."],
+            ["O que você editar aqui chega ao bot em cerca de 5 minutos. Se algum dado for recusado, veja o motivo no /diagnostico."],
             ["Para remover um cadastro, use /remover no Discord. Limpar uma linha não apaga o cadastro do bot."],
             ["Compartilhe edição somente com a staff: quem edita a planilha pode alterar os cadastros do servidor."],
         ]

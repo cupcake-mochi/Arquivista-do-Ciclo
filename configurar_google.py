@@ -75,7 +75,7 @@ def main():
     values = authorize(client)
     write_private(path, values)
     print("Autorização salva em .env.google. Nenhum token foi impresso.")
-    print("Localmente o bot lê esse arquivo. Na Discloud, cadastre suas três variáveis no painel e reinicie o bot.")
+    print("Na sua máquina, o bot lê esse arquivo. Na Discloud, cadastre as três variáveis no painel e faça rebuild ou deploy para aplicá-las.")
     print("Não publique o JSON do cliente nem o .env.google.")
 
 if __name__ == "__main__":

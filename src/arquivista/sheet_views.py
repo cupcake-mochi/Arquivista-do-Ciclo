@@ -19,7 +19,7 @@ async def create_sheet(bot, i):
     try:
         url = await bot.managed.create(i.guild, i.user)
         await private_reply(i, embed=card("Planilha do servidor", f"[Abrir planilha]({url})\n\n"
-            "A planilha foi reutilizada e está conectada. Edições nela voltam ao bot em cerca de 5 minutos."))
+            "Esta é a planilha que já estava criada para o servidor. Ela está conectada; o que você editar nela chega ao bot em cerca de 5 minutos."))
     except UserError as exc:
         await private_reply(i, content=str(exc))
 
@@ -31,9 +31,9 @@ async def show_sheet(bot, i):
 
 class CreateSheetModal(discord.ui.Modal):
     def __init__(self, bot, author_id):
-        super().__init__(title="Criar planilha · acesso de editor", timeout=600)
+        super().__init__(title="Criar a planilha do servidor", timeout=600)
         self.bot, self.author_id = bot, author_id
-        self.email = discord.ui.TextInput(label="E-mail Google que receberá edição", max_length=254,
+        self.email = discord.ui.TextInput(label="E-mail Google de quem vai editar", max_length=254,
             placeholder="A planilha será privada e compartilhada com este e-mail.")
         self.add_item(self.email)
 
@@ -44,16 +44,16 @@ class CreateSheetModal(discord.ui.Modal):
         try:
             url = await self.bot.managed.create(i.guild, i.user, str(self.email.value))
             await private_reply(i, embed=card("Planilha pronta", f"[Abrir planilha]({url})\n\n"
-                "O e-mail informado recebeu edição. A planilha pertence à conta do Arquivista.\n"
-                "Você já pode preencher uma posição na sua aba ou cadastrar pelo bot. "
+                "Dei acesso de editor ao e-mail informado. A planilha fica na conta do Arquivista.\n"
+                "Abra sua aba para preencher uma ficha, ou cadastre pelo bot. "
                 "Use `/planilha membro` e selecione um @membro para preparar outra aba.\n\n"
-                "As edições feitas no Sheets entram no bot em cerca de 5 minutos. Os cadastros que já existem estão na fila de envio. "
+                "As edições no Sheets chegam ao bot em cerca de 5 minutos. Estou enviando para a planilha os cadastros que já existiam. "
                 "Compartilhe edição só com a staff."))
         except UserError as exc:
             await private_reply(i, content=str(exc))
 
     async def on_error(self, i, error):
-        await private_reply(i, content="Não consegui confirmar a criação. Use /planilha criar novamente para retomar o mesmo pedido.")
+        await private_reply(i, content="Não consegui confirmar se a planilha ficou pronta. Use /planilha criar novamente para continuar de onde parou.")
 
 class SheetPanel(GuardedView):
     def __init__(self, bot, author_id, guild):
@@ -78,11 +78,11 @@ class SheetPanel(GuardedView):
         availability = "disponível" if self.bot.managed.ready else "aguardando ativação pelo mantenedor"
         return self.bot.carteiro.decorate(card("Planilha do servidor",
             f"**Planilha:** {status}\n**Criação automática:** {availability}\n\n"
-            "**Criar ou retomar** prepara a planilha e concede edição ao e-mail Google informado, em privado. "
-            "Se ela já existe, o comando reutiliza o arquivo.\n\n"
+            "**Criar ou retomar** abre um formulário privado para você informar o e-mail de quem vai editar. "
+            "Se a planilha já existe, abre o mesmo arquivo.\n\n"
             "`/planilha membro` prepara uma aba vazia para um @membro selecionado do servidor. "
-            "O que for preenchido aqui ou no bot sincroniza nos dois sentidos; edições do Sheets entram em cerca de 5 minutos.\n"
-            "Somente a staff deve receber edição, pois ela permite mudar os cadastros.\n\n" + SETUP_LINK))
+            "Você pode preencher as fichas na planilha ou pelo bot. As edições no Sheets chegam ao bot em cerca de 5 minutos.\n"
+            "Dê acesso de editor só à staff: quem edita a planilha pode mudar os cadastros do servidor.\n\n" + SETUP_LINK))
 
     @discord.ui.button(label="Criar ou retomar", style=discord.ButtonStyle.primary)
     async def create(self, i, button):
