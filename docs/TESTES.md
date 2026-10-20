@@ -2,6 +2,8 @@
 
 A 1.0.3 permite remover o próprio cadastro com confirmação. Os testes cobrem proprietário e terceiros, cancelamento, revisão antiga, transferência antes de confirmar, retentativa sem duplicar auditoria, preservação do histórico e fila de remoção da planilha. A suíte foi executada novamente; os ensaios reais descritos abaixo foram feitos nas versões indicadas.
 
+O atendimento por menção também foi validado: conta do bot, cargo automático exclusivo e resposta à própria mensagem acionam a Amiya; `@everyone`, `@here`, cargo genérico, cargo de outro bot e menção a outro usuário não acionam. Comandos explícitos continuam funcionando.
+
 ## O que foi executado nesta entrega
 
 Testes locais Python da lógica de comandos, permissões, projeção pública, pesquisa, assinatura de requisições, persistência operacional e configuração. Testes JavaScript executando as funções da ponte com **serviços Google simulados**. A simulação aplica as requisições planejadas em estruturas em memória: não usa a planilha real.

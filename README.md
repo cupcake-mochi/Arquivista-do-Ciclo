@@ -18,7 +18,7 @@ Cada servidor tem seus próprios cadastros e configurações. O banco SQLite gua
 
 | Área | Implementação |
 |---|---|
-| Amiya | Respostas públicas por webhook com nome/avatar da personagem; resposta a menções e a respostas às mensagens lembradas do bot. |
+| Amiya | Respostas públicas por webhook com nome/avatar da personagem; atende menções diretas à conta ou ao cargo exclusivo do bot e respostas às próprias mensagens. Ignora chamadas por `@everyone`, `@here` e outros cargos. |
 | Consulta | Lista paginada, galeria, filtro por membro e busca aproximada. A seleção confirma a aparência correta antes de editar. |
 | Cadastro | Qualquer membro cadastra para si. A staff cadastra para terceiros. Formulário, revisão e confirmação. |
 | Permissões | Membro edita nome no servidor e imagem dos próprios registros. Identidade da aparência, situação, transferência e remoção são da staff. |

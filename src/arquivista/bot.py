@@ -222,8 +222,15 @@ class Arquivista(commands.Bot):
             attachment = message.attachments[0] if message.attachments else None
             await self.run_action(message, action, query, member_id, attachment)
             return
-        is_reply = message.reference and message.reference.message_id and self.store.is_ours(message.reference.message_id)
-        if any(user.id == self.user.id for user in message.mentions) or is_reply:
+        # O conteúdo precisa mencionar a conta ou o cargo automático deste bot.
+        # Cargos genéricos, @everyone e @here não são chamados para a Amiya.
+        direct = (any(user.id == self.user.id for user in message.mentions)
+                  and re.search(rf"<@!?{self.user.id}>", message.content) is not None)
+        own_role = any(role.tags and role.tags.bot_id == self.user.id
+                       and f"<@&{role.id}>" in message.content for role in message.role_mentions)
+        is_reply = (not message.mention_everyone and message.reference and message.reference.message_id
+                    and self.store.is_ours(message.reference.message_id))
+        if direct or own_role or is_reply:
             now = time.monotonic()
             if now-self.last_mention.get(message.author.id, -1000) < 8:
                 return

@@ -78,6 +78,38 @@ class BackupAccessTests(unittest.TestCase):
 
 
 class PanelAccessTests(unittest.IsolatedAsyncioTestCase):
+    async def test_mentions_require_direct_account_or_exclusive_bot_role(self):
+        bot_id=123456789012345678
+        own_role=SimpleNamespace(id=123456789012345679,tags=SimpleNamespace(bot_id=bot_id))
+        common_role=SimpleNamespace(id=123456789012345680,tags=None)
+        other_role=SimpleNamespace(id=123456789012345681,tags=SimpleNamespace(bot_id=999))
+        cases=[
+            ('@everyone',True,[SimpleNamespace(id=bot_id)],[],None,False),
+            ('@here',True,[SimpleNamespace(id=bot_id)],[],123,False),
+            (f'<@&{common_role.id}>',False,[],[common_role],None,False),
+            (f'<@&{other_role.id}>',False,[],[other_role],None,False),
+            ('<@999>',False,[SimpleNamespace(id=999)],[],None,False),
+            (f'<@{bot_id}>',False,[SimpleNamespace(id=bot_id)],[],None,True),
+            (f'<@!{bot_id}>',False,[SimpleNamespace(id=bot_id)],[],None,True),
+            (f'<@&{own_role.id}>',False,[],[own_role],None,True),
+            (f'@everyone <@{bot_id}>',True,[SimpleNamespace(id=bot_id)],[],None,True),
+            ('uma dúvida',False,[],[],123,True),
+            ('uma dúvida',False,[],[],456,False),
+        ]
+        for content,everyone,mentions,roles,reply,expected in cases:
+            with self.subTest(content=content,reply=reply):
+                bot=SimpleNamespace(user=SimpleNamespace(id=bot_id),last_mention={},
+                    store=SimpleNamespace(is_ours=lambda mid:mid==123),carteiro=SimpleNamespace(send=AsyncMock()),run_action=AsyncMock())
+                message=SimpleNamespace(content=content,mention_everyone=everyone,mentions=mentions,role_mentions=roles,
+                    reference=SimpleNamespace(message_id=reply) if reply else None,author=SimpleNamespace(id=30,bot=False),
+                    webhook_id=None,guild=SimpleNamespace(id=1),channel=SimpleNamespace(id=2),attachments=[])
+                await Arquivista.on_message(bot,message)
+                self.assertEqual(bot.carteiro.send.await_count,int(expected))
+        message.content='AC:ajuda @everyone'
+        message.mention_everyone=True
+        await Arquivista.on_message(bot,message)
+        self.assertEqual(bot.run_action.await_count,1)
+
     async def test_owner_can_confirm_removal_and_cancel_without_writing(self):
         from arquivista.archive import Archive
         from arquivista.domain import Actor
