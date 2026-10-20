@@ -12,12 +12,38 @@ const eq = (a, b, msg) => assert.deepEqual(plain(a), plain(b), msg);
 let passed = 0;
 function test(name, fn) { try { fn(); passed++; console.log('OK ' + name); } catch (e) { console.error('FAIL ' + name); throw e; } }
 
-// Grade só de valores: aplica os pedidos que mudam conteúdo ou linhas.
+// Grade de valores + nível de agrupamento de cada linha, imitando o Sheets real:
+// linhas acrescentadas no fim herdam o nível da última linha (o grupo do último bloco
+// se estende), e linhas inseridas herdam o da linha seguinte.
+const depths = new Map();
+function groupAt(d, sid, r) {
+  // Grupo de nível r.depth = trecho máximo de linhas com nível >= depth.
+  let a = r.startIndex, z = r.endIndex;
+  if (a >= z || d.slice(a, z).some(x => x < r.depth)) return false;
+  return (a === 0 || d[a - 1] < r.depth) && (z === d.length || d[z] < r.depth);
+}
 function apply(sheets, requests) {
   for (const q of requests) {
-    if (q.addSheet) { const p = q.addSheet.properties; sheets.set(p.sheetId, Array.from({length: p.gridProperties.rowCount}, () => Array(11).fill(''))); }
-    else if (q.appendDimension) { const g = sheets.get(q.appendDimension.sheetId); for (let i = 0; i < q.appendDimension.length; i++) g.push(Array(11).fill('')); }
-    else if (q.insertDimension) { const r = q.insertDimension.range, g = sheets.get(r.sheetId); g.splice(r.startIndex, 0, ...Array.from({length: r.endIndex - r.startIndex}, () => Array(11).fill(''))); }
+    if (q.addSheet) { const p = q.addSheet.properties; sheets.set(p.sheetId, Array.from({length: p.gridProperties.rowCount}, () => Array(11).fill(''))); depths.set(p.sheetId, Array(p.gridProperties.rowCount).fill(0)); }
+    else if (q.appendDimension) {
+      const sid = q.appendDimension.sheetId, g = sheets.get(sid), d = depths.get(sid), last = d.length ? d[d.length - 1] : 0;
+      for (let i = 0; i < q.appendDimension.length; i++) { g.push(Array(11).fill('')); d.push(last); }
+    }
+    else if (q.insertDimension) {
+      const r = q.insertDimension.range, g = sheets.get(r.sheetId), d = depths.get(r.sheetId), n = r.endIndex - r.startIndex;
+      g.splice(r.startIndex, 0, ...Array.from({length: n}, () => Array(11).fill('')));
+      d.splice(r.startIndex, 0, ...Array(n).fill(d[r.startIndex] || 0));
+    }
+    else if (q.addDimensionGroup) { const r = q.addDimensionGroup.range, d = depths.get(r.sheetId); for (let i = r.startIndex; i < r.endIndex; i++) d[i]++; }
+    else if (q.deleteDimensionGroup) {
+      const r = q.deleteDimensionGroup.range, d = depths.get(r.sheetId);
+      assert.ok(d.slice(r.startIndex, r.endIndex).every(x => x > 0), 'deleteDimensionGroup sem grupo');
+      for (let i = r.startIndex; i < r.endIndex; i++) d[i]--;
+    }
+    else if (q.updateDimensionGroup) {
+      const g = q.updateDimensionGroup.dimensionGroup;
+      assert.ok(groupAt(depths.get(g.range.sheetId), g.range.sheetId, {...g.range, depth: g.depth}), 'updateDimensionGroup sem grupo exato no nível ' + g.depth + ' em ' + g.range.startIndex + ':' + g.range.endIndex);
+    }
     else if (q.updateCells) {
       const u = q.updateCells, g = sheets.get(u.start.sheetId);
       assert.ok(u.start.rowIndex < g.length, 'escrita fora da grade');

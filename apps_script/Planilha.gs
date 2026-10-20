@@ -16,7 +16,7 @@
  * Nesta versão, editar a planilha à mão NÃO volta para o bot (isso é a etapa 4).
  */
 const PL = Object.freeze({
-  version: '1.0.0', prefix: 'FICHAS ', perTab: 20, step: 20, head: 13, width: 11,
+  version: '1.0.1', prefix: 'FICHAS ', perTab: 20, step: 20, head: 13, width: 11,
   maxBody: 400000, maxOps: 100, firstBlock: 5,
   statuses: ['Em preparação', 'Em uso', 'Arquivado', 'Liberado'],
   headers: ['Nº', 'Aparência', 'Nome no servidor', 'Obra de origem', 'Situação', 'Cadastro', 'Imagem', 'Link da imagem', 'ID do registro', 'ID Discord', 'Revisão']
@@ -88,8 +88,12 @@ function plSet_(m, tab, row, col, values) {
 function plEmptyRows_(n) { return Array.from({length: n}, () => Array(PL.width).fill('')); }
 function plGrow_(m, tab, rows) {
   if (tab.grid.length >= rows) return;
-  const n = rows - tab.grid.length;
+  const n = rows - tab.grid.length, start = tab.grid.length;
+  const last = tab.grid.length ? String(tab.grid[start - 1][PC.mark - 1] || '') : '';
   m.req.push({appendDimension: {sheetId: tab.sheetId, dimension: 'ROWS', length: n}});
+  // No Sheets, linhas acrescentadas entram no grupo da última linha. Quando ela é o rodapé
+  // de um bloco, o grupo dele engoliria o bloco novo: tira as linhas novas desse grupo.
+  if (last.startsWith('FIM:')) m.req.push({deleteDimensionGroup: {range: {sheetId: tab.sheetId, dimension: 'ROWS', startIndex: start, endIndex: start + n}}});
   tab.grid.push(...plEmptyRows_(n));
 }
 function plInsert_(m, tab, before, n) {
