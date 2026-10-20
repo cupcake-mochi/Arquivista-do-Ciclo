@@ -6,16 +6,16 @@
  * na planilha chegam atualizando o bot, sem colar este arquivo de novo.
  *
  * Funciona em QUALQUER planilha: o script usa a planilha onde ele está, sem ID fixo.
- * Este arquivo é sozinho; não junte com Aparencias.gs/Arquivista.gs (são do modelo antigo).
+ * Este arquivo é sozinho: apague qualquer outro código do projeto antes de colar.
  *
  * Instalação (staff):
  *  1. Crie uma planilha nova do Google. Extensões > Apps Script. Cole este arquivo.
  *  2. Em Serviços (+), adicione "Google Sheets API".
  *  3. Recarregue a planilha e use o menu Arquivista > Instalar. Informe o ID do servidor.
  *  4. Implantar > Nova implantação > App da Web: executar como você, acesso "Qualquer pessoa".
- *  5. No Discord, /configurar > Planilha: cole a URL /exec e a chave mostrada na instalação.
+ *  5. No Discord, /configurar > Conectar planilha: cole a URL /exec e a chave (menu Arquivista > Mostrar a chave).
  *
- * Nesta versão, editar a planilha à mão NÃO volta para o bot.
+ * O que a staff editar à mão na planilha volta para o bot em até 5 minutos.
  */
 const PL = Object.freeze({
   version: '2.0.0', maxBody: 4000000, maxRanges: 500, maxRequests: 20000, system: 'SISTEMA · ARQUIVISTA',
@@ -136,7 +136,7 @@ function instalarArquivista() {
   p.setProperties({PL_SS_ID: ss.getId(), PL_GUILD_ID: guild, PL_SEP: plSeparator_(ss), PL_VERSION: PL.version});
   if (!p.getProperty('PL_SECRET')) p.setProperty('PL_SECRET', plNewSecret_());
   ui.alert('Arquivista instalado', 'Agora: Implantar > Nova implantação > App da Web (executar como você, acesso "Qualquer pessoa"). ' +
-    'Copie a URL que termina em /exec.\n\nNo Discord, use /configurar > Planilha e cole a URL e esta chave:\n\n' + p.getProperty('PL_SECRET') +
+    'Copie a URL que termina em /exec.\n\nNo Discord, use /configurar > Conectar planilha e cole a URL e esta chave:\n\n' + p.getProperty('PL_SECRET') +
     '\n\nNão mostre a chave para ninguém fora da staff.', ui.ButtonSet.OK);
 }
 function plNewSecret_() { return (Utilities.getUuid() + Utilities.getUuid()).replace(/-/g, ''); }

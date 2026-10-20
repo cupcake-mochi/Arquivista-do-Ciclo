@@ -103,7 +103,7 @@ SHEET_ERRORS = {"AUTH": "a planilha recusou a chave ou a URL; conecte de novo no
     "BUSY": "a planilha demorou a responder; vou tentar de novo", "NOT_READY": "o script da planilha não foi instalado",
     "KEY": "a chave guardada não abre mais (o token do bot mudou?); conecte de novo no /configurar",
     "INVALID": "a planilha recusou o pedido; confira se o script está na versão nova",
-    "OLD_SCRIPT": "o script da planilha é antigo; cole o Planilha.gs novo e faça Nova versão na implantação",
+    "OLD_SCRIPT": "o script da planilha é antigo; cole o código novo do fim do guia do dono e faça Nova versão na implantação",
     "OLD_BOT": "o script da planilha é mais novo que o bot; atualize o bot",
     "CHANGED": "a planilha mudou enquanto eu gravava; vou tentar de novo", "INTERNAL": "erro dentro do script da planilha"}
 

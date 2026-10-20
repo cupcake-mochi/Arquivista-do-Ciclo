@@ -56,7 +56,7 @@ ERRORS = {
     "REUSED_REQUEST": "Essa confirmação já foi utilizada para outra operação. Abra o comando novamente.",
     "INVALID": "Um dos dados não passou na validação. Confira os campos e tente novamente.",
     "NOT_READY": "A integração do Arquivista ainda não foi ativada na planilha.",
-    "OLD_SCRIPT": "O script da planilha é de uma versão antiga. Cole o Planilha.gs novo e faça Implantar > Gerenciar implantações > Nova versão.",
+    "OLD_SCRIPT": "O script da planilha é de uma versão antiga. Cole o código novo do fim do guia do dono e faça Implantar > Gerenciar implantações > Nova versão.",
     "OLD_BOT": "O script da planilha é mais novo que o bot. Atualize o bot.",
     "CHANGED": "A planilha mudou enquanto eu gravava. Vou ler de novo e tentar outra vez.",
     "INTERNAL": "Não consegui confirmar a operação. A staff pode verificar o diagnóstico sem repetir o cadastro às cegas.",
