@@ -1,6 +1,6 @@
 # Instalação — Arquivista do Ciclo
 
-> **v0.3 (multi-servidor, sem planilha ainda):** pule as seções 2, 3 e 4. Rode `python configurar.py` (token e, opcional, servidor de testes), `python verificar.py` e `python iniciar.py`. No Discord, a gerência de cada servidor usa `/configurar` pra escolher cargos de staff e os canais de histórico e imagens. O restante deste guia descreve a ponte da v0.2, que volta na etapa 3 do plano.
+> **v0.3 (multi-servidor, sem planilha ainda):** pule as seções 2, 3 e 4. Rode `python configurar.py` (token e, opcional, servidor de testes), `python verificar.py` e `python iniciar.py`. No Discord, a gerência de cada servidor usa `/configurar` pra escolher cargos de staff e os canais de histórico e imagens. Pra trazer os cadastros da planilha, rode `exportarParaArquivista` no Apps Script (gera um .json no seu Drive), baixe o arquivo e rode `python importar.py arquivo.json --servidor ID` com o bot desligado; sem `--aplicar` ele só confere. O restante deste guia descreve a ponte da v0.2, que volta na etapa 3 do plano.
 
 ## Antes de começar
 

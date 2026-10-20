@@ -3,7 +3,7 @@
 **Decidido com o Mizuki em 19/10/2026:** o bot passa a ser público e funciona em
 vários servidores. Um banco próprio vira a fonte dos dados, e cada servidor pode
 **opcionalmente** conectar a sua própria cópia da Planilha Aparências, com
-sincronização nos dois sentidos. **Etapa 1 implementada** (branch `claude/project-thread-zzfh12`, não implantada).
+sincronização nos dois sentidos. **Etapas 1 e 2 implementadas** (branch `claude/project-thread-zzfh12`, não implantada).
 
 ## Como fica
 
@@ -137,6 +137,10 @@ importação.
    (comandos só nesse servidor e na hora). Configuração da v0.2 (canais e
    `STAFF_ROLE_IDS`) é levada pro servidor de testes uma vez.
 2. **Importação** da Planilha Aparências atual pro banco.
+   *Feito:* ação `export` na ponte e função `exportarParaArquivista` (grava um
+   .json no Drive do dono, só leitura na planilha, funciona sem a ponte
+   instalada). `python importar.py arquivo.json --servidor ID` confere tudo e só
+   grava com `--aplicar`. Em 20/10 a planilha tinha 1 cadastro (Takao, de teste).
 3. **Bot → planilha:** modelo novo da planilha (guias por faixa e posições sob demanda), ação `apply` na ponte, fila e `/configurar planilha`.
    Script sem ID fixo.
 4. **Planilha → bot:** consumo dos eventos por servidor, eco e conflitos.
