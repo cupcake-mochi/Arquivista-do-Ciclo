@@ -17,6 +17,7 @@ async def check() -> int:
         print('Configuração incompleta:', str(exc))
         print('Execute python -m pip install -r requirements.txt e python configurar.py.')
         return 1
+    print('Criação automática de planilhas:', 'configurada (a autorização será testada ao usar)' if config.google.ready else 'aguardando configuração Google do mantenedor')
     try:
         version = importlib.metadata.version('discord.py')
         print('Biblioteca discord.py instalada:', version)

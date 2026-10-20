@@ -21,13 +21,15 @@ from .domain import Actor, UserError, STAFF_ACTIONS, find_work, parse_prefix, ra
 from .importer import apply, check
 from .media import Images
 from .sheet import SheetSync
+from .managed import ManagedSheets
+from .google import GoogleError
 from .store import Store
 from .transport import Carteiro, MENTIONS
 from .views import Confirm, Gate, Guide, RestoreConfirm, Picker, Paginator, RecordModal, Settings, backup_problem, private_reply, card, clean
 
 log = logging.getLogger(__name__)
 PUBLIC = frozenset(("ajuda", "guia", "aparencias", "minhas", "galeria", "consultar", "obra"))
-SLASH = ("ajuda", "guia", "aparencias", "obra", "registrar", "editar", "situacao", "transferir", "remover", "limpar", "apelido", "historico", "configurar", "restaurar", "diagnostico")
+SLASH = ("ajuda", "guia", "aparencias", "obra", "registrar", "editar", "situacao", "transferir", "remover", "limpar", "apelido", "historico", "configurar", "restaurar", "planilha", "diagnostico")
 
 HELP = """**Consultar o arquivo**
 `/aparencias` ou `AC:ap [aparência] [@membro]` — lista; o botão do resultado troca para galeria.
@@ -57,6 +59,9 @@ STAFF_HELP = """
 **Gerência do servidor**
 `/configurar` ou `AC:cfg` — cargos de staff, canais de histórico e imagens, planilha.
 `/restaurar` ou `AC:restaurar` com o .json do backup anexado — volta o arquivo para o backup, com confirmação.
+`/planilha criar` — cria a planilha pronta e concede edição ao e-mail informado em privado; repetir reutiliza o arquivo.
+`/planilha abrir` ou `AC:planilha` — painel privado da planilha.
+`/planilha membro` — selecione um @membro do servidor para preparar a aba antes de preencher à mão.
 """ + "\n" + SETUP_LINK
 
 # Guia em páginas (AC:guia). As duas últimas só aparecem para a staff.
@@ -94,6 +99,11 @@ GUIDE = (
      "`/configurar` (dono, Administrador ou Gerenciar Servidor):\n"
      "• cargos de staff;\n• canal de histórico (avisos de cada mudança);\n• canal de imagens (guarda os anexos);\n"
      "• planilha conectada (cópia de tudo, e o que a staff mudar nela volta pro bot);\n• backup automático num canal fechado.\n\n"
+     "`/planilha criar` entrega a planilha pronta: informe seu e-mail Google em privado para receber edição. "
+     "Se já existe, o comando reutiliza o arquivo. `/planilha abrir` mostra o painel.\n"
+     "`/planilha membro` exige selecionar um @membro válido deste servidor para preparar a aba dele. "
+     "Preencha as posições prontas; edições no Sheets entram no bot em cerca de 5 minutos. "
+     "Compartilhe edição só com a staff.\n\n"
      "Para as mensagens saírem com a foto da Amiya, o bot precisa da permissão **Gerenciar Webhooks**.\n\n" + SETUP_LINK),
 )
 STAFF_PAGES = 2
@@ -106,7 +116,9 @@ SHEET_ERRORS = {"AUTH": "a planilha recusou a chave ou a URL; conecte de novo no
     "INVALID": "a planilha recusou o pedido; confira se o script está na versão nova",
     "OLD_SCRIPT": SCRIPT_UPDATE,
     "OLD_BOT": "o script da planilha é mais novo que o bot; atualize o bot",
-    "CHANGED": "a planilha mudou enquanto eu gravava; vou tentar de novo", "INTERNAL": "erro dentro do script da planilha"}
+    "CHANGED": "a planilha mudou enquanto eu gravava; vou tentar de novo", "INTERNAL": "erro na integração da planilha; avise o mantenedor"}
+SHEET_ERRORS.update({code: str(GoogleError(code)) for code in
+    ("GOOGLE_SETUP", "GOOGLE_AUTH", "GOOGLE_ACCESS", "GOOGLE_MISSING", "GOOGLE_LOCALE", "GOOGLE_INVALID", "GOOGLE_STORAGE")})
 
 class Arquivista(commands.Bot):
     def __init__(self, config: Config):
@@ -122,6 +134,7 @@ class Arquivista(commands.Bot):
         self.session: aiohttp.ClientSession | None = None
         self.notice_lock = asyncio.Lock()
         self.sheets = SheetSync(self)
+        self.managed = ManagedSheets(self)
         self.sheet_lock = asyncio.Lock()
         self.last_use: dict[int, float] = {}
         self.last_mention: dict[int, float] = {}
@@ -412,7 +425,10 @@ class Arquivista(commands.Bot):
             archive=self.archive(i.guild_id)
             if action in STAFF_ACTIONS and not actor.staff:
                 raise UserError("Esse comando é exclusivo da staff.")
-            if action=="configurar":
+            if action=="planilha":
+                from .sheet_views import show_sheet
+                await show_sheet(self,i)
+            elif action=="configurar":
                 if not self.can_configure(i.user):
                     raise UserError("Só quem pode gerenciar o servidor configura o Arquivista.")
                 v=Settings(self,i.user.id,i.guild)
@@ -468,6 +484,7 @@ class Arquivista(commands.Bot):
                            (f"\n**Edição da planilha que não entrou:** {clean(cfg['sheet_note'],900)}" if cfg.get("sheet_note") else ""))
                 else:
                     body+="\n**Planilha:** não conectada"
+                body+="\n**Criação automática de planilhas:** "+("ativada" if self.managed.ready else "aguardando ativação pelo mantenedor")
                 if cfg.get("backup_channel"):
                     nxt=cfg.get("backup_next")
                     body+=(f"\n**Backup:** <#{cfg['backup_channel']}> · {backup.INTERVALS.get(cfg.get('backup_hours') or 24,'todo dia')}"+
@@ -663,6 +680,30 @@ def install_slash_commands(bot):
     @app_commands.default_permissions(manage_guild=True)
     @app_commands.describe(arquivo="O .json que o backup mandou")
     async def restaurar(i:discord.Interaction,arquivo:discord.Attachment):await bot.run_action(i,"restaurar",attachment=arquivo)
+    planilha = app_commands.Group(name="planilha", description="Planilha pronta e edição manual conectada ao arquivo.",
+        guild_only=True, default_permissions=discord.Permissions(manage_guild=True))
+    @planilha.command(name="criar",description="Cria a planilha pronta e dá edição ao e-mail informado em privado.")
+    async def planilha_criar(i:discord.Interaction):
+        from .sheet_views import create_sheet
+        await create_sheet(bot,i)
+    @planilha.command(name="abrir",description="Abre o painel privado da planilha deste servidor.")
+    async def planilha_abrir(i:discord.Interaction):
+        from .sheet_views import show_sheet
+        await show_sheet(bot,i)
+    @planilha.command(name="membro",description="Prepara uma aba vazia para preencher manualmente; selecione um @membro válido.")
+    @app_commands.describe(membro="Selecione um membro deste servidor pelo @; não aceita nick como texto.")
+    async def planilha_membro(i:discord.Interaction,membro:discord.Member):
+        if not bot.can_configure(i.user):
+            return await private_reply(i,content="Só quem pode gerenciar o servidor prepara as abas.")
+        await i.response.defer(ephemeral=True,thinking=True)
+        try:
+            url=await bot.managed.prepare_member(i.guild,i.user,membro)
+            row=bot.store.managed_sheet(i.guild_id)
+            link=f"[Abrir planilha]({url})" if row and row["url"]==url else "Abra a planilha já conectada ao servidor."
+            await private_reply(i,content=f"A aba de <@{membro.id}> está preparada. {link}\nPreencha uma posição vazia; a sincronização lê as edições em cerca de 5 minutos.")
+        except UserError as exc:
+            await private_reply(i,content=str(exc))
+    bot.tree.add_command(planilha)
     @bot.tree.command(name="diagnostico",description="Staff: estado do arquivo, dos canais e da planilha.")
     @app_commands.guild_only()
     async def diagnostico(i:discord.Interaction):await bot.run_action(i,"diagnostico")

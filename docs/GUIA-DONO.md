@@ -29,18 +29,23 @@ Tudo isso é opcional. Sem nada configurado o bot já cadastra e consulta.
 
 ## 3. Planilha (opcional)
 
-A planilha mostra o arquivo de um jeito fácil de ler, uma guia por membro, e o que a staff mudar nela volta pro bot.
+A planilha permite preencher as fichas à mão e pelo Discord, com sincronização nos dois sentidos.
 
-1. Crie uma planilha **nova e vazia** no Google Sheets.
-2. Extensões → Apps Script. Apague o conteúdo e cole o [código da planilha](https://drive.google.com/file/d/1-2UMIJg4TKzjXS5mFsy16221SVtZEncA/view) inteiro, do começo ao fim. Em **Serviços (+)**, adicione **Google Sheets API**. Salve.
-3. Volte na planilha e recarregue. No menu **Arquivista → Instalar ou reinstalar**, informe o ID do servidor (botão direito no servidor → Copiar ID, com o Modo Desenvolvedor ligado) e autorize.
-4. No Apps Script: **Implantar → Nova implantação → App da Web**, executar como **você**, acesso **Qualquer pessoa**. Copie o link que termina em `/exec`.
-5. Na planilha: **Arquivista → Mostrar a chave da conexão** e copie.
-6. No Discord: `/configurar` → **Conectar planilha**, cole o link e a chave.
+1. Use **`/planilha criar`**, ou `/configurar` → **Planilha** → **Criar ou retomar**.
+2. Informe seu **e-mail Google no formulário privado**. Esse e-mail receberá edição e verá os cadastros internos do servidor.
+3. Abra o link que o bot entregar. A planilha já estará montada e conectada; a sua aba terá posições vazias para preencher.
 
-"Qualquer pessoa" é sobre o link do script, não sobre a planilha: deixe a planilha restrita e compartilhe a edição só com a staff, porque quem edita a planilha muda cadastros. O script recusa qualquer pedido sem a assinatura do bot.
+A planilha pertence à conta Google do Arquivista; você recebe acesso de editor. Repetir `/planilha criar` abre o mesmo arquivo. Se desconectar a sincronização, o arquivo e as permissões continuam no Google; use o comando de criação para reconectar.
 
-O script não precisa ser atualizado depois: melhorias na planilha chegam pelo bot.
+Para preencher para outra pessoa, use **`/planilha membro` e selecione o @membro do servidor** no campo. Texto livre, apelido digitado ou pessoa que já saiu não cria uma aba. Os cadastros pelo bot também criam a aba da pessoa automaticamente.
+
+Preencha as **posições prontas** na aba do membro: aparência, obra, situação e os campos opcionais. As mudanças feitas no Sheets entram no bot em cerca de **5 minutos**. O bot valida os dados e mostra recusas no `/diagnostico`. Para remover um cadastro, use `/remover`; apagar uma linha não remove o cadastro do bot.
+
+Cada aba começa com **20 posições** e ganha mais **20** quando restam apenas duas livres. Preserve as fórmulas e as colunas de identificação; não insira nem apague linhas no meio das fichas.
+
+Compartilhe edição **só com a staff**: quem edita a planilha pode mudar os cadastros do servidor. O link não torna o arquivo público.
+
+Se a criação automática aparecer como indisponível, ela ainda precisa ser ativada pelo mantenedor. Você não precisa instalar código: o bot continua cadastrando e consultando normalmente. Planilhas conectadas pelo método anterior continuam funcionando.
 
 ## 4. Contar pro servidor
 

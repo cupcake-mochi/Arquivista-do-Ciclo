@@ -600,7 +600,8 @@ class Settings(GuardedView):
             f"**Planilha:** {'conectada' if cfg.get('sheet_url') else 'não conectada'}\n"
             f"**Backup:** {channel(cfg.get('backup_channel'))}\n\n"
             "O histórico recebe só cadastros e alterações daqui pra frente, sem situação, justificativa ou nome interno. "
-            "O canal de imagens guarda os anexos dos cadastros; não apague essas mensagens.\n\n" + SETUP_LINK)
+            "O canal de imagens guarda os anexos dos cadastros; não apague essas mensagens.\n\n"
+            "Use **Planilha** ou `/planilha criar` para receber o arquivo pronto e poder editar no Google Sheets.\n\n" + SETUP_LINK)
         return self.bot.carteiro.decorate(e)
     async def refresh(self, i: discord.Interaction, note: str | None = None):
         await i.response.edit_message(content=note, embed=self.embed(), view=self, allowed_mentions=MENTIONS)
@@ -630,10 +631,12 @@ class Settings(GuardedView):
     async def backup(self, i: discord.Interaction, b: discord.ui.Button):
         panel = BackupPanel(self.bot, i.user.id, self.guild)
         await private_reply(i, embed=panel.embed(), view=panel)
-    @discord.ui.button(label="Conectar planilha", style=discord.ButtonStyle.primary, row=4)
+    @discord.ui.button(label="Planilha", style=discord.ButtonStyle.primary, row=4)
     async def sheet_on(self, i: discord.Interaction, b: discord.ui.Button):
-        await i.response.send_modal(SheetModal(self.bot, i.user.id, self.guild))
+        from .sheet_views import show_sheet
+        await show_sheet(self.bot, i)
     @discord.ui.button(label="Desconectar planilha", style=discord.ButtonStyle.secondary, row=4)
     async def sheet_off(self, i: discord.Interaction, b: discord.ui.Button):
-        self.bot.store.drop_sheet(self.guild.id)
+        async with self.bot.sheet_lock:
+            self.bot.store.drop_sheet(self.guild.id)
         await self.refresh(i, "Planilha desconectada. O que já estava nela continua lá; o bot só para de mandar mudanças.")

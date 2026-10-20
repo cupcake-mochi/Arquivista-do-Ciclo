@@ -16,6 +16,7 @@ Separado por servidor:
 - o histórico de cada alteração, com o antes e o depois e o ID do Discord de quem fez;
 - a confirmação de cada gravação, para que um clique repetido não cadastre duas vezes;
 - a configuração do servidor: cargos de staff e canais escolhidos.
+- na criação automática da planilha, o identificador e o endereço do arquivo, o andamento da criação e o e-mail Google informado para receber edição. Esse e-mail fica cifrado no banco e é enviado ao Google para conceder acesso ao arquivo.
 
 Situação, justificativa e nome no servidor só aparecem para a staff. A lista, a galeria e os avisos públicos mostram só aparência, obra e responsável.
 
@@ -25,7 +26,7 @@ Para saber quando alguém responde a ela, o bot guarda o ID das próprias mensag
 
 ## Para onde os dados vão
 
-Os dados ficam num banco do próprio bot, na hospedagem em que ele roda. Se a staff de um servidor conectar uma planilha do Google, os cadastros daquele servidor são copiados para essa planilha, que pertence à staff e segue as regras do Google. Se a staff ligar o backup automático, o bot manda periodicamente uma cópia dos cadastros do servidor (inclusive justificativas e nomes no servidor) num canal do Discord escolhido por ela e fechado para @everyone. Os dados não são vendidos nem repassados a mais ninguém.
+Os dados ficam num banco do próprio bot, na hospedagem em que ele roda. Quando a criação automática estiver ativada pelo mantenedor, `/planilha criar` cria uma planilha na conta Google do Arquivista e concede edição ao e-mail informado em privado. O arquivo pertence à conta do Arquivista, e quem recebe edição pode consultar e alterar os cadastros internos daquele servidor. A planilha não é tornada pública. Planilhas conectadas pelo método anterior continuam pertencendo ao dono original. As edições feitas na planilha e pelo bot são sincronizadas nos dois sentidos e os arquivos seguem as regras do Google. Desconectar a sincronização não apaga o arquivo nem revoga as permissões: para retirar acessos ou excluir a planilha criada pelo Arquivista, fale comigo. Se a staff ligar o backup automático, o bot manda periodicamente uma cópia dos cadastros do servidor (inclusive justificativas e nomes no servidor) num canal do Discord escolhido por ela e fechado para @everyone. Os dados não são vendidos nem repassados a mais ninguém.
 
 ## Como ver e apagar
 

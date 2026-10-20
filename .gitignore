@@ -9,4 +9,5 @@ __pycache__/
 *.log
 *.pem
 credentials*.json
+client_secret*.json
 service-account*.json
