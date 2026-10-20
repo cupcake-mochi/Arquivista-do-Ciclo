@@ -286,5 +286,44 @@ class PullTests(unittest.TestCase):
         self.assertEqual(self.cell(self.ids[0], layout.SERVER_NAME), "pelo discord")
 
 
+class AmiyaPhotoTests(unittest.TestCase):
+    def test_webhook_without_photo_gets_amiya_and_messages_use_it(self):
+        from arquivista.transport import Carteiro
+        tmp = tempfile.TemporaryDirectory(); self.addCleanup(tmp.cleanup)
+        s = Store(Path(tmp.name) / "d.sqlite"); self.addCleanup(s.close)
+        sent, edits = [], []
+        class Avatar:
+            def __init__(self, url): self.url = url
+        class Hook:
+            name, token, application_id, avatar = "Arquivista do Ciclo", "t", 5, None
+            class user: id = 1
+            display_avatar = Avatar("https://cdn.discordapp.com/embed/avatars/0.png")
+            async def edit(self, **kw):
+                edits.append(kw)
+                class Edited: avatar = "abc"; display_avatar = Avatar("https://cdn.discordapp.com/avatars/9/abc.png")
+                return Edited()
+            async def send(self, **kw):
+                sent.append(kw)
+                class M: id = 77
+                return M()
+        hook = Hook()
+        class Channel:
+            id = 3
+            async def webhooks(self): return [hook]
+        class Bot:
+            store = s; application_id = 5
+            class user:
+                id = 1
+                class display_avatar: url = "https://cdn.discordapp.com/avatars/1/portal.png"
+            class config: persona_name = "Amiya"
+        c = Carteiro(Bot())
+        import discord
+        asyncio.run(c.send(Channel(), embed=discord.Embed(title="x")))
+        self.assertEqual(len(edits), 1)
+        self.assertEqual(sent[0]["avatar_url"], "https://cdn.discordapp.com/avatars/9/abc.png")
+        self.assertEqual(sent[0]["username"], "Amiya")
+        self.assertEqual(sent[0]["embed"].author.icon_url, "https://cdn.discordapp.com/avatars/9/abc.png")
+
+
 if __name__ == "__main__":
     unittest.main()
