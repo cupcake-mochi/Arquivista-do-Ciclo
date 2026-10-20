@@ -414,11 +414,11 @@ class FilesTests(unittest.TestCase):
         text=(ROOT/'src/arquivista/bot.py').read_text();tree=ast.parse(text)
         names=[]
         for node in ast.walk(tree):
-            if isinstance(node,ast.Call) and isinstance(node.func,ast.Attribute) and node.func.attr=='command':
+            if isinstance(node,ast.Call) and isinstance(node.func,ast.Attribute) and node.func.attr=='command' and ast.unparse(node.func.value)=='bot.tree':
                 for kw in node.keywords:
                     if kw.arg=='name':names.append(ast.literal_eval(kw.value))
         from arquivista.bot import SLASH,PUBLIC
-        self.assertEqual(names,list(SLASH))
+        self.assertEqual(names,[n for n in SLASH if n!='planilha'])  # o grupo é conferido na construção real
         # Todo comando de chat cai num comando de barra ou numa consulta pública.
         self.assertTrue(set(ALIASES.values())<=set(SLASH)|PUBLIC)
         self.assertEqual(len(names),15)
@@ -452,7 +452,7 @@ class DiscordImportTests(unittest.IsolatedAsyncioTestCase):
         with tempfile.TemporaryDirectory() as d:
             cfg=Config('FAKE',Path(d)/'t.sqlite')
             bot=Arquivista(cfg)
-            self.assertEqual(len(bot.tree.get_commands()),15)
+            self.assertEqual(len(bot.tree.get_commands()),16)
             # Um método do bot com nome de método do discord.py derrubava o login (dispatch).
             from discord.ext import commands
             mine={n for n in vars(Arquivista) if not n.startswith('__')}

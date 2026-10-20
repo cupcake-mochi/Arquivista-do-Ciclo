@@ -6,3 +6,6 @@ tests
 apps_script
 docs
 *.log
+.env*
+credentials*.json
+client_secret*.json

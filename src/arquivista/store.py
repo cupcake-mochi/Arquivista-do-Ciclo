@@ -39,6 +39,8 @@ SCHEMA = '''
   -- Apelidos de obra que a staff cadastra ("JJK" = "Jujutsu Kaisen"); a chave é o apelido normalizado.
   CREATE TABLE IF NOT EXISTS work_aliases(guild_id TEXT NOT NULL,alias_key TEXT NOT NULL,alias TEXT NOT NULL,
     work TEXT NOT NULL,PRIMARY KEY(guild_id,alias_key));
+  CREATE TABLE IF NOT EXISTS managed_sheets(guild_id TEXT PRIMARY KEY,request_id TEXT UNIQUE NOT NULL,
+    editor TEXT NOT NULL,state TEXT NOT NULL DEFAULT 'pending',file_id TEXT,url TEXT,updated REAL NOT NULL);
 '''
 # Colunas acrescentadas depois da primeira versão do banco; ALTER TABLE preserva o que já existe.
 COLUMNS = {"guilds": (("sheet_url", "TEXT"), ("sheet_key", "TEXT"), ("sheet_error", "TEXT"), ("sheet_ok", "TEXT"),
@@ -188,6 +190,21 @@ class Store:
         with self.db:
             self.db.execute("DELETE FROM sheet_outbox WHERE guild_id=?", (str(guild_id),))
             self.db.execute("UPDATE guilds SET sheet_url=NULL,sheet_key=NULL,sheet_error=NULL,sheet_ok=NULL,sheet_note=NULL WHERE guild_id=?", (str(guild_id),))
+    def managed_sheet(self, guild_id):
+        row = self.db.execute("SELECT * FROM managed_sheets WHERE guild_id=?", (str(guild_id),)).fetchone()
+        return dict(row) if row else None
+    def begin_managed_sheet(self, guild_id, request_id, editor):
+        with self.db:
+            self.db.execute("INSERT OR IGNORE INTO managed_sheets(guild_id,request_id,editor,updated) VALUES(?,?,?,?)",
+                            (str(guild_id), request_id, editor, time.time()))
+        return self.managed_sheet(guild_id)
+    def update_managed_sheet(self, guild_id, **fields):
+        if not fields or set(fields) - {"state", "file_id", "url", "editor"}:
+            raise ValueError("campo de criação desconhecido")
+        with self.db:
+            sets = ",".join(k + "=?" for k in fields)
+            self.db.execute(f"UPDATE managed_sheets SET {sets},updated=? WHERE guild_id=?",
+                            (*fields.values(), time.time(), str(guild_id)))
     # ---- mensagens da própria Amiya (respostas a ela recebem a saudação)
     def remember(self, message_id: int) -> None:
         with self.db:

@@ -1,6 +1,6 @@
 # Arquivista do Ciclo · Amiya
 
-**Versão 0.3.0 (em desenvolvimento) · projeto independente dos Guias do Ciclo.**
+**Versão 0.4.0 · projeto independente dos Guias do Ciclo.**
 
 > **Pra dono de servidor:** o passo a passo de convidar, configurar e ligar a planilha está no [guia público no Google Docs](https://docs.google.com/document/d/1xuehlkhU3EhMsSE4hjLIfQY9p-eEF6ynS5ikAmlqnhw/view). Quem usa o bot encontra os comandos e o passo a passo em `/ajuda` e `/guia`.
 >
@@ -8,7 +8,9 @@
 
 Bot de cadastro de aparências com comandos `AC:` e `/`, consultas públicas, formulários privados e integração com a Planilha Aparências. A imagem fornecida da Amiya está em `assets/amiya.png`, sem alteração. Não usa um modelo de IA nem a chave de outro provedor.
 
-**Estado:** multi-servidor, com banco próprio, planilha conectada nos dois sentidos, backup e restauração pelo Discord. Testes automáticos em `tests/` (rodam no CI a cada envio).
+**Estado:** multi-servidor, com banco próprio, criação automática de planilhas e sincronização nos dois sentidos, backup e restauração pelo Discord. Testes automáticos em `tests/` (rodam no CI a cada envio). A criação automática exige a configuração Google única do mantenedor; sem ela o restante do bot continua funcionando.
+
+**Planilha pronta:** `/planilha criar` pede um e-mail em privado e entrega o arquivo montado, conectado e com edição para esse e-mail. A planilha pertence à conta do Arquivista. `/planilha membro` exige selecionar um membro real do servidor e prepara uma aba para preenchimento manual; cadastros pelo bot também criam as abas. Não é preciso instalar script. Para ativar na hospedagem, veja [a configuração única do mantenedor](docs/GOOGLE-MANTENEDOR.md).
 
 ## O que está incluído
 
@@ -21,13 +23,13 @@ Bot de cadastro de aparências com comandos `AC:` e `/`, consultas públicas, fo
 | Histórico | Canal configurável, auditoria privada antes/depois e fila persistente de notificações. Captura de alterações manuais na planilha. |
 | Imagens | Link direto, imagem na célula consultável e anexo preservado em um canal escolhido pela staff. |
 | Planilha | Mesma estrutura visual; IDs/datas/vínculos/auditoria tratados em uma operação coordenada. |
-| Instalação | Assistente `.env`, diagnóstico sem escrita, configuração para Discloud e dois arquivos Apps Script. |
+| Instalação | Assistente `.env`, autorização Google única do mantenedor, diagnóstico sem escrita e pacote para Discloud. Apps Script mantido para conexões antigas. |
 
 Situação, justificativa e nome interno do personagem **não saem na lista, galeria nem notificações públicas**. Arquivado continua ocupado. Liberado permite reutilização. Não há aprovação obrigatória para o cadastro inicial.
 
 ## Comece por aqui
 
-**Leia [docs/INSTALACAO.md](docs/INSTALACAO.md).** Não substitua o Apps Script enquanto a ampliação da planilha estiver em execução.
+**Leia [docs/INSTALACAO.md](docs/INSTALACAO.md).** A conta Google é configurada uma vez pelo mantenedor; donos de servidor recebem a planilha pronta pelo Discord.
 
 Na máquina em que irá preparar o bot, com Python 3.11 ou mais recente:
 
@@ -36,9 +38,9 @@ python -m pip install -r requirements.txt
 python configurar.py
 ```
 
-O assistente cria um `.env` privado e gera uma chave separada para a ponte com o Google. Pode ser executado novamente depois de obter a URL `/exec`; ele preserva a chave existente. Nenhuma chave real acompanha este pacote.
+O assistente cria um `.env` privado para o token e o servidor de testes. A autorização Google fica no assistente separado `configurar_google.py`, conforme o guia do mantenedor. Nenhuma credencial real acompanha este pacote.
 
-Depois de instalar e implantar a ponte conforme o guia:
+Depois de configurar o bot:
 
 ```sh
 python verificar.py
@@ -65,7 +67,7 @@ A staff também tem `AC:sit`, `AC:tr`, `AC:rm`, `AC:hist`, `AC:diag` e `AC:cfg`,
 
 ## O que não muda automaticamente
 
-Este projeto não substitui os Guias, não publica o acesso da planilha, não cria um repositório e não contrata hospedagem. Os grupos precisam estar realmente preparados no Sheets: aceita a capacidade pronta de 50 ou 100 membros, com 200 posições por pessoa. O bot não inventa uma expansão além disso; informa à staff quando faltar espaço.
+Este projeto não substitui os Guias, não torna as planilhas públicas e não contrata hospedagem. Cada aba de membro começa com 20 posições e ganha mais 20 quando restam duas livres, respeitando os limites do Google Sheets. Planilhas existentes não são substituídas automaticamente pelo comando de criação.
 
 Os registros anteriores mantêm suas datas reais, inclusive data vazia quando desconhecida. A auditoria detalhada começa na ativação desta integração; não há histórico fictício retroativo.
 
@@ -74,6 +76,7 @@ Os registros anteriores mantêm suas datas reais, inclusive data vazia quando de
 ```sh
 python -m unittest discover -s tests -v
 node tests/test_bridge.js
+node tests/test_planilha.js
 ```
 
 A configuração de GitHub Actions acompanha o projeto para repetir os testes em um repositório próprio, com as dependências instaladas. Não modifica o repositório dos Guias.

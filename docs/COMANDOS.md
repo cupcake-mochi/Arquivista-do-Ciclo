@@ -34,7 +34,7 @@ A imagem pode ir pelo link HTTPS no formulário ou pelo campo de anexo do própr
 
 Não escreva uma justificativa secreta na mensagem pública. O formulário não publica as respostas no canal: mostra uma revisão privada antes de salvar. No campo de imagem da edição, `-` remove a imagem, inclusive quando ela estava inserida diretamente na célula.
 
-Quem registra escolhe a situação na revisão, antes de confirmar; sem escolher, fica **Em preparação**. Depois, só a staff muda a situação. O primeiro cadastro bem-sucedido de alguém cria ou vincula sua linha em MEMBROS e associa um grupo livre, sem exigir ID digitado pelo jogador.
+Quem registra escolhe a situação na revisão, antes de confirmar; sem escolher, fica **Em preparação**. Depois, só a staff muda a situação. Na planilha conectada, o primeiro cadastro cria a aba do membro automaticamente. Para preencher antes de cadastrar pelo bot, a gerência usa `/planilha membro` e seleciona o @membro real do servidor.
 
 Não é preciso decorar UUID. Editar, remover e transferir apresentam uma seleção explícita por aparência/obra; uma correspondência aproximada não escolhe automaticamente o alvo.
 
@@ -51,6 +51,9 @@ Não é preciso decorar UUID. Editar, remover e transferir apresentam uma seleç
 | `AC:diagnostico` (`AC:diag`, `AC:st`) | `/diagnostico` | Cadastros, membros, eventos, canais, avisos pendentes e estado da planilha (envios pendentes, último envio, último erro). |
 | `AC:restaurar` com o .json anexado | `/restaurar arquivo` | Só gerência. Volta o arquivo para um backup: mostra quantos cadastros vêm e quantos atuais serão substituídos, e só grava no botão **Restaurar**. Os cadastros substituídos ficam no `/historico`, e a planilha conectada é regravada. |
 | `AC:configurar` (`AC:cfg`) | `/configurar` | Só dono, Administrador ou quem gerencia o servidor: cargos de staff, canal de histórico, canal de imagens, planilha e backup num painel privado. |
+| `AC:planilha` | `/planilha abrir` | Só gerência: painel privado da planilha e acesso ao arquivo. |
+| Pelo painel de planilha | `/planilha criar` | Pede e-mail Google em formulário privado, cria o arquivo pronto e concede edição. Repetir reutiliza o mesmo arquivo; não substitui uma conexão antiga. Requer ativação Google única do mantenedor. |
+| — | `/planilha membro membro:@pessoa` | Só gerência: prepara uma aba vazia para preencher manualmente. Exige selecionar um membro real do servidor e confirma que ele ainda está presente. Texto livre, apelido e ID digitado não servem. |
 
 Os comandos de configuração exibem um botão de atendimento privado quando usados por `AC:`; abrir esse painel executa a configuração com nova checagem de permissão. Não criam/deletam canais nem alteram permissões do servidor.
 
@@ -59,6 +62,8 @@ Os comandos de configuração exibem um botão de atendimento privado quando usa
 **Staff** = dono do servidor, Administrador, quem tem Gerenciar Servidor ou membro de um dos cargos escolhidos no `/configurar` daquele servidor. A permissão é checada novamente nas operações finais; ter aberto um painel antes não mantém um privilégio removido.
 
 ## Situações
+
+**Planilha pronta:** cadastro e edição funcionam pelo Discord e diretamente no Sheets. As edições do Sheets entram no bot em cerca de cinco minutos, passam pela mesma validação e as recusas aparecem no `/diagnostico`. Começa com 20 posições por membro e ganha mais 20 quando faltam duas livres. Preserve as fórmulas e colunas de identificação; não insira/apague linhas no meio das fichas. Para remover um cadastro, use `/remover` ou `/limpar`. Compartilhe edição apenas com a staff. Desconectar só desliga a sincronização, preservando arquivo e permissões.
 
 **Em preparação**, **Em uso** e **Arquivado** mantêm a aparência ocupada. **Liberado** permite que outro cadastro a utilize. Remoção e liberação são administrativas; mudar a aparência/obra também fica com a staff para não criar uma liberação disfarçada por edição.
 

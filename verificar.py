@@ -12,11 +12,13 @@ async def check() -> int:
         import aiohttp
         from arquivista.config import Config
         from arquivista.store import Store
+        from arquivista import __version__
         config = Config.load()
     except (ImportError, ValueError, OSError) as exc:
         print('Configuração incompleta:', str(exc))
         print('Execute python -m pip install -r requirements.txt e python configurar.py.')
         return 1
+    print('Criação automática de planilhas:', 'configurada (a autorização será testada ao usar)' if config.google.ready else 'aguardando configuração Google do mantenedor')
     try:
         version = importlib.metadata.version('discord.py')
         print('Biblioteca discord.py instalada:', version)
@@ -33,7 +35,7 @@ async def check() -> int:
         print('Não consegui abrir o banco em', config.db_path, '· tipo do problema:', type(exc).__name__)
         return 1
     headers = {'Authorization': 'Bot ' + config.token}
-    async with aiohttp.ClientSession(headers={'User-Agent':'ArquivistaDoCiclo/0.3 preflight'}) as session:
+    async with aiohttp.ClientSession(headers={'User-Agent':f'ArquivistaDoCiclo/{__version__} preflight'}) as session:
         try:
             async with session.get('https://discord.com/api/v10/users/@me', headers=headers,
                     timeout=aiohttp.ClientTimeout(total=25)) as response:

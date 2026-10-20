@@ -37,6 +37,7 @@ SHORT = {
     "ajuda": ("ajuda", "help", "aj"),
     "diagnostico": ("diagnostico", "diagnóstico", "diag", "status", "st"),
     "restaurar": ("restaurar",),
+    "planilha": ("planilha", "planilhas"),
     "configurar": ("configurar", "config", "cfg", "registrarhistorico", "desativarhistorico", "registrarimagens", "desativarimagens"),
 }
 ALIASES = {name: action for action, names in SHORT.items() for name in names}

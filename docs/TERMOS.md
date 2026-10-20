@@ -10,6 +10,8 @@ Ele guarda, para cada servidor, quem usa qual aparência (personagem e obra de o
 
 ## Como usar
 
+Quando a criação automática estiver ativada, a gerência pode pedir uma planilha pronta com `/planilha criar`, informando um e-mail Google para receber edição. O arquivo pertence à conta do Arquivista e permite cadastro e edição tanto pelo Sheets quanto pelo bot. Informe somente um e-mail autorizado a acessar os dados internos do servidor e compartilhe edição apenas com a staff. Desconectar a sincronização não remove o arquivo nem revoga acessos no Google.
+
 - Siga as regras do Discord e as do servidor em que você está.
 - Cadastre só aparências e imagens que você pode usar. Não envie imagem sexual, violenta ou que exponha outra pessoa.
 - Não use o bot para ofender, assediar ou prejudicar outra pessoa.

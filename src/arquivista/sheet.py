@@ -89,6 +89,10 @@ class SheetSync:
         return Actor(str(self.bot.user.id) if self.bot.user else "0", "Arquivista", True)
     def bridge(self, guild_id: str, cfg: dict | None = None) -> Bridge:
         cfg = cfg or self.bot.store.guild(guild_id)
+        managed = self.bot.store.managed_sheet(guild_id)
+        if managed and cfg.get("sheet_url") == managed["url"] and managed["file_id"]:
+            from .google import DirectSheet
+            return DirectSheet(self.bot.managed.api, managed["file_id"])
         return Bridge(self.bot.session, cfg["sheet_url"], unseal(self.bot.config.master_key, cfg["sheet_key"]), int(guild_id))
     async def owner_name(self, guild_id: str, owner_id: str) -> str:
         key = (guild_id, owner_id)
@@ -122,6 +126,8 @@ class SheetSync:
                 total += await self.pull(guild_id)
             except Exception as exc:
                 self.next_pull[guild_id] = now + 3 * PULL_EVERY
+                code = getattr(exc, "code", None) or ("KEY" if isinstance(exc, ValueError) else "INTERNAL")
+                self.bot.store.set_guild(guild_id, sheet_error=code)
                 log.warning("Leitura da planilha do servidor %s: %s", guild_id, type(exc).__name__)
         return total
     async def pull(self, guild_id: str) -> int:
@@ -160,6 +166,7 @@ class SheetSync:
         note = "; ".join(notes)[:900] or None
         if note != store.guild(guild_id).get("sheet_note"):
             store.set_guild(guild_id, sheet_note=note)
+        store.set_guild(guild_id, sheet_error=None)
         return applied + len(lost)
     async def guild(self, guild_id: str) -> None:
         store = self.bot.store
