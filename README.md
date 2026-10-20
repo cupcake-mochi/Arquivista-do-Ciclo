@@ -2,11 +2,11 @@
 
 **Versão 0.3.0 (em desenvolvimento) · projeto independente dos Guias do Ciclo.**
 
-> **Multi-servidor (etapa 1 do [plano](docs/PLANO-MULTISERVIDOR.md)):** os cadastros agora ficam num banco próprio do bot, separados por servidor, e cada servidor se configura com `/configurar`. O `.env` só precisa de `DISCORD_TOKEN` (e, opcional, `DISCORD_DEV_GUILD_ID` pra testar). A ponte com a planilha volta na etapa 3; até lá as seções de Apps Script da instalação não se aplicam.
+> **Pra dono de servidor:** o passo a passo de convidar, configurar e ligar a planilha está em [docs/GUIA-DONO.md](docs/GUIA-DONO.md). Os comandos estão em [docs/COMANDOS.md](docs/COMANDOS.md).
 
 Bot de cadastro de aparências com comandos `AC:` e `/`, consultas públicas, formulários privados e integração com a Planilha Aparências. A imagem fornecida da Amiya está em `assets/amiya.png`, sem alteração. Não usa um modelo de IA nem a chave de outro provedor.
 
-**Estado desta entrega:** código implementado e testes locais executados. Não está implantado, não foi conectado ao Discord e não alterou a planilha nesta etapa. A ativação na conta Google e na hospedagem ainda é necessária. Leia o relatório em `docs/TESTES.md` antes de abrir o cadastro ao servidor inteiro.
+**Estado:** multi-servidor, com banco próprio, planilha conectada nos dois sentidos, backup e restauração pelo Discord. Testes automáticos em `tests/` (rodam no CI a cada envio).
 
 ## O que está incluído
 
