@@ -102,7 +102,7 @@ class Archive:
             if not actor.staff: fail("FORBIDDEN")
             return self.purge(actor, d, rid)
         if action not in ("create", "edit", "change_status", "transfer", "remove"): fail("INVALID")
-        if action in ("change_status", "transfer", "remove") and not actor.staff: fail("FORBIDDEN")
+        if action in ("change_status", "transfer") and not actor.staff: fail("FORBIDDEN")
         return self.mutate(action, actor, d, rid)
     # ---------------- leituras
     def public(self, row) -> dict:
@@ -154,7 +154,7 @@ class Archive:
         used = self.db.execute("SELECT COUNT(*) FROM appearances WHERE guild_id=? AND owner_id=?",
                                (self.guild, owner_id)).fetchone()[0]
         if used >= MAX_PER_MEMBER:
-            fail("CAPACITY", f"Esse membro já tem {MAX_PER_MEMBER} cadastros neste servidor. A staff precisa remover algum antes de cadastrar outro.")
+            fail("CAPACITY", f"Esse membro já tem {MAX_PER_MEMBER} cadastros neste servidor. Remova um cadastro seu ou peça ajuda à staff antes de cadastrar outro.")
     def taken(self, r: dict) -> bool:
         if r["status"] == "Liberado":
             return False

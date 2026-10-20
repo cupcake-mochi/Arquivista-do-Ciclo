@@ -151,7 +151,7 @@ function acDispatch_(ss,q){
     if(!a.staff)acFail_('FORBIDDEN');return acExport_(ss);
   }
   if(!['create','edit','change_status','transfer','remove'].includes(q.action))acFail_('INVALID');
-  if(['change_status','transfer','remove'].includes(q.action)&&!a.staff)acFail_('FORBIDDEN');
+  if(['change_status','transfer'].includes(q.action)&&!a.staff)acFail_('FORBIDDEN');
   return acMutate_(ss,q);
 }
 

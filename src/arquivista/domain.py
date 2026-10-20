@@ -41,7 +41,7 @@ SHORT = {
     "configurar": ("configurar", "config", "cfg", "registrarhistorico", "desativarhistorico", "registrarimagens", "desativarimagens"),
 }
 ALIASES = {name: action for action, names in SHORT.items() for name in names}
-STAFF_ACTIONS = frozenset(("situacao", "transferir", "remover", "limpar", "apelido", "historico", "diagnostico"))
+STAFF_ACTIONS = frozenset(("situacao", "transferir", "limpar", "apelido", "historico", "diagnostico"))
 
 ERRORS = {
     "AUTH": "A conexão com o arquivo não foi autorizada. A staff precisa conferir a configuração.",

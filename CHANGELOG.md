@@ -1,5 +1,13 @@
 # Histórico de versões
 
+## 1.0.3 · 20/10/2026
+
+Cada membro pode remover os próprios cadastros pelo `/remover` ou `AC:rm`, com confirmação. A permissão e a revisão da ficha são conferidas novamente ao salvar; transferir a ficha revoga o acesso do antigo responsável. A auditoria fica preservada e a remoção segue para a planilha.
+
+Cadastros de outras pessoas, mudanças de situação, transferências e limpeza em lote continuam restritos à staff. Ajuda, guia e documentos públicos atualizados.
+
+Amiya só é acionada por menção direta à conta ou ao cargo automático vinculado a ela, além dos comandos e respostas às próprias mensagens. `@everyone`, `@here`, cargos genéricos e cargos de outros bots não a chamam.
+
 ## 1.0.2 · 20/10/2026
 
 As consultas por aparência, obra ou membro e a galeria agora mostram também o nome do personagem no servidor. O campo continua opcional e pode ser editado pelo responsável. Situação e justificativa permanecem privadas. As listas mostram até 12 fichas por página para acomodar o nome dentro do limite do Discord.
