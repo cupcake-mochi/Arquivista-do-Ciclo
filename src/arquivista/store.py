@@ -129,6 +129,11 @@ class Store:
         rows = self.db.execute("SELECT guild_id FROM guilds WHERE backup_channel IS NOT NULL AND COALESCE(backup_next,0)<=?",
                                (time.time(),)).fetchall()
         return [r[0] for r in rows]
+    def renewable(self) -> list[dict]:
+        """Cadastros com anexo guardado pelo bot, em servidores com planilha conectada."""
+        rows = self.db.execute("SELECT a.guild_id,a.id,a.image_url FROM appearances a JOIN guilds g ON g.guild_id=a.guild_id "
+                               "WHERE a.media_ref<>'' AND g.sheet_url IS NOT NULL").fetchall()
+        return [dict(r) for r in rows]
     def records(self, guild_id: str) -> list[dict]:
         rows = self.db.execute("SELECT * FROM appearances WHERE guild_id=? ORDER BY owner_id,created", (str(guild_id),)).fetchall()
         return [dict(r) for r in rows]

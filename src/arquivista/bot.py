@@ -293,6 +293,11 @@ class Arquivista(commands.Bot):
         await self.deliver_events()
         await self.sync_sheets()
         await self.run_backups()
+        try:
+            if await self.images.renew():
+                self.notify_soon()
+        except Exception as exc:
+            log.warning("Renovação de imagens: %s", type(exc).__name__)
     @worker.before_loop
     async def before_worker(self):
         await self.wait_until_ready()
