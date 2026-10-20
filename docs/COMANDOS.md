@@ -8,7 +8,7 @@ O prefixo é `AC:`; `ac:`, `Ac:` e espaços após `:` funcionam. Mensagens de bo
 |---|---|---|
 | `AC:ajuda` (`AC:aj`) | `/ajuda` | Instruções da Amiya. Mostra a seção administrativa a quem tem permissão. |
 | `AC:aparencias [aparência] [@membro]` (`AC:ap`) | `/aparencias [aparencia] [membro] [modo]` | Quinze por página, com responsável. O botão **Ver em galeria** troca para uma por página, com imagem. |
-| `AC:minhas` (`AC:min`) | `/aparencias membro:` você | A própria lista. |
+| `AC:minhas` (`AC:min`) | `/aparencias membro:` você | A própria lista. Lista de uma pessoa só mostra a foto dela no canto e a obra em cada linha. |
 | `AC:galeria [aparência] [@membro]` (`AC:gal`) | `/aparencias modo:galeria` | Já abre em galeria. |
 | `AC:consultar aparência` (`AC:busca`) | `/aparencias aparencia:` | Busca aproximada; a obra pode ir junto do nome. |
 

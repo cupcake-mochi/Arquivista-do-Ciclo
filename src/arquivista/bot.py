@@ -206,7 +206,16 @@ class Arquivista(commands.Bot):
             data=await self.archive(gid).call("list",actor,{"owner_id":owner_id,"include_released":False})
             records=ranked([public_record(r) for r in data["records"]],query)
             mode="gallery" if action in ("galeria","consultar") else "list"
-            view=Paginator(self,user.id,records,mode,actor=actor,guild_id=gid)
+            owner=None
+            if owner_id:
+                guild=self.get_guild(int(gid))
+                owner=guild.get_member(int(owner_id)) if guild else None
+                if guild and owner is None:
+                    try:
+                        owner=await guild.fetch_member(int(owner_id))
+                    except discord.HTTPException:
+                        owner=None
+            view=Paginator(self,user.id,records,mode,actor=actor,guild_id=gid,owner=owner)
             await self.reply_public(source,embed=await view.embed(),view=view if records else None)
         except Exception as exc:
             await self.failure(source,exc)

@@ -72,9 +72,10 @@ class Gate(GuardedView):
         await self.bot.open_private(interaction, self.action, self.query, self.member_id, self.attachment)
 
 class Paginator(GuardedView):
-    def __init__(self, bot, user_id, records, mode="list", *, actor=None, guild_id=None):
+    def __init__(self, bot, user_id, records, mode="list", *, actor=None, guild_id=None, owner=None):
         super().__init__(bot, user_id)
-        self.records, self.mode, self.page, self.actor, self.guild_id = records, mode, 0, actor, guild_id
+        # owner: membro quando a lista é de uma pessoa só (foto no canto, sem repetir a menção em cada linha).
+        self.records, self.mode, self.page, self.actor, self.guild_id, self.owner = records, mode, 0, actor, guild_id, owner
         self.per_page = 1 if mode in ("gallery", "history") else 15
         self.requires_staff = mode == "history"
         self.mutex = asyncio.Lock()
@@ -112,8 +113,14 @@ class Paginator(GuardedView):
                 e.add_field(name="Imagem", value="Sem imagem disponível no momento.", inline=False)
         else:
             chunk = self.records[self.page*self.per_page:(self.page+1)*self.per_page]
-            lines = [f"**{self.page*self.per_page+j+1}. {clean(r['appearance'],110)}** · <@{r['owner_id']}>" for j,r in enumerate(chunk)]
-            e = card("Arquivo de aparências", "\n".join(lines))
+            if self.owner:
+                lines = [f"**{self.page*self.per_page+j+1}. {clean(r['appearance'],110)}** · {clean(r['work'],60)}" for j,r in enumerate(chunk)]
+                e = card("Aparências de " + clean(self.owner.display_name, 80), f"<@{self.owner.id}>\n\n" + "\n".join(lines))
+            else:
+                lines = [f"**{self.page*self.per_page+j+1}. {clean(r['appearance'],110)}** · <@{r['owner_id']}>" for j,r in enumerate(chunk)]
+                e = card("Arquivo de aparências", "\n".join(lines))
+        if self.owner and self.mode != "history":
+            e.set_thumbnail(url=self.owner.display_avatar.url)
         e.set_footer(text=f"Página {self.page+1}/{self.pages} · {len(self.records)} resultado(s) · abra outro comando para atualizar")
         return self.bot.carteiro.decorate(e)
     async def turn(self, i, delta):
