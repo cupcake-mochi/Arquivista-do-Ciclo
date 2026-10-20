@@ -193,11 +193,11 @@ test('Web App: só aceita pedido assinado, recente e do servidor certo; apply gr
   eq(post(env('status', {}, {guild_id: '444444444444444444'})), {ok: false, code: 'GUILD'});
   eq(post(env('status', {}, {ts: Math.floor(Date.now() / 1000) - 600})), {ok: false, code: 'CLOCK'});
   eq(web.doPost({postData: {contents: 'x'.repeat(500000)}}), {ok: false, code: 'AUTH'});
-  eq(post(env('status', {})), {ok: true, data: {version: '1.0.0', tabs: 0, members: 0, records: 0}});
+  eq(post(env('status', {})), {ok: true, data: {version: '1.0.1', tabs: 0, members: 0, records: 0}});
   const r = rec(A);
   eq(post(env('apply', {ops: [up(r)]})), {ok: true, data: {results: [{id: r.id, status: 'ok'}]}});
   eq(post(env('apply', {ops: [up(r)]})), {ok: true, data: {results: [{id: r.id, status: 'ok'}]}});
-  eq(post(env('status', {})).data, {version: '1.0.0', tabs: 1, members: 1, records: 1});
+  eq(post(env('status', {})).data, {version: '1.0.1', tabs: 1, members: 1, records: 1});
   eq(post(env('apply', {ops: 'x'})), {ok: false, code: 'INVALID'});
   assert.equal(batches, 1);  // o pedido repetido não gerou outra gravação
 });
