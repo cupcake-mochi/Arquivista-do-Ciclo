@@ -164,8 +164,8 @@ test('Web App: só aceita pedido assinado, recente e do servidor certo; apply gr
   const env = (action, data, extra) => JSON.stringify(Object.assign({v: 1, ts: Math.floor(Date.now() / 1000), nonce: 'n', request_id: 'req-00000001', action: action,
     guild_id: '333333333333333333', actor: {id: '999999999999999999', name: 'Arquivista', staff: true}, data: data}, extra || {}));
   eq(post(env('status', {}), 'x'.repeat(48)), {ok: false, code: 'AUTH'});
-  eq(post(env('status', {}, {guild_id: '444444444444444444'})), {ok: false, code: 'AUTH'});
-  eq(post(env('status', {}, {ts: Math.floor(Date.now() / 1000) - 600})), {ok: false, code: 'AUTH'});
+  eq(post(env('status', {}, {guild_id: '444444444444444444'})), {ok: false, code: 'GUILD'});
+  eq(post(env('status', {}, {ts: Math.floor(Date.now() / 1000) - 600})), {ok: false, code: 'CLOCK'});
   eq(web.doPost({postData: {contents: 'x'.repeat(500000)}}), {ok: false, code: 'AUTH'});
   eq(post(env('status', {})), {ok: true, data: {version: '1.0.0', tabs: 0, members: 0, records: 0}});
   const r = rec(A);

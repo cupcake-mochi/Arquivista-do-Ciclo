@@ -449,3 +449,19 @@ class DiscordImportTests(unittest.IsolatedAsyncioTestCase):
             await bot.close()
 
 if __name__=='__main__':unittest.main(verbosity=2)
+
+class BridgeLoginTests(unittest.TestCase):
+    def test_login_page_names_the_access_setting(self):
+        from arquivista.bridge import Bridge
+        class Response:
+            def __init__(self, status, location=''):
+                self.status, self.headers = status, {'Location': location}
+            async def __aenter__(self): return self
+            async def __aexit__(self, *a): return False
+        for reply in (Response(302, 'https://accounts.google.com/ServiceLogin?x=1'), Response(403)):
+            class Session:
+                def request(self, *a, **k): return reply
+            bridge = Bridge(Session(), 'https://script.google.com/macros/s/' + 'a' * 40 + '/exec', 'k' * 48, 123456789012345678)
+            with self.assertRaises(BridgeError) as ctx:
+                asyncio.run(bridge.call('status', Actor('1', 'A', True), {}))
+            self.assertEqual(ctx.exception.code, 'LOGIN')

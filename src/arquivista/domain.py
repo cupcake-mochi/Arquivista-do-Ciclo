@@ -33,6 +33,9 @@ STAFF_ACTIONS = frozenset(("situacao", "transferir", "remover", "historico", "st
 
 ERRORS = {
     "AUTH": "A conexão com o arquivo não foi autorizada. A staff precisa conferir a configuração.",
+    "GUILD": "A planilha foi instalada para outro servidor. No menu Arquivista > Instalar ou reinstalar, informe o ID deste servidor.",
+    "CLOCK": "O relógio do bot e o do Google não batem. Confira a hora da hospedagem.",
+    "LOGIN": "O Google pediu login antes de chegar no script. Na implantação do App da Web, deixe \"Quem pode acessar\" em \"Qualquer pessoa\".",
     "BUSY": "O arquivo está ocupado com outra operação. Aguarde um pouco e tente novamente.",
     "MAINTENANCE": "A planilha está em preparação ou revisão. Vou aguardar antes de alterar cadastros.",
     "DUPLICATE": "Essa aparência e obra já estão ocupadas. Consulte o arquivo antes de registrar.",

@@ -53,6 +53,8 @@ STAFF_HELP = """
 """
 
 SHEET_ERRORS = {"AUTH": "a planilha recusou a chave ou a URL; conecte de novo no /configurar",
+    "GUILD": "a planilha foi instalada com o ID de outro servidor; reinstale pelo menu Arquivista",
+    "CLOCK": "o relógio da hospedagem está errado", "LOGIN": "a implantação do App da Web não está com acesso \"Qualquer pessoa\"",
     "BUSY": "a planilha demorou a responder; vou tentar de novo", "NOT_READY": "o script da planilha não foi instalado",
     "KEY": "a chave guardada não abre mais (o token do bot mudou?); conecte de novo no /configurar",
     "INVALID": "a planilha recusou o pedido; confira se o script está na versão nova", "INTERNAL": "erro dentro do script da planilha"}

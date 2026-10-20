@@ -358,7 +358,10 @@ function doPost(e) {
     if (!secret || secret.length < 32 || typeof env.body !== 'string' || !/^[0-9a-f]{64}$/.test(String(env.sig))) plFail_('AUTH');
     if (!plEqual_(plHmac_(env.body, secret), env.sig)) plFail_('AUTH');
     try { q = JSON.parse(env.body); } catch (x) { plFail_('AUTH'); }
-    if (q.v !== 1 || !Number.isInteger(q.ts) || Math.abs(Date.now() / 1000 - q.ts) > 300 || q.guild_id !== p.getProperty('PL_GUILD_ID')) plFail_('AUTH');
+    // Assinatura já conferida: daqui pra frente o erro pode dizer o que está errado.
+    if (q.v !== 1 || !Number.isInteger(q.ts)) plFail_('AUTH');
+    if (Math.abs(Date.now() / 1000 - q.ts) > 300) plFail_('CLOCK');
+    if (q.guild_id !== p.getProperty('PL_GUILD_ID')) plFail_('GUILD');
     if (!q.data || typeof q.data !== 'object' || Array.isArray(q.data)) plFail_('INVALID');
     lock = LockService.getScriptLock();
     if (!lock.tryLock(20000)) plFail_('BUSY');

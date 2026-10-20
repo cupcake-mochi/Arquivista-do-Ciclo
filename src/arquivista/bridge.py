@@ -22,6 +22,8 @@ class Bridge:
                 url, method, payload = self.url, "POST", envelope
                 for _ in range(4):
                     host = (urlsplit(url).hostname or "").lower()
+                    if host == "accounts.google.com":
+                        raise BridgeError("LOGIN", ERRORS["LOGIN"])
                     if not (host == "script.google.com" or host.endswith(".googleusercontent.com")):
                         raise BridgeError("AUTH", ERRORS["AUTH"])
                     async with self.session.request(method, url, json=payload if method == "POST" else None,
@@ -32,6 +34,8 @@ class Bridge:
                             continue
                         if response.status in (429, 500, 502, 503, 504):
                             raise BridgeError("BUSY", ERRORS["BUSY"])
+                        if response.status in (401, 403):
+                            raise BridgeError("LOGIN", ERRORS["LOGIN"])
                         if response.status != 200:
                             raise BridgeError("AUTH", ERRORS["AUTH"])
                         raw = await response.content.read(12 * 1024 * 1024 + 1)
