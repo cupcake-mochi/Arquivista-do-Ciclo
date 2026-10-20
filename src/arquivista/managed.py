@@ -109,6 +109,11 @@ class ManagedSheets:
 
     async def initialize(self, sheet, guild, manager):
         meta = await sheet.metadata()
+        properties = {"locale": "pt_BR", "timeZone": self.bot.config.timezone}
+        # IMAGE precisa dessa liberação por arquivo. O Google não permite revogá-la pela API;
+        # configure apenas o arquivo novo e omita o campo quando já estiver habilitado numa retomada.
+        if not meta.get("properties", {}).get("importFunctionsExternalUrlAccessAllowed"):
+            properties["importFunctionsExternalUrlAccessAllowed"] = True
         first = meta["sheets"][0]["properties"]
         sid = first["sheetId"]
         # Na fase de inicialização ninguém recebeu acesso ainda. O conteúdo pode ser repetido após uma queda.
@@ -125,7 +130,7 @@ class ManagedSheets:
             ["Compartilhe edição somente com a staff: quem edita a planilha pode alterar os cadastros do servidor."],
         ]
         await self.api.request("POST", sheet.url + ":batchUpdate", body={"requests": [
-            {"updateSpreadsheetProperties": {"properties": {"locale": "pt_BR", "timeZone": self.bot.config.timezone}, "fields": "locale,timeZone"}},
+            {"updateSpreadsheetProperties": {"properties": properties, "fields": ",".join(properties)}},
             {"updateSheetProperties": {"properties": {"sheetId": sid, "title": "COMECE AQUI",
                 "gridProperties": {"rowCount": max(30, first["gridProperties"]["rowCount"]), "columnCount": max(11, first["gridProperties"]["columnCount"])}},
                 "fields": "title,gridProperties.rowCount,gridProperties.columnCount"}},

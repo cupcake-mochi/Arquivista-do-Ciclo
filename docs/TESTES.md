@@ -1,4 +1,4 @@
-# Validação · Arquivista 0.4.0 · 20/10/2026
+# Validação · Arquivista 0.4.1 · 20/10/2026
 
 ## O que foi executado nesta entrega
 
@@ -47,7 +47,9 @@ A chave de duplicidade distingue acentos, embora a busca por obra agrupe variant
 
 ## Limites da validação
 
-Criação e compartilhamento pela conta Google dedicada ainda precisam de teste de ponta a ponta após o mantenedor autorizar essa conta. Sem as credenciais, o bot informa que a criação aguarda ativação; o restante continua funcionando. O ensaio de layout pela integração Google não comprova esse fluxo OAuth.
+O OAuth dedicado foi autorizado com `drive.file` e público em produção. O teste real do formulário privado no Discord criou uma planilha privada, concedeu edição ao e-mail informado e enviou os oito cadastros existentes, em duas abas de membros, sem estrutura quebrada. A API confirmou somente proprietário e editor, sem acesso público. Um ensaio separado nessa conta confirmou expansão aos 18 registros, contador `18 / 40`, visor correto e recuperação do mesmo arquivo pelo marcador do pedido. A interface do Sheets também foi conferida com a conta editora.
+
+A configuração de acesso externo para imagens foi validada na API real num arquivo isolado. O teste automatizado também força uma retomada da inicialização quando essa propriedade já está habilitada, recusando nova escrita do campo que o Google torna somente leitura. Conexões antigas não recebem essa alteração automaticamente.
 
 Uma segunda conta sem staff, transferência entre pessoas e restauração de backup não foram exercitadas ao vivo; as permissões, a persistência e essas operações são cobertas pelos testes locais. A remoção foi testada até a confirmação e cancelamento; não houve exclusão definitiva dos registros reais.
 

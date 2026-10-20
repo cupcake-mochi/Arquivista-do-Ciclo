@@ -31,6 +31,7 @@ class MemoryGoogle(GoogleAPI):
         self.lost_create = self.fail_share = self.lost_share = False
         self.before_write = None
         self.locale = "pt_BR"
+        self.external_access = {}
 
     async def request(self, method, url, *, body=None, params=None):
         self.calls.append((method, url, copy.deepcopy(body), copy.deepcopy(params)))
@@ -63,7 +64,8 @@ class MemoryGoogle(GoogleAPI):
         key = url[len(SHEETS) + 1:].split("/")[0].split(":")[0]
         sheet = self.sheets[key]
         if method == "GET":
-            return {"properties": {"locale": self.locale}, "sheets": [{"properties": {
+            return {"properties": {"locale": self.locale,
+                "importFunctionsExternalUrlAccessAllowed": self.external_access.get(key, False)}, "sheets": [{"properties": {
                 **m, "gridProperties": {"rowCount": len(sheet.grids[m["sheetId"]]), "columnCount": 11}}} for m in sheet.meta]}
         if url.endswith("values:batchGetByDataFilter"):
             # A resposta pode vir em outra ordem: o adaptador precisa usar os filtros.
@@ -71,7 +73,11 @@ class MemoryGoogle(GoogleAPI):
                                     for f in reversed(body["dataFilters"])]}
         requests = body["requests"]
         if requests and "updateSpreadsheetProperties" in requests[0]:
-            self.locale = requests[0]["updateSpreadsheetProperties"]["properties"]["locale"]
+            properties = requests[0]["updateSpreadsheetProperties"]["properties"]
+            self.locale = properties.get("locale", self.locale)
+            if "importFunctionsExternalUrlAccessAllowed" in properties:
+                assert not self.external_access.get(key), "Campo somente leitura depois de habilitado"
+                self.external_access[key] = properties["importFunctionsExternalUrlAccessAllowed"]
             requests = requests[1:]
         if self.before_write:
             fn, self.before_write = self.before_write, None
@@ -118,6 +124,7 @@ class ManagedTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(unseal(b"k"*32, row["editor"]), "dono@example.com")
         self.assertNotIn("dono@example.com", row["editor"])
         self.assertEqual(self.api.shares[row["file_id"]], {"dono@example.com"})
+        self.assertTrue(self.api.external_access[row["file_id"]])
         model, _ = await read_sheet(self.bot.sheets.bridge(G), None)
         self.assertEqual(model.block_of(A).slots, 20)
         # Reinicia o serviço mantendo apenas o banco e o Google.
@@ -128,6 +135,15 @@ class ManagedTests(unittest.IsolatedAsyncioTestCase):
         self.bot.store.drop_sheet(G)
         self.assertEqual(await managed.create(self.guild, self.owner), url)
         self.assertEqual(self.bot.store.guild(G)["sheet_url"], url)
+
+    async def test_initialization_retry_preserves_enabled_external_images(self):
+        await self.create()
+        row = self.bot.store.managed_sheet(G)
+        self.assertTrue(self.api.external_access[row["file_id"]])
+        self.bot.store.update_managed_sheet(G, state="initializing")
+        await self.create()
+        self.assertEqual(self.bot.store.managed_sheet(G)["state"], "ready")
+        self.assertEqual(len(self.api.files), 1)
 
     async def test_lost_create_response_recovers_same_file(self):
         self.api.lost_create = True
