@@ -1,6 +1,7 @@
 from __future__ import annotations
 import asyncio
 import hashlib
+import io
 import json
 import logging
 import time
@@ -11,6 +12,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands, tasks
 
+from . import backup
 from .archive import Archive
 from .config import Config, ROOT
 from .domain import Actor, UserError, STAFF_ACTIONS, parse_prefix, ranked, public_record
@@ -18,7 +20,7 @@ from .media import Images
 from .sheet import SheetSync
 from .store import Store
 from .transport import Carteiro, MENTIONS
-from .views import Gate, Picker, Paginator, RecordModal, Settings, private_reply, card, clean
+from .views import Gate, Picker, Paginator, RecordModal, Settings, backup_problem, private_reply, card, clean
 
 log = logging.getLogger(__name__)
 PUBLIC = frozenset(("ajuda", "aparencias", "minhas", "galeria", "consultar"))
@@ -273,6 +275,13 @@ class Arquivista(commands.Bot):
                            (f"\n**Último erro da planilha:** {SHEET_ERRORS.get(cfg['sheet_error'],cfg['sheet_error'])}" if cfg.get("sheet_error") else ""))
                 else:
                     body+="\n**Planilha:** não conectada"
+                if cfg.get("backup_channel"):
+                    nxt=cfg.get("backup_next")
+                    body+=(f"\n**Backup:** <#{cfg['backup_channel']}> · {backup.INTERVALS.get(cfg.get('backup_hours') or 24,'todo dia')}"+
+                           (f" · próximo <t:{int(nxt)}:R>" if nxt else "")+
+                           (f"\n**Último erro do backup:** {cfg['backup_error']}" if cfg.get("backup_error") else ""))
+                else:
+                    body+="\n**Backup:** desligado"
                 await private_reply(i,embed=self.carteiro.decorate(card("Diagnóstico privado",body)))
             else:
                 raise UserError("Operação não reconhecida.")
@@ -283,6 +292,7 @@ class Arquivista(commands.Bot):
         # Rede de segurança: cada gravação já pede o envio na hora; aqui saem as retentativas.
         await self.deliver_events()
         await self.sync_sheets()
+        await self.run_backups()
     @worker.before_loop
     async def before_worker(self):
         await self.wait_until_ready()
@@ -297,6 +307,37 @@ class Arquivista(commands.Bot):
             return  # o envio em andamento pega o que entrou na fila
         async with self.sheet_lock:
             await self.sheets.run()
+    async def run_backups(self):
+        for gid in self.store.backup_due():
+            try:
+                await self.send_backup(gid)
+            except Exception as exc:
+                log.warning("Backup do servidor %s: %s", gid, type(exc).__name__)
+                cfg=self.store.guild(gid)
+                # Tenta de novo em 30 min, sem empurrar o horário normal para longe.
+                self.store.set_guild(gid,backup_error=str(exc)[:200] if isinstance(exc,UserError) else "não consegui enviar o arquivo",
+                                     backup_next=time.time()+min(1800,(cfg.get("backup_hours") or 24)*3600))
+    async def send_backup(self, gid: str, channel=None) -> None:
+        """Manda o backup no canal configurado (ou no informado). Erro de configuração vira UserError com o motivo."""
+        cfg=self.store.guild(gid)
+        channel=channel or self.get_channel(int(cfg["backup_channel"] or 0))
+        problem=backup_problem(channel)
+        if problem:
+            raise UserError(problem)
+        records=self.store.records(gid)
+        stamp=datetime.now().astimezone()
+        name=f"arquivista-{stamp:%Y-%m-%d-%H%M}"
+        files=[discord.File(io.BytesIO(backup.export_json(gid,records)),filename=name+".json")]
+        if cfg.get("sheet_url"):
+            names={o:await self.sheets.owner_name(gid,o) for o in {r["owner_id"] for r in records}}
+            files.append(discord.File(io.BytesIO(backup.workbook(records,names)),filename=name+".xlsx"))
+        text=(f"{len(records)} cadastro(s), de {len({r['owner_id'] for r in records})} membro(s). "
+              "O .json restaura o arquivo no bot (`python importar.py arquivo.json --servidor ID`)"+
+              (" e o .xlsx é uma cópia da planilha, uma guia por membro." if cfg.get("sheet_url") else ".")+
+              "\n\nTem justificativas e nomes internos: deixe este canal só para a staff.")
+        await channel.send(embed=self.carteiro.decorate(card("Backup do arquivo",text)),files=files,allowed_mentions=discord.AllowedMentions.none())
+        hours=cfg.get("backup_hours") or 24
+        self.store.set_guild(gid,backup_error=None,backup_next=time.time()+hours*3600)
     async def deliver_events(self):
         if self.notice_lock.locked():
             return  # já tem um envio rodando; ele pega os avisos novos

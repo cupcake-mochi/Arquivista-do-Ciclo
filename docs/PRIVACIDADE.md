@@ -25,7 +25,7 @@ Para saber quando alguém responde a ela, o bot guarda o ID das próprias mensag
 
 ## Para onde os dados vão
 
-Os dados ficam num banco do próprio bot, na hospedagem em que ele roda. Se a staff de um servidor conectar uma planilha do Google, os cadastros daquele servidor são copiados para essa planilha, que pertence à staff e segue as regras do Google. Os dados não são vendidos nem repassados a mais ninguém.
+Os dados ficam num banco do próprio bot, na hospedagem em que ele roda. Se a staff de um servidor conectar uma planilha do Google, os cadastros daquele servidor são copiados para essa planilha, que pertence à staff e segue as regras do Google. Se a staff ligar o backup automático, o bot manda periodicamente uma cópia dos cadastros do servidor (inclusive justificativas e nomes no servidor) num canal do Discord escolhido por ela e fechado para @everyone. Os dados não são vendidos nem repassados a mais ninguém.
 
 ## Como ver e apagar
 

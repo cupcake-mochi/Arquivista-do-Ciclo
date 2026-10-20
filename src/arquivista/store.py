@@ -38,7 +38,8 @@ SCHEMA = '''
     PRIMARY KEY(guild_id,record_id));
 '''
 # Colunas acrescentadas depois da primeira versão do banco; ALTER TABLE preserva o que já existe.
-COLUMNS = {"guilds": (("sheet_url", "TEXT"), ("sheet_key", "TEXT"), ("sheet_error", "TEXT"), ("sheet_ok", "TEXT"))}
+COLUMNS = {"guilds": (("sheet_url", "TEXT"), ("sheet_key", "TEXT"), ("sheet_error", "TEXT"), ("sheet_ok", "TEXT"),
+                      ("backup_channel", "TEXT"), ("backup_hours", "INTEGER"), ("backup_next", "REAL"), ("backup_error", "TEXT"))}
 
 SHEET_FIELDS = ("id", "owner_id", "appearance", "work", "server_name", "status", "justification", "image_url", "date", "revision")
 
@@ -71,12 +72,14 @@ class Store:
         row = self.db.execute("SELECT * FROM guilds WHERE guild_id=?", (str(guild_id),)).fetchone()
         if not row:
             return {"guild_id": str(guild_id), "staff_roles": [], "log_channel": None, "image_channel": None,
-                    "sheet_url": None, "sheet_key": None, "sheet_error": None, "sheet_ok": None}
+                    "sheet_url": None, "sheet_key": None, "sheet_error": None, "sheet_ok": None,
+                    "backup_channel": None, "backup_hours": None, "backup_next": None, "backup_error": None}
         data = dict(row)
         data["staff_roles"] = [str(x) for x in json.loads(data["staff_roles"])]
         return data
     def set_guild(self, guild_id: int | str, **fields) -> None:
-        allowed = {"staff_roles", "log_channel", "image_channel", "sheet_url", "sheet_key", "sheet_error", "sheet_ok"}
+        allowed = {"staff_roles", "log_channel", "image_channel", "sheet_url", "sheet_key", "sheet_error", "sheet_ok",
+                   "backup_channel", "backup_hours", "backup_next", "backup_error"}
         if not fields or set(fields) - allowed:
             raise ValueError("campo de servidor desconhecido")
         if "staff_roles" in fields:
@@ -121,6 +124,14 @@ class Store:
             for r in rows:
                 self.queue_sheet(guild_id, r["id"], r["revision"], sheet_upsert(dict(r)))
         return len(rows)
+    # ---- backup periódico
+    def backup_due(self) -> list[str]:
+        rows = self.db.execute("SELECT guild_id FROM guilds WHERE backup_channel IS NOT NULL AND COALESCE(backup_next,0)<=?",
+                               (time.time(),)).fetchall()
+        return [r[0] for r in rows]
+    def records(self, guild_id: str) -> list[dict]:
+        rows = self.db.execute("SELECT * FROM appearances WHERE guild_id=? ORDER BY owner_id,created", (str(guild_id),)).fetchall()
+        return [dict(r) for r in rows]
     def sheet_due(self) -> list[str]:
         rows = self.db.execute("SELECT DISTINCT o.guild_id FROM sheet_outbox o JOIN guilds g ON g.guild_id=o.guild_id "
                                "WHERE o.next_try<=? AND g.sheet_url IS NOT NULL", (time.time(),)).fetchall()

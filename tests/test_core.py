@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 import sys
 import tempfile
+import time
 import unittest
 
 ROOT=Path(__file__).resolve().parents[1]
@@ -485,6 +486,29 @@ class DiscordImportTests(unittest.IsolatedAsyncioTestCase):
                 id=int(G1)
                 def get_role(self,_):return None
             self.assertTrue(Settings(bot,1,Guild()).to_components())
+            self.assertIn('Backup',labels(Settings(bot,1,Guild())))
+            from arquivista.views import BackupPanel
+            self.assertEqual(labels(BackupPanel(bot,1,Guild()))[-2:],['Fazer backup agora','Desligar backup'])
+            # Envio do backup: .json sempre, .xlsx só com planilha; agenda o próximo.
+            import arquivista.bot as botmod
+            sent=[]
+            class Channel:
+                async def send(self,**kw):sent.append(kw)
+            old=botmod.backup_problem;botmod.backup_problem=lambda c:None
+            try:
+                Archive(bot.store,G1)
+                await Archive(bot.store,G1).call('create',Actor(U1,'x'),{'fields':{'appearance':'Takao','work':'Azur Lane'}})
+                bot.store.set_guild(G1,backup_channel='5'*18,backup_hours=12)
+                await bot.send_backup(G1,Channel())
+                self.assertEqual([f.filename.rsplit('.',1)[1] for f in sent[-1]['files']],['json'])
+                nxt=bot.store.guild(G1)['backup_next'];self.assertAlmostEqual(nxt,time.time()+12*3600,delta=60)
+                bot.store.set_guild(G1,sheet_url='https://script.google.com/macros/s/'+'a'*30+'/exec')
+                async def name(g,o):return 'mizuki_sama'
+                bot.sheets.owner_name=name
+                await bot.send_backup(G1,Channel())
+                self.assertEqual([f.filename.rsplit('.',1)[1] for f in sent[-1]['files']],['json','xlsx'])
+            finally:
+                botmod.backup_problem=old
             await bot.close()
 
 if __name__=='__main__':unittest.main(verbosity=2)

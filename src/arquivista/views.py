@@ -1,6 +1,7 @@
 from __future__ import annotations
 import asyncio
 import logging
+import time
 import uuid
 from typing import Callable, Awaitable
 import discord
@@ -376,6 +377,85 @@ def channel_problem(channel, *, images=False) -> str | None:
         return "Faltam permissões de ver/enviar, incorporar links, ler histórico ou anexar arquivos em " + channel.mention + "."
     return None
 
+def backup_problem(channel) -> str | None:
+    """O backup leva justificativas e nomes internos: o canal precisa estar fechado para @everyone."""
+    if channel is None:
+        return "O canal de backup não existe mais. Escolha outro no /configurar."
+    problem = channel_problem(channel, images=True)
+    if problem:
+        return problem
+    if channel.permissions_for(channel.guild.default_role).view_channel:
+        return f"{channel.mention} está aberto para todo mundo. O backup tem dados internos: use um canal só da staff."
+    return None
+
+class BackupPanel(GuardedView):
+    """Canal e frequência do backup automático."""
+    def __init__(self, bot, user_id, guild):
+        super().__init__(bot, user_id)
+        self.guild = guild
+        cfg = bot.store.guild(guild.id)
+        self.channel = discord.ui.ChannelSelect(placeholder="Canal de backup (só da staff)", channel_types=[discord.ChannelType.text], row=0)
+        self.channel.callback = self.save_channel
+        current = cfg.get("backup_hours") or 24
+        from .backup import INTERVALS
+        self.every = discord.ui.Select(placeholder="Frequência", row=1, options=[
+            discord.SelectOption(label=text.capitalize(), value=str(h), default=h == current) for h, text in INTERVALS.items()])
+        self.every.callback = self.save_every
+        self.add_item(self.channel)
+        self.add_item(self.every)
+    async def interaction_check(self, i: discord.Interaction) -> bool:
+        if not await super().interaction_check(i):
+            return False
+        if not self.bot.can_configure(i.user):
+            await private_reply(i, content="Só quem pode gerenciar o servidor muda essa configuração.")
+            return False
+        return True
+    def embed(self) -> discord.Embed:
+        from .backup import INTERVALS
+        cfg = self.bot.store.guild(self.guild.id)
+        where = f"<#{cfg['backup_channel']}>" if cfg.get("backup_channel") else "desligado"
+        e = card("Backup automático",
+            f"**Canal:** {where}\n**Frequência:** {INTERVALS.get(cfg.get('backup_hours') or 24, 'todo dia')}\n\n"
+            "Manda um .json que restaura o arquivo no bot e, se a planilha estiver conectada, um .xlsx com uma guia por membro. "
+            "O backup tem justificativas e nomes internos, então o canal precisa estar fechado para @everyone.")
+        return self.bot.carteiro.decorate(e)
+    async def refresh(self, i: discord.Interaction, note: str | None = None):
+        await i.response.edit_message(content=note, embed=self.embed(), view=self, allowed_mentions=MENTIONS)
+    async def save_channel(self, i: discord.Interaction):
+        channel = self.guild.get_channel(self.channel.values[0].id)
+        problem = backup_problem(channel)
+        if problem:
+            return await self.refresh(i, problem)
+        # O primeiro sai na próxima volta do bot (até 90 s); depois, na frequência escolhida.
+        self.bot.store.set_guild(self.guild.id, backup_channel=channel.id, backup_next=time.time(), backup_error=None)
+        await self.refresh(i, "Canal de backup salvo. O primeiro backup sai em instantes.")
+    async def save_every(self, i: discord.Interaction):
+        hours = int(self.every.values[0])
+        for o in self.every.options:
+            o.default = o.value == self.every.values[0]
+        cfg = self.bot.store.guild(self.guild.id)
+        fields = {"backup_hours": hours}
+        if cfg.get("backup_next"):
+            fields["backup_next"] = min(cfg["backup_next"], time.time() + hours * 3600)
+        self.bot.store.set_guild(self.guild.id, **fields)
+        await self.refresh(i, "Frequência salva.")
+    @discord.ui.button(label="Fazer backup agora", style=discord.ButtonStyle.primary, row=2)
+    async def now(self, i: discord.Interaction, b: discord.ui.Button):
+        cfg = self.bot.store.guild(self.guild.id)
+        if not cfg.get("backup_channel"):
+            return await self.refresh(i, "Escolha o canal de backup primeiro.")
+        await i.response.defer()
+        try:
+            await self.bot.send_backup(str(self.guild.id))
+            note = "Backup enviado."
+        except UserError as exc:
+            note = str(exc)
+        await i.edit_original_response(content=note, embed=self.embed(), view=self, allowed_mentions=MENTIONS)
+    @discord.ui.button(label="Desligar backup", style=discord.ButtonStyle.secondary, row=2)
+    async def off(self, i: discord.Interaction, b: discord.ui.Button):
+        self.bot.store.set_guild(self.guild.id, backup_channel=None, backup_next=None, backup_error=None)
+        await self.refresh(i, "Backup desligado. Os arquivos já enviados continuam no canal.")
+
 class SheetModal(discord.ui.Modal):
     """Conectar a planilha: URL /exec da ponte e a chave mostrada na instalação do script."""
     def __init__(self, bot, user_id, guild):
@@ -442,7 +522,8 @@ class Settings(GuardedView):
         roles = ", ".join(f"<@&{r}>" for r in cfg["staff_roles"]) or "nenhum (só dono e quem gerencia o servidor)"
         e = card("Configuração do Arquivista",
             f"**Cargos de staff:** {roles}\n**Canal de histórico:** {channel(cfg['log_channel'])}\n**Canal de imagens:** {channel(cfg['image_channel'])}\n"
-            f"**Planilha:** {'conectada' if cfg.get('sheet_url') else 'não conectada'}\n\n"
+            f"**Planilha:** {'conectada' if cfg.get('sheet_url') else 'não conectada'}\n"
+            f"**Backup:** {channel(cfg.get('backup_channel'))}\n\n"
             "O histórico recebe só cadastros e alterações daqui pra frente, sem situação, justificativa ou nome interno. "
             "O canal de imagens guarda os anexos dos cadastros; não apague essas mensagens.")
         return self.bot.carteiro.decorate(e)
@@ -470,6 +551,10 @@ class Settings(GuardedView):
     async def images_off(self, i: discord.Interaction, b: discord.ui.Button):
         self.bot.store.set_guild(self.guild.id, image_channel=None)
         await self.refresh(i, "Novos anexos desligados. As imagens já guardadas continuam valendo.")
+    @discord.ui.button(label="Backup", style=discord.ButtonStyle.secondary, row=3)
+    async def backup(self, i: discord.Interaction, b: discord.ui.Button):
+        panel = BackupPanel(self.bot, i.user.id, self.guild)
+        await private_reply(i, embed=panel.embed(), view=panel)
     @discord.ui.button(label="Conectar planilha", style=discord.ButtonStyle.primary, row=4)
     async def sheet_on(self, i: discord.Interaction, b: discord.ui.Button):
         await i.response.send_modal(SheetModal(self.bot, i.user.id, self.guild))
