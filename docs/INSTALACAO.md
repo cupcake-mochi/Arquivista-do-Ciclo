@@ -136,21 +136,10 @@ Faça os testes de aceitação de `TESTES.md` em um canal da staff antes de abri
 
 ## 7. Configurar os canais pelo próprio bot
 
-Como staff, no canal destinado às notificações:
+Quem gerencia o servidor usa `/configurar` (ou `AC:cfg`) e escolhe, no painel privado:
 
-```text
-AC:registrarhistorico
-```
-
-Abra o painel privado e confirme a configuração apresentada. As **próximas** inclusões e alterações serão notificadas ali. A configuração não republica todo o catálogo anterior. O registro completo continua privado, acessível por `/historico` ou pelo painel de `AC:historico`.
-
-Para aceitar arquivos anexados ao cadastro, escolha um canal de armazenamento e execute nele:
-
-```text
-AC:registrarimagens
-```
-
-Isso autoriza o bot a armazenar ali os futuros anexos enviados nos comandos. Ele verifica tamanho e assinatura de PNG/JPEG/GIF/WebP, até 8 MB. Mantenha as mensagens desse canal: elas permitem recuperar os endereços atuais dos anexos. Sem esse canal, o cadastro por link direto continua disponível.
+- **Canal de histórico:** recebe as **próximas** inclusões e alterações. Não republica o catálogo anterior. O registro completo continua privado, em `/historico`.
+- **Canal de imagens:** guarda os anexos dos cadastros. O bot confere tamanho e tipo (PNG, JPEG, GIF ou WebP, até 8 MB). Não apague as mensagens desse canal, porque é delas que vêm os links atuais das imagens. Sem esse canal, o cadastro por link continua funcionando, e o campo de anexo do formulário não aparece.
 
 ## 8. Hospedar na Discloud
 

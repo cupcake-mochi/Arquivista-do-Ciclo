@@ -6,13 +6,13 @@ O prefixo é `AC:`; `ac:`, `Ac:` e espaços após `:` funcionam. Mensagens de bo
 
 | Chat | Barra | Resultado |
 |---|---|---|
-| `AC:ajuda` | `/ajuda` | Instruções da Amiya. Mostra a seção administrativa a quem tem permissão. |
-| `AC:aparencias [@membro]` | `/aparencias [membro]` | Quinze aparências por página, com responsável. |
-| `AC:minhas` | `/minhas` | A própria lista, sem precisar mencionar a si mesmo. |
-| `AC:galeria [nome] [@membro]` | `/galeria [nome] [membro]` | Uma aparência por página, imagem maior e busca aproximada. |
-| `AC:consultar nome` | `/consultar nome [obra]` | Pesquisa de aparências ocupadas. Na mensagem, a obra pode acompanhar o nome. |
+| `AC:ajuda` (`AC:aj`) | `/ajuda` | Instruções da Amiya. Mostra a seção administrativa a quem tem permissão. |
+| `AC:aparencias [aparência] [@membro]` (`AC:ap`) | `/aparencias [aparencia] [membro] [modo]` | Quinze por página, com responsável. O botão **Ver em galeria** troca para uma por página, com imagem. |
+| `AC:minhas` (`AC:min`) | `/aparencias membro:` você | A própria lista. |
+| `AC:galeria [aparência] [@membro]` (`AC:gal`) | `/aparencias modo:galeria` | Já abre em galeria. |
+| `AC:consultar aparência` (`AC:busca`) | `/aparencias aparencia:` | Busca aproximada; a obra pode ir junto do nome. |
 
-Exemplos: `AC:galeria Takao`, `AC:galeria @Mizuki Takao`, `AC:consultar Takao Azur Lane`.
+Exemplos: `AC:gal Takao`, `AC:gal @Mizuki Takao`, `AC:busca Takao Azur Lane`.
 
 O resultado público tem aparência original, obra, responsável e imagem quando disponível. **Não mostra o nome secreto no servidor, situação, justificativa, data interna nem link da planilha.** O cadastro Liberado fica fora dessas listas. A ausência de resultado aproximado não prova disponibilidade: aliases não padronizados continuam exigindo revisão humana.
 
@@ -22,11 +22,11 @@ Quem abriu uma lista usa seus botões; outra pessoa pode abrir a própria consul
 
 | Chat | Barra | Acesso e fluxo |
 |---|---|---|
-| `AC:registrar` | `/registrar [imagem]` | Qualquer membro. Abre atendimento privado, formulário, revisão e confirmação. |
-| `AC:registrar @membro` | `/registrar membro [imagem]` | Só staff para terceiros. Autor e responsável permanecem distintos. |
-| `AC:editar nome` | `/editar personagem [imagem]` | Membro: próprio nome no servidor/imagem. Staff: qualquer cadastro, também aparência e obra. |
+| `AC:registrar` (`AC:reg`) | `/registrar` | Qualquer membro. Pela barra o formulário abre na hora; pelo chat, num botão. Depois vem a revisão com a situação, e o "Salvo" aparece na mesma mensagem. |
+| `AC:registrar @membro` | `/registrar membro` | Só staff para terceiros. Autor e responsável permanecem distintos. |
+| `AC:editar aparência` (`AC:ed`) | `/editar aparencia` | Membro: próprio nome no servidor/imagem. Staff: qualquer cadastro, também aparência e obra. Escolhida a ficha, o formulário abre direto. |
 
-A imagem pode ir de três jeitos: link HTTPS direto no formulário, campo de anexo no próprio formulário, ou, antes de abrir, o parâmetro `imagem` da barra (no chat, anexada à mesma mensagem do comando). Isso requer o canal de imagens previamente configurado pela staff. Também se pode usar o campo de link HTTPS direto no formulário.
+A imagem pode ir pelo link HTTPS no formulário ou pelo campo de anexo do próprio formulário. No chat, também dá pra anexar à mensagem do comando. O anexo precisa do canal de imagens escolhido no `/configurar`.
 
 Não escreva uma justificativa secreta na mensagem pública. O formulário não publica as respostas no canal: mostra uma revisão privada antes de salvar. No campo de imagem da edição, `-` remove a imagem, inclusive quando ela estava inserida diretamente na célula.
 
@@ -38,16 +38,12 @@ Não é preciso decorar UUID. Editar, remover e transferir apresentam uma seleç
 
 | Chat | Barra | Uso |
 |---|---|---|
-| `AC:situacao nome` | `/situacao personagem` | Escolher situação e escrever justificativa interna. Exige confirmação. |
-| `AC:transferir nome @membro` | `/transferir personagem membro` | Muda o responsável preservando ID e data. |
-| `AC:remover nome` | `/remover personagem` | Remove o cadastro ativo, mas não sua auditoria. Confirmação destacada. |
-| `AC:historico [nome]` | `/historico [personagem]` | Histórico privado, inclusive registros removidos; vazio mostra eventos recentes. |
-| `AC:registrarhistorico` | `/registrar_historico` | Usa o canal atual para as próximas notificações. |
-| `AC:desativarhistorico` | `/desativar_historico` | Desliga o envio sem apagar histórico. |
-| `AC:registrarimagens` | `/registrar_imagens` | Usa o canal atual para preservar os futuros anexos do cadastro. |
-| `AC:desativarimagens` | `/desativar_imagens` | Interrompe novos uploads; preserva os antigos. |
-| `AC:status` | `/status` | Contagem de cadastros, membros e eventos deste servidor, canais, avisos pendentes e estado da planilha (envios pendentes, último envio, último erro). |
-| `AC:configurar` | `/configurar` | Só dono, Administrador ou quem gerencia o servidor: cargos de staff, canal de histórico, canal de imagens e planilha conectada num painel privado. |
+| `AC:situacao aparência` (`AC:sit`) | `/situacao aparencia` | Escolher situação e escrever justificativa interna. Exige confirmação. |
+| `AC:transferir aparência @membro` (`AC:tr`) | `/transferir aparencia membro` | Muda o responsável preservando ID e data. |
+| `AC:remover aparência` (`AC:rm`) | `/remover aparencia` | Remove o cadastro ativo, mas não sua auditoria. Confirmação destacada. |
+| `AC:historico [aparência]` (`AC:hist`) | `/historico [aparencia]` | Histórico privado, inclusive registros removidos; vazio mostra eventos recentes. |
+| `AC:diagnostico` (`AC:diag`, `AC:st`) | `/diagnostico` | Cadastros, membros, eventos, canais, avisos pendentes e estado da planilha (envios pendentes, último envio, último erro). |
+| `AC:configurar` (`AC:cfg`) | `/configurar` | Só dono, Administrador ou quem gerencia o servidor: cargos de staff, canal de histórico, canal de imagens e planilha num painel privado. |
 
 Os comandos de configuração exibem um botão de atendimento privado quando usados por `AC:`; abrir esse painel executa a configuração com nova checagem de permissão. Não criam/deletam canais nem alteram permissões do servidor.
 

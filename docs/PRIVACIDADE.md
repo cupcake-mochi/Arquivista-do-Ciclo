@@ -29,7 +29,7 @@ Os dados ficam num banco do próprio bot, na hospedagem em que ele roda. Se a st
 
 ## Como ver e apagar
 
-`/minhas` mostra os seus cadastros. Para mudar ou remover um cadastro, fale com a staff do servidor; remover tira o cadastro do arquivo, mas o histórico continua para a staff conferir. Para apagar tudo o que é seu, histórico incluído, num servidor ou em todos, me peça que eu apago. Quando o bot sai de um servidor, os dados dele ficam guardados para o caso de voltar; a staff ou o dono pode me pedir para apagar.
+`AC:min` (ou `/aparencias` com você em membro) mostra os seus cadastros. Para mudar ou remover um cadastro, fale com a staff do servidor; remover tira o cadastro do arquivo, mas o histórico continua para a staff conferir. Para apagar tudo o que é seu, histórico incluído, num servidor ou em todos, me peça que eu apago. Quando o bot sai de um servidor, os dados dele ficam guardados para o caso de voltar; a staff ou o dono pode me pedir para apagar.
 
 ## Mudanças
 

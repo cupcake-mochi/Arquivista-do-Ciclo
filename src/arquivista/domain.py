@@ -27,17 +27,12 @@ SHORT = {
     "transferir": ("transferir", "transf", "tr"),
     "remover": ("remover", "rem", "rm"),
     "historico": ("historico", "histórico", "hist"),
-    "registrar_historico": ("registrarhistorico", "registrar_historico"),
-    "desativar_historico": ("desativarhistorico", "desativar_historico"),
-    "registrar_imagens": ("registrarimagens", "registrar_imagens"),
-    "desativar_imagens": ("desativarimagens", "desativar_imagens"),
     "ajuda": ("ajuda", "help", "aj"),
-    "status": ("status", "st"),
-    "configurar": ("configurar", "config", "cfg"),
+    "diagnostico": ("diagnostico", "diagnóstico", "diag", "status", "st"),
+    "configurar": ("configurar", "config", "cfg", "registrarhistorico", "desativarhistorico", "registrarimagens", "desativarimagens"),
 }
 ALIASES = {name: action for action, names in SHORT.items() for name in names}
-STAFF_ACTIONS = frozenset(("situacao", "transferir", "remover", "historico", "status",
-    "registrar_historico", "desativar_historico", "registrar_imagens", "desativar_imagens"))
+STAFF_ACTIONS = frozenset(("situacao", "transferir", "remover", "historico", "diagnostico"))
 
 ERRORS = {
     "AUTH": "A conexão com o arquivo não foi autorizada. A staff precisa conferir a configuração.",

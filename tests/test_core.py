@@ -33,7 +33,7 @@ class DomainTests(unittest.TestCase):
         self.assertEqual(parse_prefix('AC:inexistente')[0],'unknown')
     def test_all_aliases(self):
         for short,action in (('reg','registrar'),('AP','aparencias'),('gal','galeria'),('busca','consultar'),('ed','editar'),
-                             ('sit','situacao'),('tr','transferir'),('rm','remover'),('hist','historico'),('st','status'),('cfg','configurar')):
+                             ('sit','situacao'),('tr','transferir'),('rm','remover'),('hist','historico'),('st','diagnostico'),('cfg','configurar')):
             self.assertEqual(parse_prefix(f'AC:{short} Takao')[0],action)
         from arquivista.domain import SHORT
         self.assertEqual(len(ALIASES),sum(len(v) for v in SHORT.values()))  # nenhuma abreviação usada por dois comandos
@@ -61,7 +61,7 @@ class DomainTests(unittest.TestCase):
         user=Actor('1','User');staff=Actor('2','Staff',True)
         self.assertTrue(can_manage(user,'1','editar'))
         self.assertFalse(can_manage(user,'2','editar'))
-        for action in ('situacao','transferir','remover','registrar_historico'):
+        for action in ('situacao','transferir','remover','diagnostico'):
             self.assertFalse(can_manage(user,'1',action))
             self.assertTrue(can_manage(staff,'1',action))
     def test_safe_urls(self):
@@ -409,8 +409,11 @@ class FilesTests(unittest.TestCase):
             if isinstance(node,ast.Call) and isinstance(node.func,ast.Attribute) and node.func.attr=='command':
                 for kw in node.keywords:
                     if kw.arg=='name':names.append(ast.literal_eval(kw.value))
-        self.assertEqual(set(names),set(ALIASES.values()))
-        self.assertEqual(len(names),17)
+        from arquivista.bot import SLASH,PUBLIC
+        self.assertEqual(names,list(SLASH))
+        # Todo comando de chat cai num comando de barra ou numa consulta pública.
+        self.assertTrue(set(ALIASES.values())<=set(SLASH)|PUBLIC)
+        self.assertEqual(len(names),10)
 
 
 class SetupTests(unittest.TestCase):
@@ -441,7 +444,7 @@ class DiscordImportTests(unittest.IsolatedAsyncioTestCase):
         with tempfile.TemporaryDirectory() as d:
             cfg=Config('FAKE',Path(d)/'t.sqlite')
             bot=Arquivista(cfg)
-            self.assertEqual(len(bot.tree.get_commands()),17)
+            self.assertEqual(len(bot.tree.get_commands()),10)
             # Um método do bot com nome de método do discord.py derrubava o login (dispatch).
             from discord.ext import commands
             mine={n for n in vars(Arquivista) if not n.startswith('__')}
@@ -453,6 +456,11 @@ class DiscordImportTests(unittest.IsolatedAsyncioTestCase):
             for obj in (Gate(bot,1,'editar'),RecordModal(bot,1,'create'),RecordModal(bot,1,'edit',record=r),
                         Confirm(bot,1,'remove',{}),StatusPicker(bot,1,r),Picker(bot,1,[r],'editar'),Paginator(bot,1,[r])):
                 self.assertTrue(obj.to_components())
+            labels=lambda v:[c.get('label') for row in v.to_components() for c in row['components']]
+            self.assertEqual(labels(Paginator(bot,1,[r])),['Anterior','Próxima','Ver em galeria'])
+            self.assertEqual(labels(Paginator(bot,1,[r],'gallery'))[-1],'Ver em lista')
+            self.assertEqual(labels(Paginator(bot,1,[],'history')),['Anterior','Próxima'])
+            self.assertEqual(labels(Gate(bot,1,'registrar')),['Preencher ficha'])
             modal=RecordModal(bot,1,'create',uploads=True).to_components()
             self.assertEqual(len(modal),5);self.assertEqual(modal[-1]['type'],18);self.assertEqual(modal[-1]['component']['type'],19)
             self.assertEqual(len(RecordModal(bot,1,'create').to_components()),4)

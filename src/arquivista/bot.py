@@ -18,38 +18,34 @@ from .media import Images
 from .sheet import SheetSync
 from .store import Store
 from .transport import Carteiro, MENTIONS
-from .views import Gate, FormLauncher, Picker, Paginator, Settings, private_reply, card, clean, channel_problem
+from .views import Gate, Picker, Paginator, RecordModal, Settings, private_reply, card, clean
 
 log = logging.getLogger(__name__)
 PUBLIC = frozenset(("ajuda", "aparencias", "minhas", "galeria", "consultar"))
+SLASH = ("ajuda", "aparencias", "registrar", "editar", "situacao", "transferir", "remover", "historico", "configurar", "diagnostico")
 
 HELP = """**Consultar o arquivo**
-`AC:aparencias [@membro]` (`AC:ap`) — lista paginada.
-`AC:minhas` (`AC:min`) — suas aparências.
-`AC:galeria [nome] [@membro]` (`AC:gal`) — uma imagem por página.
-`AC:consultar nome` (`AC:busca`) — busca aproximada; refine com a obra.
+`/aparencias` ou `AC:ap [aparência] [@membro]` — lista; o botão do resultado troca para galeria.
+`AC:min` — suas aparências. `AC:gal` — já abre em galeria.
 
 **Seu cadastro**
-`AC:registrar` (`AC:reg`) — abrir formulário, revisar e confirmar.
-`AC:editar nome` (`AC:ed`) — editar nome no servidor e imagem.
-Pode anexar uma imagem à mensagem de registrar/editar, após a staff configurar o canal de imagens.
+`/registrar` ou `AC:reg` — formulário com link ou anexo da imagem, revisão e confirmação.
+`/editar` ou `AC:ed aparência` — mudar nome no servidor e imagem.
 
-Também existem comandos de barra `/`. `ac:` e espaços depois de `AC:` são aceitos.
-Não publique situação ou justificativa como argumentos: use o painel privado."""
+Os nomes completos também valem (`AC:registrar`, `AC:galeria`...). `ac:` minúsculo funciona.
+Situação e justificativa ficam só nos painéis privados."""
 STAFF_HELP = """
 
 **Staff**
-`AC:registrar @membro` — cadastrar para outra pessoa.
-`AC:situacao nome` (`AC:sit`) — situação e justificativa internas.
-`AC:transferir nome @membro` (`AC:tr`) — preservar identidade e data.
-`AC:remover nome` (`AC:rm`) — remoção com confirmação e auditoria.
-`AC:historico nome` (`AC:hist`) — histórico privado, inclusive removidos.
-`AC:registrarhistorico` / `AC:desativarhistorico` — canal de notificações.
-`AC:registrarimagens` / `AC:desativarimagens` — canal para preservar anexos.
-`AC:status` (`AC:st`) — diagnóstico privado do arquivo deste servidor.
+`AC:reg @membro` — cadastrar para outra pessoa.
+`/situacao` ou `AC:sit aparência` — situação e justificativa internas.
+`/transferir` ou `AC:tr aparência @membro` — mudar o responsável, mantendo ID e data.
+`/remover` ou `AC:rm aparência` — remover com confirmação; o histórico fica.
+`/historico` ou `AC:hist [aparência]` — histórico privado, inclusive removidos.
+`/diagnostico` ou `AC:diag` — estado do arquivo, dos canais e da planilha.
 
 **Gerência do servidor**
-`AC:configurar` (`AC:cfg`) — cargos de staff, canais e planilha.
+`/configurar` ou `AC:cfg` — cargos de staff, canais de histórico e imagens, planilha.
 """
 
 SHEET_ERRORS = {"AUTH": "a planilha recusou a chave ou a URL; conecte de novo no /configurar",
@@ -151,14 +147,17 @@ class Arquivista(commands.Bot):
             self.last_mention[message.author.id] = now
             await self.carteiro.send(message.channel, embed=card("Amiya · Arquivista do Ciclo",
                 "Estou aqui. Posso consultar as aparências do arquivo ou ajudar com seu cadastro.\n\n"
-                "Use **AC:ajuda**, **AC:galeria** ou **AC:registrar**. Você também pode usar os comandos de barra."))
+                "Use **AC:ajuda**, **AC:gal** ou **AC:reg**, ou os comandos de barra."))
     async def reply_public(self, source, *, embed, view=None):
         interaction = source if isinstance(source, discord.Interaction) else None
         if interaction and not interaction.response.is_done():
             await interaction.response.defer(ephemeral=True, thinking=True)
         result = await self.carteiro.send(source.channel, embed=embed, view=view)
         if interaction:
-            await interaction.edit_original_response(content="Apresentei o arquivo pela Amiya neste canal.", allowed_mentions=MENTIONS)
+            try:
+                await interaction.delete_original_response()  # a resposta é a mensagem da Amiya no canal
+            except discord.HTTPException:
+                pass
         return result
     async def failure(self, source, error):
         text = str(error) if isinstance(error,UserError) else "Não consegui concluir essa etapa. A staff pode conferir o diagnóstico; não presuma que uma gravação foi confirmada."
@@ -187,7 +186,7 @@ class Arquivista(commands.Bot):
                 raise UserError("Esse comando é exclusivo da staff.")
             if action not in PUBLIC:
                 if action=="transferir" and not member_id:
-                    raise UserError("Use AC:transferir nome da aparência @responsável.")
+                    raise UserError("Use AC:tr aparência @responsável.")
                 if action in ("editar","situacao","transferir","remover") and not query.strip():
                     raise UserError("Informe o nome da aparência depois do comando. O bot apresentará opções quando houver mais de uma.")
                 if isinstance(source,discord.Interaction):
@@ -208,6 +207,22 @@ class Arquivista(commands.Bot):
             await self.reply_public(source,embed=await view.embed(),view=view if records else None)
         except Exception as exc:
             await self.failure(source,exc)
+    async def open_register(self, i: discord.Interaction, member=None, attachment=None, *, owner_id=None, limit=True):
+        """Abre o formulário de cadastro como primeira resposta (o Discord só deixa abrir formulário assim).
+        Nada lento antes do modal; o envio e a confirmação revalidam a permissão pelo Discord."""
+        if limit:
+            now=time.monotonic()
+            if now-self.last_use.get(i.user.id,-1000)<2:
+                return await private_reply(i,content="Aguarde dois segundos antes de abrir outro comando.")
+            self.last_use[i.user.id]=now
+        staff=self.is_staff_member(i.user)
+        oid=str(member.id) if member else str(owner_id or i.user.id)
+        if oid!=str(i.user.id) and not staff:
+            return await private_reply(i,content="Você pode cadastrar para si. Apenas a staff cadastra para outra pessoa.")
+        name=member.display_name if member else (i.user.display_name if oid==str(i.user.id) else "")
+        uploads=bool(i.guild_id and self.store.guild(i.guild_id).get("image_channel"))
+        await i.response.send_modal(RecordModal(self,i.user.id,"create",staff=staff,owner={"id":oid,"name":name},
+            attachment=attachment,uploads=uploads))
     async def open_private(self, i, action, query="", member_id=None, attachment=None):
         try:
             actor=await self.actor(i.user.id,i.guild_id)
@@ -219,12 +234,6 @@ class Arquivista(commands.Bot):
                     raise UserError("Só quem pode gerenciar o servidor configura o Arquivista.")
                 v=Settings(self,i.user.id,i.guild)
                 await private_reply(i,embed=v.embed(),view=v)
-            elif action=="registrar":
-                owner=await self.actor(member_id,i.guild_id) if member_id else actor
-                if owner.id!=actor.id and not actor.staff:
-                    raise UserError("Você pode cadastrar para si. Apenas a staff cadastra para terceiros.")
-                v=FormLauncher(self,i.user.id,"create",owner={"id":owner.id,"name":owner.name},attachment=attachment)
-                await private_reply(i,embed=self.carteiro.decorate(card("Nova aparência",f"Responsável: <@{owner.id}>.\nPreencha os dados, revise e confirme. Vou conferir a disponibilidade antes de salvar.")),view=v)
             elif action in ("editar","situacao","transferir","remover"):
                 data=await archive.call("list",actor,{"owner_id":"" if actor.staff else actor.id,"include_released":True})
                 records=ranked(data["records"],query,limit=250)
@@ -236,7 +245,7 @@ class Arquivista(commands.Bot):
                 data=await archive.call("history",actor,{"query":query})
                 v=Paginator(self,i.user.id,data["events"],"history",actor=actor,guild_id=i.guild_id)
                 await private_reply(i,content="Exibindo os eventos mais recentes; a auditoria original foi preservada." if data.get("truncated") else None,embed=await v.embed(),view=v if data["events"] else None)
-            elif action=="status":
+            elif action=="diagnostico":
                 data=await archive.call("status",actor)
                 cfg=self.store.guild(i.guild_id)
                 channel=lambda c:f"<#{c}>" if c else "não configurado"
@@ -253,23 +262,6 @@ class Arquivista(commands.Bot):
                 else:
                     body+="\n**Planilha:** não conectada"
                 await private_reply(i,embed=self.carteiro.decorate(card("Diagnóstico privado",body)))
-            elif action in ("registrar_historico","registrar_imagens"):
-                channel=i.channel
-                if not isinstance(channel,(discord.TextChannel,discord.Thread)):
-                    raise UserError("Use um canal de texto ou um tópico deste servidor.")
-                problem=channel_problem(channel,images=action=="registrar_imagens")
-                if problem:
-                    raise UserError(problem)
-                if action=="registrar_historico":
-                    self.store.set_guild(i.guild_id,log_channel=channel.id)
-                    message="Este canal receberá os próximos cadastros e alterações. Situação, justificativa e nome interno não aparecem nas notificações públicas. Não vou republicar o passado."
-                else:
-                    self.store.set_guild(i.guild_id,image_channel=channel.id)
-                    message="Este canal preservará as imagens anexadas nos futuros cadastros. Não apague essas mensagens: elas são a fonte recuperável dos arquivos."
-                await private_reply(i,embed=self.carteiro.decorate(card("Canal configurado",message)))
-            elif action in ("desativar_historico","desativar_imagens"):
-                self.store.set_guild(i.guild_id,**{"log_channel" if action=="desativar_historico" else "image_channel":None})
-                await private_reply(i,content="Configuração desativada. Nenhum registro histórico ou arquivo antigo foi apagado.")
             else:
                 raise UserError("Operação não reconhecida.")
         except Exception as exc:
@@ -352,58 +344,40 @@ class Arquivista(commands.Bot):
 
 def install_slash_commands(bot):
     """As duas entradas usam o mesmo run_action e as mesmas permissões."""
-    @bot.tree.command(name="ajuda",description="Abra o índice de comandos da Amiya.")
+    @bot.tree.command(name="ajuda",description="Índice de comandos da Amiya.")
     @app_commands.guild_only()
     async def ajuda(i:discord.Interaction):await bot.run_action(i,"ajuda")
-    @bot.tree.command(name="aparencias",description="Lista paginada de aparência e responsável.")
+    @bot.tree.command(name="aparencias",description="Consulte as aparências: busque pelo nome, filtre por membro, veja em lista ou galeria.")
     @app_commands.guild_only()
-    async def aparencias(i:discord.Interaction,membro:discord.Member|None=None):await bot.run_action(i,"aparencias",member_id=membro.id if membro else None)
-    @bot.tree.command(name="minhas",description="Consulte suas próprias aparências.")
+    @app_commands.describe(aparencia="Nome da aparência (aproximado vale); pode incluir a obra",membro="Só as de um membro",modo="Lista ou galeria de imagens")
+    @app_commands.choices(modo=[app_commands.Choice(name="lista",value="lista"),app_commands.Choice(name="galeria",value="galeria")])
+    async def aparencias(i:discord.Interaction,aparencia:str="",membro:discord.Member|None=None,modo:str="lista"):
+        await bot.run_action(i,"galeria" if modo=="galeria" else "aparencias",aparencia,membro.id if membro else None)
+    @bot.tree.command(name="registrar",description="Cadastre uma aparência; staff também cadastra para outra pessoa.")
     @app_commands.guild_only()
-    async def minhas(i:discord.Interaction):await bot.run_action(i,"minhas")
-    @bot.tree.command(name="galeria",description="Veja as imagens; filtre por pessoa ou nome aproximado.")
+    async def registrar(i:discord.Interaction,membro:discord.Member|None=None):await bot.open_register(i,membro)
+    @bot.tree.command(name="editar",description="Altere nome no servidor ou imagem de um cadastro seu.")
     @app_commands.guild_only()
-    async def galeria(i:discord.Interaction,nome:str="",membro:discord.Member|None=None):await bot.run_action(i,"galeria",nome,membro.id if membro else None)
-    @bot.tree.command(name="consultar",description="Procure uma aparência ocupada pelo nome e pela obra.")
-    @app_commands.guild_only()
-    async def consultar(i:discord.Interaction,nome:str,obra:str=""):await bot.run_action(i,"consultar",f"{nome} {obra}".strip())
-    @bot.tree.command(name="registrar",description="Cadastre uma aparência para si; staff também cadastra para terceiros.")
-    @app_commands.guild_only()
-    async def registrar(i:discord.Interaction,membro:discord.Member|None=None,imagem:discord.Attachment|None=None):await bot.run_action(i,"registrar",member_id=membro.id if membro else None,attachment=imagem)
-    @bot.tree.command(name="editar",description="Altere um cadastro permitido em formulário privado.")
-    @app_commands.guild_only()
-    async def editar(i:discord.Interaction,personagem:str,imagem:discord.Attachment|None=None):await bot.run_action(i,"editar",personagem,attachment=imagem)
+    async def editar(i:discord.Interaction,aparencia:str):await bot.run_action(i,"editar",aparencia)
     @bot.tree.command(name="situacao",description="Staff: altere situação e justificativa internas.")
     @app_commands.guild_only()
-    async def situacao(i:discord.Interaction,personagem:str):await bot.run_action(i,"situacao",personagem)
-    @bot.tree.command(name="transferir",description="Staff: transfira a aparência preservando ID e data.")
+    async def situacao(i:discord.Interaction,aparencia:str):await bot.run_action(i,"situacao",aparencia)
+    @bot.tree.command(name="transferir",description="Staff: mude o responsável, mantendo ID e data.")
     @app_commands.guild_only()
-    async def transferir(i:discord.Interaction,personagem:str,membro:discord.Member):await bot.run_action(i,"transferir",personagem,membro.id)
-    @bot.tree.command(name="remover",description="Staff: remova o cadastro com confirmação e auditoria.")
+    async def transferir(i:discord.Interaction,aparencia:str,membro:discord.Member):await bot.run_action(i,"transferir",aparencia,membro.id)
+    @bot.tree.command(name="remover",description="Staff: remova o cadastro com confirmação; o histórico fica.")
     @app_commands.guild_only()
-    async def remover(i:discord.Interaction,personagem:str):await bot.run_action(i,"remover",personagem)
-    @bot.tree.command(name="historico",description="Staff: consulte o histórico detalhado em privado.")
+    async def remover(i:discord.Interaction,aparencia:str):await bot.run_action(i,"remover",aparencia)
+    @bot.tree.command(name="historico",description="Staff: histórico detalhado em privado.")
     @app_commands.guild_only()
-    async def historico(i:discord.Interaction,personagem:str=""):await bot.run_action(i,"historico",personagem)
-    @bot.tree.command(name="registrar_historico",description="Staff: use este canal para futuras notificações públicas.")
-    @app_commands.guild_only()
-    async def registrar_historico(i:discord.Interaction):await bot.run_action(i,"registrar_historico")
-    @bot.tree.command(name="desativar_historico",description="Staff: desative notificações sem apagar a auditoria.")
-    @app_commands.guild_only()
-    async def desativar_historico(i:discord.Interaction):await bot.run_action(i,"desativar_historico")
-    @bot.tree.command(name="registrar_imagens",description="Staff: preserve neste canal as imagens anexadas ao cadastro.")
-    @app_commands.guild_only()
-    async def registrar_imagens(i:discord.Interaction):await bot.run_action(i,"registrar_imagens")
-    @bot.tree.command(name="desativar_imagens",description="Staff: pare novos uploads sem apagar os arquivos existentes.")
-    @app_commands.guild_only()
-    async def desativar_imagens(i:discord.Interaction):await bot.run_action(i,"desativar_imagens")
-    @bot.tree.command(name="configurar",description="Gerência: cargos de staff e canais do Arquivista neste servidor.")
+    async def historico(i:discord.Interaction,aparencia:str=""):await bot.run_action(i,"historico",aparencia)
+    @bot.tree.command(name="configurar",description="Gerência: cargos de staff, canais e planilha do Arquivista.")
     @app_commands.guild_only()
     @app_commands.default_permissions(manage_guild=True)
     async def configurar(i:discord.Interaction):await bot.run_action(i,"configurar")
-    @bot.tree.command(name="status",description="Staff: diagnóstico privado da ponte e do histórico.")
+    @bot.tree.command(name="diagnostico",description="Staff: estado do arquivo, dos canais e da planilha.")
     @app_commands.guild_only()
-    async def status(i:discord.Interaction):await bot.run_action(i,"status")
+    async def diagnostico(i:discord.Interaction):await bot.run_action(i,"diagnostico")
     @bot.tree.error
     async def error(i:discord.Interaction,error:app_commands.AppCommandError):
         await bot.failure(i,error)

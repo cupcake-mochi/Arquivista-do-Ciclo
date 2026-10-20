@@ -4,7 +4,7 @@ import logging
 import uuid
 from typing import Callable, Awaitable
 import discord
-from .domain import UserError, BridgeError, STAFF_ACTIONS, STATUSES, safe_image_url
+from .domain import Actor, UserError, BridgeError, STAFF_ACTIONS, STATUSES, safe_image_url
 from .transport import MENTIONS
 
 log = logging.getLogger(__name__)
@@ -61,8 +61,13 @@ class Gate(GuardedView):
         super().__init__(bot, user_id)
         self.action, self.query, self.member_id, self.attachment = action, query, member_id, attachment
         self.requires_staff = action in STAFF_ACTIONS
+        if action == "registrar":
+            self.open_panel.label = "Preencher ficha"
     @discord.ui.button(label="Abrir painel privado", style=discord.ButtonStyle.primary)
     async def open_panel(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if self.action == "registrar":
+            # Cadastro vai direto pro formulário; não precisa de painel no meio.
+            return await self.bot.open_register(interaction, attachment=self.attachment, owner_id=self.member_id, limit=False)
         await interaction.response.defer(ephemeral=True, thinking=True)
         await self.bot.open_private(interaction, self.action, self.query, self.member_id, self.attachment)
 
@@ -73,6 +78,10 @@ class Paginator(GuardedView):
         self.per_page = 1 if mode in ("gallery", "history") else 15
         self.requires_staff = mode == "history"
         self.mutex = asyncio.Lock()
+        if mode == "history":
+            self.remove_item(self.toggle)
+        else:
+            self.toggle.label = "Ver em lista" if mode == "gallery" else "Ver em galeria"
     @property
     def pages(self):
         return max(1, (len(self.records)+self.per_page-1)//self.per_page)
@@ -118,6 +127,17 @@ class Paginator(GuardedView):
     @discord.ui.button(label="Próxima", style=discord.ButtonStyle.secondary)
     async def next(self, i: discord.Interaction, b: discord.ui.Button):
         await self.turn(i, 1)
+    @discord.ui.button(label="Ver em galeria", style=discord.ButtonStyle.primary)
+    async def toggle(self, i: discord.Interaction, b: discord.ui.Button):
+        await i.response.defer()
+        async with self.mutex:
+            # Mantém o item que estava à vista ao trocar de lista (15 por página) para galeria (1 por página).
+            first = self.page * self.per_page
+            self.mode = "list" if self.mode == "gallery" else "gallery"
+            self.per_page = 1 if self.mode == "gallery" else 15
+            self.page = first // self.per_page
+            b.label = "Ver em lista" if self.mode == "gallery" else "Ver em galeria"
+            await i.edit_original_response(embed=await self.embed(), view=self, allowed_mentions=MENTIONS)
 
 class Picker(GuardedView):
     def __init__(self, bot, user_id, records, action, member_id=None, attachment=None):
@@ -136,16 +156,22 @@ class Picker(GuardedView):
         self.back.disabled = self.page == 0
         self.more.disabled = (self.page+1)*25 >= len(self.records)
     async def choose(self, i):
+        if self.action == "editar":
+            # Formulário direto: lê o cadastro no banco local (rápido) com o cargo atual da interação;
+            # o envio do formulário revalida pelo Discord.
+            staff = self.bot.is_staff_member(i.user)
+            quick = Actor(str(i.user.id), i.user.display_name, staff)
+            record = (await self.bot.archive(i.guild_id).call("get", quick, {"id": self.select.values[0]}))["record"]
+            uploads = bool(self.bot.store.guild(i.guild_id).get("image_channel"))
+            return await i.response.send_modal(RecordModal(self.bot, self.author_id, "edit", staff=staff, record=record,
+                attachment=self.attachment, uploads=uploads))
         await i.response.defer(ephemeral=True, thinking=True)
         actor = await self.bot.actor(i.user.id, i.guild_id)
         if self.action in STAFF_ACTIONS and not actor.staff:
             raise UserError("Esta operação é reservada à staff.")
         data = await self.bot.archive(i.guild_id).call("get", actor, {"id": self.select.values[0]})
         record = data["record"]
-        if self.action == "editar":
-            v = FormLauncher(self.bot, self.author_id, "edit", record=record, attachment=self.attachment)
-            await private_reply(i, content="Abra o formulário para alterar os campos permitidos.", view=v)
-        elif self.action == "situacao":
+        if self.action == "situacao":
             v = StatusPicker(self.bot, self.author_id, record)
             await private_reply(i, content="Escolha a situação interna. Arquivar não libera a aparência.", view=v)
         elif self.action == "transferir":
@@ -165,26 +191,13 @@ class Picker(GuardedView):
         self.page = min((len(self.records)-1)//25, self.page+1); self.options()
         await i.response.edit_message(view=self)
 
-class FormLauncher(GuardedView):
-    def __init__(self, bot, user_id, mode, *, record=None, owner=None, attachment=None):
-        super().__init__(bot, user_id)
-        self.mode, self.record, self.owner, self.attachment = mode, record, owner, attachment
-    @discord.ui.button(label="Preencher ficha", style=discord.ButtonStyle.primary)
-    async def launch(self, i: discord.Interaction, b: discord.ui.Button):
-        # Nenhuma consulta lenta antes de enviar o modal: usa membro da interação;
-        # a autorização é revalidada por REST no envio e na confirmação.
-        staff = self.bot.is_staff_member(i.user)
-        uploads = bool(i.guild_id and self.bot.store.guild(i.guild_id).get("image_channel"))
-        await i.response.send_modal(RecordModal(self.bot, self.author_id, self.mode, staff=staff,
-            record=self.record, owner=self.owner, attachment=self.attachment, uploads=uploads))
-
 class RecordModal(discord.ui.Modal):
     def __init__(self, bot, user_id, mode, *, staff=False, record=None, owner=None, attachment=None, uploads=False):
         super().__init__(title="Amiya · Cadastro de aparência", timeout=600)
         self.bot, self.author_id, self.mode, self.record, self.owner, self.attachment = bot, user_id, mode, record or {}, owner, attachment
         self.fields: dict[str, discord.ui.TextInput] = {}
-        definitions = [("appearance","Aparência original",100,True),("work","Obra de origem",100,True)] if mode=="create" or staff else []
-        definitions += [("server_name","Nome no servidor",100,False),("image_url","Link HTTPS da imagem (opcional)",1500,False)]
+        definitions = [("appearance","Aparência (personagem original)",100,True),("work","Obra de origem",100,True)] if mode=="create" or staff else []
+        definitions += [("server_name","Nome no servidor (como se chama aqui)",100,False),("image_url","Link HTTPS da imagem (opcional)",1500,False)]
         for key,label,limit,required in definitions:
             item = discord.ui.TextInput(label=label, max_length=limit, required=required,
                 default=str(self.record.get(key) or ""), placeholder="Digite - para remover a imagem" if key=="image_url" else None)
@@ -302,7 +315,7 @@ class Confirm(GuardedView):
         if self.busy:
             return await private_reply(i,content="Ainda estou conferindo esta mesma confirmação. Aguarde.")
         self.busy=self.tried=True
-        await i.response.defer(ephemeral=True,thinking=True)
+        await i.response.defer()  # o resultado entra no lugar da revisão, na mesma mensagem
         try:
             actor=await self.bot.actor(i.user.id,i.guild_id)
             if self.action in ("change_status","transfer","remove") and not actor.staff:
@@ -315,15 +328,10 @@ class Confirm(GuardedView):
             self.completed=True
             if result.get("changed",True):
                 self.bot.notify_soon()
-            for item in self.children:
-                item.disabled=True
-            if self.message:
-                try: await self.message.edit(view=self)
-                except discord.HTTPException: pass
             text="Registro removido; o histórico foi preservado." if self.action=="remove" else "Salvo no arquivo. Vou manter os registros organizados."
             if not result.get("changed",True):
                 text="Os dados já estavam assim. Não criei um evento de alteração desnecessário."
-            await private_reply(i,embed=self.bot.carteiro.decorate(card("Amiya · Confirmação",text)))
+            await i.edit_original_response(content=None,embed=self.bot.carteiro.decorate(card("Amiya · Confirmação",text)),view=None)
             self.stop()
         except UserError as exc:
             if isinstance(exc,BridgeError) and exc.code in ("BUSY","INTERNAL"):

@@ -51,15 +51,15 @@ python iniciar.py
 AC:ajuda
 AC:aparencias
 AC:aparencias @membro
-AC:galeria Takao
-AC:galeria @membro
-AC:consultar Takao Azur Lane
-AC:minhas
+AC:gal Takao
+AC:gal @membro
+AC:busca Takao Azur Lane
+AC:min
 AC:registrar
 AC:editar Takao
 ```
 
-A staff também tem `AC:situacao`, `AC:transferir`, `AC:remover`, `AC:historico`, `AC:registrarhistorico`, `AC:registrarimagens` e seus equivalentes por barra. Veja [docs/COMANDOS.md](docs/COMANDOS.md).
+A staff também tem `AC:sit`, `AC:tr`, `AC:rm`, `AC:hist`, `AC:diag` e `AC:cfg`, com os equivalentes por barra. Veja [docs/COMANDOS.md](docs/COMANDOS.md).
 
 ## O que não muda automaticamente
 

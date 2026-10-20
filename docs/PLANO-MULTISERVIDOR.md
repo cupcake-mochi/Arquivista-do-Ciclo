@@ -152,7 +152,7 @@ importação.
    com revisão por cadastro (pedido repetido ou antigo é ignorado), fila
    `sheet_outbox` no bot que guarda só a última versão de cada cadastro, botão
    "Conectar planilha" no `/configurar` (testa antes de salvar, chave cifrada no
-   banco) e estado da planilha no `/status`. Edições feitas na planilha ainda não
+   banco) e estado da planilha no `/diagnostico`. Edições feitas na planilha ainda não
    voltam pro bot.
 4. **Planilha → bot:** consumo dos eventos por servidor, eco e conflitos.
 5. **Guia de instalação** pra donos de servidor e planilha modelo pública.
