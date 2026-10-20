@@ -14,7 +14,7 @@ class Images:
     async def save(self, attachment: discord.Attachment, guild_id: int) -> dict[str, str]:
         cid = self.bot.store.guild(guild_id).get("image_channel")
         if not cid:
-            raise UserError("Para usar anexos, a staff precisa definir um canal com AC:registrarimagens. Por enquanto, use um link direto.")
+            raise UserError("Para usar anexos, a staff precisa escolher um canal de imagens no /configurar. Por enquanto, use um link direto.")
         if attachment.size > 8 * 1024 * 1024:
             raise UserError("Envie uma imagem de até 8 MB.")
         channel = self.bot.get_channel(int(cid)) or await self.bot.fetch_channel(int(cid))

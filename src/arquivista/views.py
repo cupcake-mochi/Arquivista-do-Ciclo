@@ -174,11 +174,12 @@ class FormLauncher(GuardedView):
         # Nenhuma consulta lenta antes de enviar o modal: usa membro da interação;
         # a autorização é revalidada por REST no envio e na confirmação.
         staff = self.bot.is_staff_member(i.user)
+        uploads = bool(i.guild_id and self.bot.store.guild(i.guild_id).get("image_channel"))
         await i.response.send_modal(RecordModal(self.bot, self.author_id, self.mode, staff=staff,
-            record=self.record, owner=self.owner, attachment=self.attachment))
+            record=self.record, owner=self.owner, attachment=self.attachment, uploads=uploads))
 
 class RecordModal(discord.ui.Modal):
-    def __init__(self, bot, user_id, mode, *, staff=False, record=None, owner=None, attachment=None):
+    def __init__(self, bot, user_id, mode, *, staff=False, record=None, owner=None, attachment=None, uploads=False):
         super().__init__(title="Amiya · Cadastro de aparência", timeout=600)
         self.bot, self.author_id, self.mode, self.record, self.owner, self.attachment = bot, user_id, mode, record or {}, owner, attachment
         self.fields: dict[str, discord.ui.TextInput] = {}
@@ -189,6 +190,11 @@ class RecordModal(discord.ui.Modal):
                 default=str(self.record.get(key) or ""), placeholder="Digite - para remover a imagem" if key=="image_url" else None)
             self.fields[key] = item
             self.add_item(item)
+        # Anexo dentro do formulário: só com canal de imagens, que guarda o arquivo (link de anexo expira).
+        self.upload = None
+        if uploads and not attachment:
+            self.upload = discord.ui.FileUpload(required=False, max_values=1)
+            self.add_item(discord.ui.Label(text="Ou anexe a imagem (opcional)", description="PNG, JPEG, GIF ou WebP, até 8 MB. Use o link ou o anexo.", component=self.upload))
     async def on_submit(self, i: discord.Interaction):
         if i.user.id != self.author_id or i.guild_id is None:
             return await private_reply(i, content="Este formulário não pertence a você.")
@@ -196,6 +202,11 @@ class RecordModal(discord.ui.Modal):
         try:
             actor = await self.bot.actor(i.user.id, i.guild_id)
             fields = {k:str(v.value).strip() for k,v in self.fields.items()}
+            if self.upload and self.upload.values:
+                if fields.get("image_url") not in ("", None, str(self.record.get("image_url") or "")):
+                    raise UserError("Use o link ou o anexo da imagem, não os dois.")
+                self.attachment = self.upload.values[0]
+                fields["image_url"] = str(self.record.get("image_url") or "")
             remove_image = fields.get("image_url")=="-"
             fields["image_url"] = "" if remove_image else safe_image_url(fields.get("image_url", ""))
             if self.mode=="edit":

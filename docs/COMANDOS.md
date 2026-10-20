@@ -26,7 +26,7 @@ Quem abriu uma lista usa seus botões; outra pessoa pode abrir a própria consul
 | `AC:registrar @membro` | `/registrar membro [imagem]` | Só staff para terceiros. Autor e responsável permanecem distintos. |
 | `AC:editar nome` | `/editar personagem [imagem]` | Membro: próprio nome no servidor/imagem. Staff: qualquer cadastro, também aparência e obra. |
 
-No chat, anexe a imagem à mesma mensagem do comando. Por barra, use o parâmetro `imagem`. Isso requer o canal de imagens previamente configurado pela staff. Também se pode usar o campo de link HTTPS direto no formulário.
+A imagem pode ir de três jeitos: link HTTPS direto no formulário, campo de anexo no próprio formulário, ou, antes de abrir, o parâmetro `imagem` da barra (no chat, anexada à mesma mensagem do comando). Isso requer o canal de imagens previamente configurado pela staff. Também se pode usar o campo de link HTTPS direto no formulário.
 
 Não escreva uma justificativa secreta na mensagem pública. O formulário não publica as respostas no canal: mostra uma revisão privada antes de salvar. No campo de imagem da edição, `-` remove a imagem, inclusive quando ela estava inserida diretamente na célula.
 

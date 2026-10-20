@@ -448,6 +448,9 @@ class DiscordImportTests(unittest.IsolatedAsyncioTestCase):
             for obj in (Gate(bot,1,'editar'),RecordModal(bot,1,'create'),RecordModal(bot,1,'edit',record=r),
                         Confirm(bot,1,'remove',{}),StatusPicker(bot,1,r),Picker(bot,1,[r],'editar'),Paginator(bot,1,[r])):
                 self.assertTrue(obj.to_components())
+            modal=RecordModal(bot,1,'create',uploads=True).to_components()
+            self.assertEqual(len(modal),5);self.assertEqual(modal[-1]['type'],18);self.assertEqual(modal[-1]['component']['type'],19)
+            self.assertEqual(len(RecordModal(bot,1,'create').to_components()),4)
             rows=Confirm(bot,1,'create',{'fields':{}}).to_components()
             self.assertEqual([[c['type'] for c in row['components']] for row in rows],[[3],[2,2]])
             class Guild:
