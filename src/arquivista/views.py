@@ -81,7 +81,7 @@ class Paginator(GuardedView):
         # mode "works": records são os grupos de obras de domain.work_groups.
         self.records, self.mode, self.page, self.actor, self.guild_id, self.owner = records, mode, 0, actor, guild_id, owner
         self.title = title
-        self.per_page = 1 if mode in ("gallery", "history") else 15
+        self.per_page = 1 if mode in ("gallery", "history") else 12
         self.requires_staff = mode == "history"
         self.mutex = asyncio.Lock()
         if mode in ("history", "works"):
@@ -119,6 +119,7 @@ class Paginator(GuardedView):
         elif self.mode == "gallery":
             r = self.records[self.page]
             e = card(clean(r["appearance"], 200), f"**Obra:** {clean(r['work'],200)}\n**Responsável:** <@{r['owner_id']}>")
+            e.add_field(name="Nome no servidor", value=clean(r.get("server_name"),100) or "Não informado", inline=False)
             url = await self.bot.images.resolve(r["id"], self.actor, self.guild_id)
             if url:
                 e.set_image(url=url)
@@ -127,13 +128,16 @@ class Paginator(GuardedView):
         else:
             chunk = self.records[self.page*self.per_page:(self.page+1)*self.per_page]
             if self.title and not self.owner:
-                lines = [f"**{self.page*self.per_page+j+1}. {clean(r['appearance'],100)}** · {clean(r['work'],50)} · <@{r['owner_id']}>" for j,r in enumerate(chunk)]
+                lines = [f"**{self.page*self.per_page+j+1}. {clean(r['appearance'],100)}** · {clean(r['work'],50)} · <@{r['owner_id']}>"
+                         + (f"\nNome no servidor: {clean(r['server_name'],100)}" if r.get('server_name') else "") for j,r in enumerate(chunk)]
                 e = card(clean(self.title, 200), "\n".join(lines))
             elif self.owner:
-                lines = [f"**{self.page*self.per_page+j+1}. {clean(r['appearance'],110)}** · {clean(r['work'],60)}" for j,r in enumerate(chunk)]
+                lines = [f"**{self.page*self.per_page+j+1}. {clean(r['appearance'],110)}** · {clean(r['work'],60)}"
+                         + (f"\nNome no servidor: {clean(r['server_name'],100)}" if r.get('server_name') else "") for j,r in enumerate(chunk)]
                 e = card("Aparências de " + clean(self.owner.display_name, 80), f"<@{self.owner.id}>\n\n" + "\n".join(lines))
             else:
-                lines = [f"**{self.page*self.per_page+j+1}. {clean(r['appearance'],110)}** · <@{r['owner_id']}>" for j,r in enumerate(chunk)]
+                lines = [f"**{self.page*self.per_page+j+1}. {clean(r['appearance'],110)}** · <@{r['owner_id']}>"
+                         + (f"\nNome no servidor: {clean(r['server_name'],100)}" if r.get('server_name') else "") for j,r in enumerate(chunk)]
                 e = card("Arquivo de aparências", "\n".join(lines))
         if self.owner and self.mode != "history":
             e.set_thumbnail(url=self.owner.display_avatar.url)
@@ -154,10 +158,10 @@ class Paginator(GuardedView):
     async def toggle(self, i: discord.Interaction, b: discord.ui.Button):
         await i.response.defer()
         async with self.mutex:
-            # Mantém o item que estava à vista ao trocar de lista (15 por página) para galeria (1 por página).
+            # Mantém o item que estava à vista ao trocar de lista para galeria.
             first = self.page * self.per_page
             self.mode = "list" if self.mode == "gallery" else "gallery"
-            self.per_page = 1 if self.mode == "gallery" else 15
+            self.per_page = 1 if self.mode == "gallery" else 12
             self.page = first // self.per_page
             b.label = "Ver em lista" if self.mode == "gallery" else "Ver em galeria"
             await i.edit_original_response(embed=await self.embed(), view=self, allowed_mentions=MENTIONS)

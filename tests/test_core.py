@@ -53,10 +53,11 @@ class DomainTests(unittest.TestCase):
         self.assertTrue(ranked([{'id':'1','appearance':'Amiya','work':'Arknights'}],'Amya'))
     def test_public_projection(self):
         full={'id':'abc','appearance':'Takao','work':'Azur Lane','owner_id':'9','occupied':True,
-              'status':'Arquivado','justification':'SEGREDO','server_name':'NOMESECRETO',
+              'status':'Arquivado','justification':'SEGREDO','server_name':'Kai',
               'revision':'hash','date':1,'image_url':'url','group':99}
         result=public_record(full)
-        self.assertEqual(set(result),{'id','appearance','work','owner_id','occupied'})
+        self.assertEqual(set(result),{'id','appearance','work','server_name','owner_id','occupied'})
+        self.assertEqual(result['server_name'],'Kai')
         self.assertNotIn('SEGREDO',json.dumps(result))
     def test_permissions(self):
         user=Actor('1','User');staff=Actor('2','Staff',True)
@@ -152,9 +153,12 @@ class ArchiveTests(unittest.TestCase):
         self.assertEqual(self.code(self.b,'remove',self.staff,{'id':r['id'],'revision':1}),'NOT_FOUND')
         self.assertEqual(self.call(self.b,'list',self.staff,{'include_released':True})['records'],[])
     def test_list_is_public_projection(self):
-        self.create(server_name='SEGREDO')
+        r=self.create(server_name='Kai')
+        self.call(self.a,'change_status',self.staff,{'id':r['id'],'revision':r['revision'],'status':'Em uso','justification':'SEGREDO'})
         records=self.call(self.a,'list',self.other)['records']
-        self.assertEqual(set(records[0]),{'id','appearance','work','owner_id','occupied'})
+        self.assertEqual(set(records[0]),{'id','appearance','work','server_name','owner_id','occupied'})
+        self.assertEqual(records[0]['server_name'],'Kai')
+        self.assertNotIn('SEGREDO',json.dumps(records))
     def test_permissions(self):
         r=self.create()
         self.assertEqual(self.code(self.a,'get',self.other,{'id':r['id']}),'FORBIDDEN')
@@ -445,6 +449,31 @@ class SetupTests(unittest.TestCase):
 
 @unittest.skipUnless(importlib.util.find_spec('discord'),'discord.py não disponível neste ambiente; executar também na CI/hospedagem')
 class DiscordImportTests(unittest.IsolatedAsyncioTestCase):
+    async def test_public_character_name_and_embed_limits(self):
+        from types import SimpleNamespace
+        from arquivista.views import Paginator
+        class Images:
+            async def resolve(self, *args): return ''
+        bot=SimpleNamespace(images=Images(),carteiro=SimpleNamespace(decorate=lambda e:e))
+        owner=SimpleNamespace(id=123456789012345678,display_name='Jogador',display_avatar=SimpleNamespace(url='https://example.com/avatar.png'))
+        r={'id':'AP-test','appearance':'Takao','work':'Azur Lane','owner_id':str(owner.id),'server_name':'Kai @everyone **nome**'}
+        for options in ({},{'owner':owner},{'title':'Obra: Azur Lane'}):
+            e=await Paginator(bot,1,[r],**options).embed()
+            self.assertIn('Nome no servidor: Kai',e.description)
+            self.assertNotIn('@everyone',e.description)
+            self.assertNotIn('**nome**',e.description)
+        e=await Paginator(bot,1,[r],'gallery').embed()
+        self.assertEqual(e.fields[0].name,'Nome no servidor')
+        self.assertIn('Kai',e.fields[0].value)
+        blank={**r,'server_name':''}
+        self.assertNotIn('Nome no servidor:',(await Paginator(bot,1,[blank]).embed()).description)
+        self.assertEqual((await Paginator(bot,1,[blank],'gallery').embed()).fields[0].value,'Não informado')
+        longest={**r,'appearance':'*'*100,'work':'*'*100,'server_name':'*'*100}
+        for options in ({},{'owner':owner},{'title':'Obra: Azur Lane'}):
+            view=Paginator(bot,1,[longest]*13,**options)
+            self.assertEqual(view.pages,2)
+            self.assertLessEqual(len((await view.embed()).description),4096)
+
     async def test_commands_and_views_construct(self):
         from arquivista.bot import Arquivista
         from arquivista.config import Config
