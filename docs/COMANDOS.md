@@ -7,6 +7,7 @@ O prefixo é `AC:`; `ac:`, `Ac:` e espaços após `:` funcionam. Mensagens de bo
 | Chat | Barra | Resultado |
 |---|---|---|
 | `AC:ajuda` (`AC:aj`) | `/ajuda` | Instruções da Amiya. Mostra a seção administrativa a quem tem permissão. |
+| `AC:guia` (`AC:tutorial`) | `/guia` | Passo a passo em páginas: o que é o arquivo, consultar, registrar, mudar, situações. Staff vê também as páginas de staff e de configuração. |
 | `AC:aparencias [aparência] [@membro]` (`AC:ap`) | `/aparencias [aparencia] [membro] [modo]` | Quinze por página, com responsável. O botão **Ver em galeria** troca para uma por página, com imagem. |
 | `AC:minhas` (`AC:min`) | `/aparencias membro:` você | A própria lista. Lista de uma pessoa só mostra a foto dela no canto e a obra em cada linha. |
 | `AC:galeria [aparência] [@membro]` (`AC:gal`) | `/aparencias modo:galeria` | Já abre em galeria. |

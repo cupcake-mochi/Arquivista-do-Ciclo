@@ -19,6 +19,7 @@ STATUSES = ("Em preparação", "Em uso", "Arquivado", "Liberado")
 PUBLIC_FIELDS = frozenset(("id", "appearance", "work", "owner_id", "occupied"))
 # Nome completo e abreviações de cada comando de chat (AC:...). Sem letra solta, que dispara sem querer.
 SHORT = {
+    "guia": ("guia", "tutorial", "comecar", "começar"),
     "aparencias": ("aparencias", "aparências", "lista", "ap"),
     "minhas": ("minhas", "min"),
     "galeria": ("galeria", "gal"),

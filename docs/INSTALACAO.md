@@ -125,7 +125,7 @@ Permissões necessárias nos canais usados: **Ver canal, Enviar mensagens, Incor
 
 Os webhooks da Amiya pertencem à aplicação do Arquivista. Não reutilize os webhooks dos Guias. Se faltar permissão ou associação à aplicação para botões interativos, o código usa uma resposta pela própria conta do Arquivista, mantendo o avatar e a identificação da personagem no cartão.
 
-O arquivo da imagem foi incluído. Com `CONFIGURAR_AVATAR=true`, o processo tenta aplicar o avatar na primeira conexão bem-sucedida e grava o hash para não alterá-lo repetidamente. Isso ainda não foi feito na conta real. O nome público das mensagens por webhook é `Amiya`; o aplicativo continua Arquivista do Ciclo.
+A conta do bot mantém o ícone dela. As respostas da Amiya no canal (ajuda, guia, listas, avisos) saem por um webhook com nome `Amiya` e a foto de `assets/amiya.png`, e o cabeçalho das respostas privadas usa a mesma foto. Para isso o bot precisa da permissão **Gerenciar Webhooks** no canal; sem ela, a mensagem sai pela conta do bot, com o ícone dele, e o `/diagnostico` avisa. `CONFIGURAR_AVATAR=true` troca também a foto da conta do bot pela da Amiya.
 
 ## 6. Testar antes de hospedar
 

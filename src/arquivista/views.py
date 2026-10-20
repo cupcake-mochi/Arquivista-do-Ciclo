@@ -161,6 +161,28 @@ class Paginator(GuardedView):
             b.label = "Ver em lista" if self.mode == "gallery" else "Ver em galeria"
             await i.edit_original_response(embed=await self.embed(), view=self, allowed_mentions=MENTIONS)
 
+class Guide(GuardedView):
+    """Guia em páginas; quem abriu passa as páginas, outra pessoa abre o próprio."""
+    def __init__(self, bot, user_id, pages):
+        super().__init__(bot, user_id, timeout=900)
+        self.pages, self.page = pages, 0
+    def embed(self):
+        self.previous.disabled = self.page == 0
+        self.next.disabled = self.page >= len(self.pages) - 1
+        title, text = self.pages[self.page]
+        e = card(f"Guia · {title}", text)
+        e.set_footer(text=f"Página {self.page+1}/{len(self.pages)} · AC:ajuda tem a lista curta de comandos")
+        return self.bot.carteiro.decorate(e)
+    async def turn(self, i, delta):
+        self.page = max(0, min(len(self.pages)-1, self.page+delta))
+        await i.response.edit_message(embed=self.embed(), view=self)
+    @discord.ui.button(label="Anterior", style=discord.ButtonStyle.secondary)
+    async def previous(self, i: discord.Interaction, b: discord.ui.Button):
+        await self.turn(i, -1)
+    @discord.ui.button(label="Próxima", style=discord.ButtonStyle.primary)
+    async def next(self, i: discord.Interaction, b: discord.ui.Button):
+        await self.turn(i, 1)
+
 class Picker(GuardedView):
     def __init__(self, bot, user_id, records, action, member_id=None, attachment=None):
         super().__init__(bot, user_id)

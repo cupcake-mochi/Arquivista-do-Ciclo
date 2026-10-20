@@ -36,7 +36,9 @@ class Config:
     legacy_staff_roles: frozenset[int] = frozenset()
     persona_name: str = "Amiya"
     poll_seconds: int = 90
-    configure_avatar: bool = True
+    # Trocar a foto da conta do bot pela da Amiya. Desligado: o bot mantém o ícone dele e a Amiya aparece
+    # nas mensagens pelo webhook.
+    configure_avatar: bool = False
     timezone: str = "America/Sao_Paulo"
     # Cifra as chaves das planilhas conectadas no banco.
     master_key: bytes = b""
@@ -51,7 +53,7 @@ class Config:
                    Path(os.getenv("DATABASE_PATH", str(ROOT / "dados" / "arquivista.sqlite3"))),
                    dev, roles, os.getenv("PERSONA_NAME", "Amiya")[:64],
                    max(60, int(os.getenv("POLL_SECONDS", "90"))),
-                   os.getenv("CONFIGURAR_AVATAR", "true").lower() == "true",
+                   os.getenv("CONFIGURAR_AVATAR", "false").lower() == "true",
                    os.getenv("TIMEZONE", "America/Sao_Paulo"), master_key(os.environ["DISCORD_TOKEN"].strip()))
 
 def master_key(token: str) -> bytes:

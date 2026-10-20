@@ -420,7 +420,7 @@ class FilesTests(unittest.TestCase):
         self.assertEqual(names,list(SLASH))
         # Todo comando de chat cai num comando de barra ou numa consulta pública.
         self.assertTrue(set(ALIASES.values())<=set(SLASH)|PUBLIC)
-        self.assertEqual(len(names),13)
+        self.assertEqual(len(names),14)
 
 
 class SetupTests(unittest.TestCase):
@@ -451,7 +451,7 @@ class DiscordImportTests(unittest.IsolatedAsyncioTestCase):
         with tempfile.TemporaryDirectory() as d:
             cfg=Config('FAKE',Path(d)/'t.sqlite')
             bot=Arquivista(cfg)
-            self.assertEqual(len(bot.tree.get_commands()),13)
+            self.assertEqual(len(bot.tree.get_commands()),14)
             # Um método do bot com nome de método do discord.py derrubava o login (dispatch).
             from discord.ext import commands
             mine={n for n in vars(Arquivista) if not n.startswith('__')}
@@ -482,6 +482,13 @@ class DiscordImportTests(unittest.IsolatedAsyncioTestCase):
             self.assertIn('Arknights** · 2 aparência(s)',d);self.assertIn('também escrita como Arknights Endfield',d)
             e=(await Paginator(bot,1,[r],title='Obra: Azur Lane').embed()).to_dict()
             self.assertEqual(e['title'],'Obra: Azur Lane');self.assertIn('Takao** · Azur Lane · <@',e['description'])
+            from arquivista.views import Guide
+            from arquivista.bot import GUIDE,STAFF_PAGES
+            g=Guide(bot,1,GUIDE[:-STAFF_PAGES]);self.assertEqual(labels(g),['Anterior','Próxima'])
+            self.assertNotIn('staff',g.embed().title.lower());self.assertTrue(g.previous.disabled)
+            # Ícone da Amiya: o do webhook, guardado quando ele é encontrado; não o da conta do bot.
+            bot.store.set('amiya_icon','https://cdn.discordapp.com/avatars/1/amiya.png')
+            self.assertEqual(g.embed().to_dict()['author']['icon_url'],'https://cdn.discordapp.com/avatars/1/amiya.png')
             purge=Confirm(bot,1,'purge',{'owner_id':U1,'ids':['a']})
             self.assertTrue(purge.requires_staff);self.assertEqual(labels(purge),['Apagar tudo','Cancelar'])
             m=RecordModal(bot,1,'create').to_components()

@@ -21,16 +21,18 @@ from .media import Images
 from .sheet import SheetSync
 from .store import Store
 from .transport import Carteiro, MENTIONS
-from .views import Confirm, Gate, Picker, Paginator, RecordModal, Settings, backup_problem, private_reply, card, clean
+from .views import Confirm, Gate, Guide, Picker, Paginator, RecordModal, Settings, backup_problem, private_reply, card, clean
 
 log = logging.getLogger(__name__)
-PUBLIC = frozenset(("ajuda", "aparencias", "minhas", "galeria", "consultar", "obra"))
-SLASH = ("ajuda", "aparencias", "obra", "registrar", "editar", "situacao", "transferir", "remover", "limpar", "apelido", "historico", "configurar", "diagnostico")
+PUBLIC = frozenset(("ajuda", "guia", "aparencias", "minhas", "galeria", "consultar", "obra"))
+SLASH = ("ajuda", "guia", "aparencias", "obra", "registrar", "editar", "situacao", "transferir", "remover", "limpar", "apelido", "historico", "configurar", "diagnostico")
 
 HELP = """**Consultar o arquivo**
 `/aparencias` ou `AC:ap [aparência] [@membro]` — lista; o botão do resultado troca para galeria.
 `AC:min` — suas aparências. `AC:gal` — já abre em galeria.
 `/obra` ou `AC:obra [nome]` — aparências de uma obra, juntando grafias parecidas ("Arknights", "Endfield", "arknighs"). Sem nome, lista as obras.
+
+`/guia` ou `AC:guia` — passo a passo de como o arquivo funciona.
 
 **Seu cadastro**
 `/registrar` ou `AC:reg` — formulário com link ou anexo da imagem, revisão e confirmação.
@@ -53,6 +55,45 @@ STAFF_HELP = """
 **Gerência do servidor**
 `/configurar` ou `AC:cfg` — cargos de staff, canais de histórico e imagens, planilha.
 """
+
+# Guia em páginas (AC:guia). As duas últimas só aparecem para a staff.
+GUIDE = (
+    ("O que é o arquivo",
+     "Aqui fica registrado quem usa cada **aparência**: o personagem (ou a pessoa) que você usa no servidor, junto com a **obra** de onde ele vem.\n\n"
+     "Cada aparência + obra só pode ter um dono por vez. Antes de escolher a sua, confira se ela está livre; o cadastro faz a conferência final.\n\n"
+     "Use os botões abaixo para seguir o guia."),
+    ("Consultar",
+     "`AC:ap Takao` ou `/aparencias` — procura pelo nome (aproximado vale) e mostra o responsável.\n"
+     "`AC:gal` — o mesmo, mas uma por página, com imagem.\n"
+     "`AC:obra arknights` ou `/obra` — tudo de uma obra, juntando jeitos diferentes de escrever o nome.\n"
+     "`AC:ap @membro` — as aparências de alguém. `AC:min` — as suas.\n\n"
+     "Não achar um nome parecido não garante que ele esteja livre: às vezes alguém escreveu de outro jeito."),
+    ("Registrar a sua",
+     "`AC:reg` ou `/registrar` abre um formulário com:\n"
+     "• **Aparência** — o nome do personagem;\n• **Obra** — de onde ele vem;\n"
+     "• **Nome no servidor** (opcional) — como o seu personagem se chama aqui;\n"
+     "• **Imagem** — link https ou anexo.\n\n"
+     "Depois vem uma revisão privada, você escolhe a situação e confirma. Se a aparência já tiver dono, o bot avisa e não salva."),
+    ("Mudar o seu cadastro",
+     "`AC:ed nome` ou `/editar` — muda o nome no servidor ou a imagem. Para tirar a imagem, escreva `-` no campo.\n\n"
+     "Trocar a aparência, a obra ou a situação fica com a staff. Para desistir de uma aparência, peça para a staff liberar."),
+    ("Situações",
+     "**Em preparação** — reservada, ainda sendo montada.\n**Em uso** — sendo usada.\n"
+     "**Arquivado** — fora de uso, mas continua ocupada.\n**Liberado** — livre para outra pessoa.\n\n"
+     "A situação e a justificativa ficam só nos painéis privados; as listas públicas não mostram."),
+    ("Para a staff",
+     "`AC:sit nome` — situação e justificativa. `AC:tr nome @membro` — muda o dono.\n"
+     "`AC:rm nome` — remove um cadastro. `AC:limpar @membro` — apaga todos de alguém (vale o ID de quem saiu).\n"
+     "`AC:apelido JJK = Jujutsu Kaisen` — apelido de obra para a busca.\n"
+     "`AC:hist` — histórico completo, inclusive removidos. `AC:diag` — estado do bot.\n\n"
+     "Tudo isso confirma antes de salvar e fica no histórico."),
+    ("Configurar o servidor",
+     "`/configurar` (dono, Administrador ou Gerenciar Servidor):\n"
+     "• cargos de staff;\n• canal de histórico (avisos de cada mudança);\n• canal de imagens (guarda os anexos);\n"
+     "• planilha conectada (cópia de tudo, e o que a staff mudar nela volta pro bot);\n• backup automático num canal fechado.\n\n"
+     "Para as mensagens saírem com a foto da Amiya, o bot precisa da permissão **Gerenciar Webhooks**."),
+)
+STAFF_PAGES = 2
 
 SHEET_ERRORS = {"AUTH": "a planilha recusou a chave ou a URL; conecte de novo no /configurar",
     "GUILD": "a planilha foi instalada com o ID de outro servidor; reinstale pelo menu Arquivista",
@@ -209,6 +250,11 @@ class Arquivista(commands.Bot):
                     gate=Gate(self,user.id,action,query,member_id,attachment)
                     await self.reply_public(source,embed=card("Amiya · Atendimento", "Abra o painel para continuar. As informações internas não serão publicadas neste canal."),view=gate)
                 return
+            if action=="guia":
+                pages=GUIDE if actor.staff else GUIDE[:-STAFF_PAGES]
+                view=Guide(self,user.id,pages)
+                await self.reply_public(source,embed=view.embed(),view=view)
+                return
             if action=="ajuda":
                 await self.reply_public(source,embed=card("Índice do Arquivista",HELP+(STAFF_HELP if actor.staff else "")))
                 return
@@ -333,6 +379,9 @@ class Arquivista(commands.Bot):
                       f"**Canal de histórico:** {channel(cfg['log_channel'])}\n**Canal de imagens:** {channel(cfg['image_channel'])}\n"
                       f"**Cargos de staff:** {', '.join(f'<@&{r}>' for r in cfg['staff_roles']) or 'só dono e quem gerencia o servidor'}\n"
                       f"**Último envio de avisos:** {self.last_sync or 'ainda não realizado'}\n**Situação operacional:** {self.sync_problem or 'sem erro registrado nesta sessão'}")
+                me=getattr(i.guild,"me",None);here=i.channel
+                hooks=bool(me and here is not None and hasattr(here,"permissions_for") and here.permissions_for(me).manage_webhooks)
+                body+="\n**Amiya neste canal:** "+("com a foto dela" if hooks else "sai com o ícone do bot; dê ao bot a permissão Gerenciar Webhooks")
                 if cfg.get("sheet_url"):
                     queued,bad=self.store.sheet_pending(i.guild_id)
                     body+=(f"\n**Planilha:** conectada · {queued} mudança(s) esperando envio"+(f", {bad} recusada(s) pela planilha" if bad else "")+
@@ -479,6 +528,9 @@ def install_slash_commands(bot):
     @bot.tree.command(name="ajuda",description="Índice de comandos da Amiya.")
     @app_commands.guild_only()
     async def ajuda(i:discord.Interaction):await bot.run_action(i,"ajuda")
+    @bot.tree.command(name="guia",description="Passo a passo de como o arquivo de aparências funciona.")
+    @app_commands.guild_only()
+    async def guia(i:discord.Interaction):await bot.run_action(i,"guia")
     @bot.tree.command(name="aparencias",description="Consulte as aparências: busque pelo nome, filtre por membro, veja em lista ou galeria.")
     @app_commands.guild_only()
     @app_commands.describe(aparencia="Nome da aparência (aproximado vale); pode incluir a obra",membro="Só as de um membro",modo="Lista ou galeria de imagens")

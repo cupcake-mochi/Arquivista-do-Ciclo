@@ -61,7 +61,7 @@ def main() -> None:
             break
         print('Informe o ID do servidor, não o do bot ou do seu perfil.')
     values.setdefault('PERSONA_NAME', 'Amiya')
-    values.setdefault('CONFIGURAR_AVATAR', 'true')
+    values.setdefault('CONFIGURAR_AVATAR', 'false')
     values.setdefault('POLL_SECONDS', '90')
     values.setdefault('TIMEZONE', 'America/Sao_Paulo')
     write_private(ENV, values)

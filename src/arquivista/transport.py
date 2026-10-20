@@ -13,8 +13,11 @@ class Carteiro:
         self.bot = bot
         self.cache: dict[int, discord.Webhook] = {}
         self.locks: dict[int, asyncio.Lock] = {}
+    def icon(self) -> str | None:
+        """Foto da Amiya: a do webhook que o bot criou com assets/amiya.png. Antes de existir um, a do bot."""
+        return self.bot.store.get("amiya_icon") or (str(self.bot.user.display_avatar.url) if self.bot.user else None)
     def decorate(self, embed: discord.Embed) -> discord.Embed:
-        avatar = str(self.bot.user.display_avatar.url) if self.bot.user else None
+        avatar = self.icon()
         kwargs = {"name": f"{self.bot.config.persona_name} · Arquivista do Ciclo"}
         if avatar:
             kwargs["icon_url"] = avatar
@@ -30,6 +33,10 @@ class Carteiro:
                 if hook is None:
                     hook = await base.create_webhook(name="Arquivista do Ciclo", avatar=(ROOT / "assets/amiya.png").read_bytes(), reason="Apresentação da Amiya nos comandos do Arquivista")
                 self.cache[base.id] = hook
+                # Avatar de webhook fica num link fixo do Discord: serve de ícone da Amiya até nas respostas privadas.
+                url = str(hook.display_avatar.url) if hook.avatar else ""
+                if url and self.bot.store.get("amiya_icon") != url:
+                    self.bot.store.set("amiya_icon", url)
             return self.cache[base.id]
     async def send(self, channel, *, content: str | None = None, embed: discord.Embed | None = None,
                    view: discord.ui.View | None = None):
@@ -46,8 +53,8 @@ class Carteiro:
                 # Interações só funcionam em webhook pertencente à aplicação.
                 if view is not None and hook.application_id != self.bot.application_id:
                     raise ValueError("webhook sem associação à aplicação")
-                message = await hook.send(**kwargs, username=self.bot.config.persona_name,
-                    avatar_url=str(self.bot.user.display_avatar.url), wait=True,
+                # Sem avatar_url: vale a foto do próprio webhook (a da Amiya), não a do bot.
+                message = await hook.send(**kwargs, username=self.bot.config.persona_name, wait=True,
                     **({"thread": thread} if thread else {}))
                 break
             except discord.NotFound:
