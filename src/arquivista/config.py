@@ -29,7 +29,7 @@ def snowflake(name: str) -> int | None:
 
 @dataclass(frozen=True)
 class Config:
-    token: str
+    token: str = field(repr=False)
     db_path: Path
     # Opcional: servidor de testes, onde os comandos aparecem na hora (o global leva até 1 h).
     dev_guild_id: int | None = None
@@ -42,7 +42,7 @@ class Config:
     configure_avatar: bool = False
     timezone: str = "America/Sao_Paulo"
     # Cifra as chaves das planilhas conectadas no banco.
-    master_key: bytes = b""
+    master_key: bytes = field(default=b"", repr=False)
     google: GoogleConfig = field(default_factory=GoogleConfig, repr=False)
     @classmethod
     def load(cls) -> "Config":

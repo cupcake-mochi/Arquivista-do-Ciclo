@@ -59,7 +59,7 @@ class ManagedSheets:
                 row = self.bot.store.begin_managed_sheet(guild.id, str(uuid.uuid4()), seal(self.bot.config.master_key, email))
             elif row["state"] == "awaiting_email":
                 email = valid_email(email or "")
-                self.bot.store.update_managed_sheet(guild.id, editor=seal(self.bot.config.master_key, email), state="initializing")
+                self.bot.store.update_managed_sheet(guild.id, editor=seal(self.bot.config.master_key, email), state="sharing")
                 row = self.bot.store.managed_sheet(guild.id)
             if not row["file_id"]:
                 found = await self.api.find_created(row["request_id"])
@@ -81,9 +81,17 @@ class ManagedSheets:
                 row = self.bot.store.managed_sheet(guild.id)
             sheet = DirectSheet(self.api, row["file_id"])
             if row["state"] != "ready":
-                await self.initialize(sheet, guild, manager)
+                if row["state"] != "sharing":
+                    await self.initialize(sheet, guild, manager)
+                    # O compartilhamento pode ter sido aceito mesmo se a resposta se perder.
+                    # A partir daqui alguém já pode editar/reordenar abas: nunca inicialize de novo.
+                    self.bot.store.update_managed_sheet(guild.id, state="sharing")
                 try:
-                    await self.api.share_editor(row["file_id"], unseal(self.bot.config.master_key, row["editor"]))
+                    email = unseal(self.bot.config.master_key, row["editor"])
+                except ValueError:
+                    raise UserError("Não consegui ler o e-mail guardado. A chave mestra do Arquivista pode ter mudado; avise o mantenedor para recuperar a chave anterior. O arquivo foi preservado.") from None
+                try:
+                    await self.api.share_editor(row["file_id"], email)
                 except GoogleError as exc:
                     if exc.code == "GOOGLE_INVALID" and not exc.uncertain:
                         self.bot.store.update_managed_sheet(guild.id, state="awaiting_email")

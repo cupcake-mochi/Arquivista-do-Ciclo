@@ -28,7 +28,7 @@ class MemoryGoogle(GoogleAPI):
     def __init__(self, bot):
         super().__init__(bot)
         self.files, self.sheets, self.shares, self.calls = {}, {}, {}, []
-        self.lost_create = self.fail_share = False
+        self.lost_create = self.fail_share = self.lost_share = False
         self.before_write = None
         self.locale = "pt_BR"
 
@@ -56,6 +56,9 @@ class MemoryGoogle(GoogleAPI):
                 raise GoogleError("GOOGLE_INVALID")
             self.shares[key].add(body["emailAddress"])
             assert body["role"] == "writer" and params["sendNotificationEmail"] == "false"
+            if self.lost_share:
+                self.lost_share = False
+                raise GoogleError("BUSY", uncertain=True)
             return {"id": "permission"}
         key = url[len(SHEETS) + 1:].split("/")[0].split(":")[0]
         sheet = self.sheets[key]
@@ -147,16 +150,50 @@ class ManagedTests(unittest.IsolatedAsyncioTestCase):
             await self.create()
         self.assertIsNone(self.bot.store.guild(G)["sheet_url"])
         self.assertEqual(self.bot.store.managed_sheet(G)["state"], "awaiting_email")
+        calls = len(self.api.calls)
         self.api.fail_share = False
         await self.managed.create(self.guild, self.owner, "corrigido@example.com")
         self.assertEqual(len(self.api.files), 1)
         self.assertEqual(len(self.api.sheets["file_1"].meta), 2)
         self.assertEqual(self.api.shares["file_1"], {"corrigido@example.com"})
+        self.assertFalse(any(method == "POST" and url.startswith(SHEETS)
+                             for method, url, _, _ in self.api.calls[calls:]))
 
     async def test_concurrent_creates_reuse_one_file(self):
         links = await asyncio.gather(self.create(), self.create())
         self.assertEqual(links[0], links[1])
         self.assertEqual(len(self.api.files), 1)
+
+    async def test_lost_share_resumes_without_reformatting_reordered_member_tab(self):
+        self.api.lost_share = True
+        with self.assertRaises(GoogleError):
+            await self.create()
+        self.assertEqual(self.bot.store.managed_sheet(G)["state"], "sharing")
+        # O editor já recebeu acesso e moveu/preencheu a aba antes da retentativa.
+        sheet = self.api.sheets["file_1"]
+        sheet.meta.reverse()
+        sid = sheet.meta[0]["sheetId"]
+        sheet.grids[sid][17][1] = "Edição feita após receber acesso"
+        before = copy.deepcopy(sheet.grids)
+        calls = len(self.api.calls)
+        resumed = ManagedSheets(self.bot)
+        resumed.api = self.api
+        await resumed.create(self.guild, self.owner)
+        self.assertEqual(self.bot.store.managed_sheet(G)["state"], "ready")
+        self.assertEqual(sheet.grids, before)
+        self.assertFalse(any(method == "POST" and url.startswith(SHEETS)
+                             for method, url, _, _ in self.api.calls[calls:]))
+        self.assertEqual(len(self.api.files), 1)
+
+    async def test_changed_master_key_preserves_file_and_explains_recovery(self):
+        self.api.lost_share = True
+        with self.assertRaises(GoogleError):
+            await self.create()
+        self.bot.config = Config("FAKE", self.bot.config.db_path, master_key=b"different" * 4)
+        with self.assertRaisesRegex(UserError, "chave anterior"):
+            await self.create()
+        self.assertEqual(len(self.api.files), 1)
+        self.assertEqual(self.bot.store.managed_sheet(G)["state"], "sharing")
 
     async def test_denies_non_manager_without_google_access(self):
         with self.assertRaises(UserError):
@@ -265,6 +302,7 @@ class InputTests(unittest.TestCase):
             with self.assertRaises(UserError): valid_email(invalid)
         self.assertEqual(valid_email(" dono+bot@EXAMPLE.COM "), "dono+bot@example.com")
         self.assertNotIn("private", repr(GoogleConfig("private", "private", "private")))
+        self.assertNotIn("PRIVATE_DISCORD_TOKEN", repr(Config("PRIVATE_DISCORD_TOKEN", Path("test.sqlite"))))
 
     def test_slash_member_is_discord_user_option_not_free_text(self):
         from arquivista.bot import Arquivista
@@ -289,6 +327,7 @@ class HTTPSession:
     def post(self, url, **kwargs):
         self.refreshes += 1
         assert url == "https://oauth2.googleapis.com/token"
+        assert kwargs["allow_redirects"] is False
         return Response(200, {"access_token": "TOKEN_PRIVATE", "expires_in": 3600})
     def request(self, method, url, **kwargs):
         self.calls.append((method, url, kwargs))

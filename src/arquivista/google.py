@@ -57,6 +57,7 @@ class GoogleAPI:
                 async with self.bot.session.post("https://oauth2.googleapis.com/token", data={
                     "client_id": self.config.client_id, "client_secret": self.config.client_secret,
                     "refresh_token": self.config.refresh_token, "grant_type": "refresh_token"},
+                    allow_redirects=False,
                     timeout=aiohttp.ClientTimeout(total=30)) as response:
                     if response.status != 200:
                         raise GoogleError("BUSY" if response.status == 429 or response.status >= 500 else "GOOGLE_AUTH")

@@ -13,7 +13,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands, tasks
 
-from . import backup
+from . import backup, __version__
 from .archive import Archive
 from .config import Config, ROOT
 from .docs import DATA_LINKS, SETUP_LINK, SCRIPT_UPDATE
@@ -145,7 +145,7 @@ class Arquivista(commands.Bot):
         self.add_listener(self.expired_panel, "on_interaction")
         install_slash_commands(self)
     async def setup_hook(self):
-        self.session = aiohttp.ClientSession(headers={"User-Agent":"ArquivistaDoCiclo/0.2"})
+        self.session = aiohttp.ClientSession(headers={"User-Agent":f"ArquivistaDoCiclo/{__version__}"})
         if self.config.dev_guild_id:
             # Servidor de testes: comandos só nele e na hora. Sem ele, valem em todos (o Discord leva até 1 h).
             if self.store.adopt_legacy(self.config.dev_guild_id, self.config.legacy_staff_roles):
@@ -468,7 +468,8 @@ class Arquivista(commands.Bot):
                 data=await archive.call("status",actor)
                 cfg=self.store.guild(i.guild_id)
                 channel=lambda c:f"<#{c}>" if c else "não configurado"
-                body=(f"**Cadastros:** {data['records']} ({data['occupied']} ocupando aparência)\n**Membros com cadastro:** {data['members']}\n"
+                body=(f"**Versão do Arquivista:** {__version__}\n"
+                      f"**Cadastros:** {data['records']} ({data['occupied']} ocupando aparência)\n**Membros com cadastro:** {data['members']}\n"
                       f"**Eventos na auditoria:** {data['events']}\n**Avisos esperando envio:** {data['pending_notices']}\n"
                       f"**Canal de histórico:** {channel(cfg['log_channel'])}\n**Canal de imagens:** {channel(cfg['image_channel'])}\n"
                       f"**Cargos de staff:** {', '.join(f'<@&{r}>' for r in cfg['staff_roles']) or 'só dono e quem gerencia o servidor'}\n"

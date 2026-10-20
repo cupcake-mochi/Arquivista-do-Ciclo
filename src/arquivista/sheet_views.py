@@ -96,4 +96,7 @@ class SheetPanel(GuardedView):
     async def disconnect(self, i, button):
         async with self.bot.sheet_lock:
             self.bot.store.drop_sheet(self.guild.id)
-        await private_reply(i, content="Sincronização desligada. O arquivo e o acesso de edição continuam no Google. Use /planilha criar para reconectar o arquivo criado pelo Arquivista.")
+        row = self.bot.store.managed_sheet(self.guild.id)
+        reconnect = ("Use /planilha criar para reconectar o arquivo criado pelo Arquivista." if row else
+            "Para reconectar a planilha antiga, abra este painel novamente e use Planilha antiga com a URL e a chave da conexão.")
+        await private_reply(i, content="Sincronização desligada. O arquivo e o acesso de edição continuam no Google. " + reconnect)

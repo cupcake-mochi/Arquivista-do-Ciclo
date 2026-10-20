@@ -1,12 +1,24 @@
-# Relatório de testes · Arquivista 0.2.0
+# Validação · Arquivista 0.4.0 · 20/10/2026
 
 ## O que foi executado nesta entrega
 
 Testes locais Python da lógica de comandos, permissões, projeção pública, pesquisa, assinatura de requisições, persistência operacional e configuração. Testes JavaScript executando as funções da ponte com **serviços Google simulados**. A simulação aplica as requisições planejadas em estruturas em memória: não usa a planilha real.
 
-Os números e saídas finais estão em `RESULTADO_TESTES.txt`. Incluem um teste de construção dos comandos/formulários com discord.py, que é executado quando essa dependência está disponível. Neste ambiente ela não pôde ser instalada por indisponibilidade de acesso à rede; esse teste ficou explicitamente **pulado**, não aprovado.
+Os números e comandos estão em `RESULTADO_TESTES.txt`. O discord.py 2.7.1 está instalado: a construção real dos comandos, grupos e formulários faz parte da suíte, sem pular esse teste.
 
 Também foram verificadas a sintaxe Python/JavaScript, a ausência de token Discord hardcoded e as coordenadas únicas das 20.000 posições do modelo de 100 membros.
+
+## Conferência real no Discord e no Sheets
+
+No servidor de testes, foram conferidos cadastro por slash e prefixo, anexo PNG preservado, consulta com prefixo minúsculo, lista/galeria, edição, duplicidade por caixa/espaços, busca por obra, situação/justificativa privadas, cancelamento de remoção e paginação da auditoria. As duas fichas fictícias foram deixadas como Liberado, sem editar os seis cadastros preexistentes.
+
+O cadastro e a edição pelo bot chegaram à planilha conectada. A edição manual de nome e situação no Sheets voltou ao bot, mantendo ID/data e criando evento de origem planilha. O diagnóstico terminou sem erros e sem mudanças esperando envio. Histórico em canal e backup periódico estavam desligados; isso é configuração do servidor.
+
+O layout gerado pelo código também foi aplicado pela API ao [ensaio isolado no Google Sheets](https://docs.google.com/spreadsheets/d/11XYpi_yJT5Nf7mBIp0VeOBDFb1O5ZtoBL_b_zEMl4L0/edit#gid=1001), com dados fictícios. Aos 18 cadastros, a aba passou de 98 para 178 linhas e mostrou `18 / 40`; aos 38, passou a 258 linhas e mostrou `38 / 60`. A aba de controle manteve todos os valores e fórmulas. O visor selecionando a posição 38 mostrou nome, aparência, obra, situação, data e justificativa corretos. A API confirmou 61 grupos de linhas (um externo e 60 fichas), mesclas e validações preservadas. O teste usa a conta conectada à ferramenta; não usa nem valida as credenciais Google dedicadas do bot. A captura visual do navegador não ficou disponível; a conferência foi feita pelos valores calculados e metadados nativos da API.
+
+A chave de duplicidade distingue acentos, embora a busca por obra agrupe variantes. Essa regra foi mantida para não mudar a identidade dos cadastros existentes.
+
+`tests/test_managed.py` cobre criação concorrente, retomada após perda de resposta, compartilhamento recusado, e-mail cifrado, troca da chave mestra, falta de credenciais, rejeição de membros inválidos e expansão 20 → 40 → 60. Se a resposta do compartilhamento se perde depois de conceder acesso, a retomada não reformata nem renomeia abas que o editor possa ter alterado.
 
 ## Planilha conectada (v0.3)
 
@@ -33,13 +45,13 @@ Também foram verificadas a sintaxe Python/JavaScript, a ausência de token Disc
 - Fila de notificação, configurações duráveis, cursor e recuperação de tentativa interrompida;
 - Migração para propriedades/trava compartilhadas entre editor e Web App.
 
-## O que não foi testado ao vivo
+## Limites da validação
 
-Não houve login com o token fornecido, envio de mensagens, criação de webhooks, sincronização real de slash commands, atualização do avatar, chamada a `/exec`, alteração da planilha, instalação de gatilhos, autorização da conta Google, execução Discloud ou push no GitHub. Os Guias e a base de aparências não foram modificados nesta etapa.
+Criação e compartilhamento pela conta Google dedicada ainda precisam de teste de ponta a ponta após o mantenedor autorizar essa conta. Sem as credenciais, o bot informa que a criação aguarda ativação; o restante continua funcionando. O ensaio de layout pela integração Google não comprova esse fluxo OAuth.
 
-A biblioteca Discord não foi carregada nos testes locais deste ambiente. Sintaxe e checagem pela documentação não substituem isso. O workflow incluído instala a biblioteca e executa o teste pendente; ele ainda precisa rodar em uma máquina com rede ou no novo repositório.
+Uma segunda conta sem staff, transferência entre pessoas e restauração de backup não foram exercitadas ao vivo; as permissões, a persistência e essas operações são cobertas pelos testes locais. A remoção foi testada até a confirmação e cancelamento; não houve exclusão definitiva dos registros reais.
 
-A simulação JavaScript não prova recalculo de fórmulas, comportamento de imagem nativa/mesclas, permissões Google, latência, cotas ou entrega de gatilhos. Não há garantia de desempenho de produção antes dos testes abaixo.
+A simulação JavaScript não prova latência, cotas, concessão real de permissões nem entrega de gatilhos. O checklist abaixo continua necessário antes de anunciar a criação automática para outros servidores.
 
 ## Teste de aceitação no servidor
 
@@ -52,9 +64,9 @@ Faça em um canal da staff, com registros de teste explicitamente identificados 
 5. Edite, transfira e remova com staff, observando ID/data preservados quando cabível. Envie um pedido repetido pela mesma confirmação após uma interrupção simulada e confirme que não foi criada uma segunda aparência.
 6. Configure o canal de histórico. Faça uma alteração direta na ficha e aguarde a captura; confirme que uma atualização pelo bot gera apenas um evento lógico e que justificativa/status não aparecem no canal público.
 7. Teste anexo, link direto e imagem nativa de célula; confirme galeria e ausência de imagem quando a fonte desaparece. Não remova arquivos de produção para testar.
-8. Confira um registro nos blocos +50 e no último grupo realmente preparado; não assuma que o teste de coordenadas prova escrita no Sheets real.
+8. Confira a expansão aos 18 e 38 cadastros: 20 → 40 → 60 posições, visor, fórmulas, agrupamentos e outra aba intacta. Não assuma que o teste de coordenadas prova escrita no Sheets real.
 9. Reinicie o processo e confira canal configurado, cursor de eventos e fila preservados no SQLite. Teste um membro com permissão removida depois de abrir um painel.
-10. Remova os cadastros de teste pelo fluxo administrativo. Preserve os eventos de teste como evidência ou exporte-os antes de qualquer política futura de retenção; não apague tabelas técnicas às cegas.
+10. Libere os cadastros de teste ao terminar. Preserve os eventos como evidência; não apague tabelas técnicas às cegas.
 
 ## Repetir localmente
 

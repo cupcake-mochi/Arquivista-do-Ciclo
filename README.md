@@ -1,6 +1,6 @@
 # Arquivista do Ciclo · Amiya
 
-**Versão 0.3.0 (em desenvolvimento) · projeto independente dos Guias do Ciclo.**
+**Versão 0.4.0 · projeto independente dos Guias do Ciclo.**
 
 > **Pra dono de servidor:** o passo a passo de convidar, configurar e ligar a planilha está no [guia público no Google Docs](https://docs.google.com/document/d/1xuehlkhU3EhMsSE4hjLIfQY9p-eEF6ynS5ikAmlqnhw/view). Quem usa o bot encontra os comandos e o passo a passo em `/ajuda` e `/guia`.
 >
@@ -76,6 +76,7 @@ Os registros anteriores mantêm suas datas reais, inclusive data vazia quando de
 ```sh
 python -m unittest discover -s tests -v
 node tests/test_bridge.js
+node tests/test_planilha.js
 ```
 
 A configuração de GitHub Actions acompanha o projeto para repetir os testes em um repositório próprio, com as dependências instaladas. Não modifica o repositório dos Guias.

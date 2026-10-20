@@ -49,7 +49,7 @@ Os testes automáticos simulam a API e a grade. Não substituem a conferência d
 
 ## Interrupções e manutenção
 
-O progresso fica em `managed_sheets`, no mesmo SQLite do bot. Preserve esse banco e a chave mestra nas atualizações. Uma criação que perdeu a resposta é procurada pelo marcador privado do pedido no Drive; se o resultado continuar incerto, o bot não cria outra planilha. Nesse caso o mantenedor deve conferir o arquivo pela conta dedicada antes de corrigir o estado local. Não apague o pedido só para tentar de novo sem essa conferência.
+O progresso fica em `managed_sheets`, no mesmo SQLite do bot. Preserve esse banco e a chave mestra nas atualizações. Uma criação que perdeu a resposta é procurada pelo marcador privado do pedido no Drive; se o resultado continuar incerto, o bot não cria outra planilha. A inicialização é concluída antes da etapa de compartilhamento: depois de tentar conceder edição, uma retomada não reformata nem renomeia abas. Nesse caso o mantenedor deve conferir o arquivo pela conta dedicada antes de corrigir o estado local. Não apague o pedido só para tentar de novo sem essa conferência.
 
 O e-mail de edição é cifrado no banco. Repetir o comando não compartilha o arquivo com outro e-mail. Alterações de acesso posteriores são feitas no próprio Google Drive pelo responsável autorizado. Desconectar a planilha só desliga a sincronização: não apaga o arquivo nem revoga acessos.
 
