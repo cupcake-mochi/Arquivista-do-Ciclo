@@ -1,9 +1,9 @@
-VALIDAÇÃO FINAL — ARQUIVISTA DO CICLO 0.4.0 — 20/10/2026
+VALIDAÇÃO FINAL — ARQUIVISTA DO CICLO 0.4.1 — 20/10/2026
 
-120 testes Python aprovados, incluindo discord.py 2.7.1 real; nenhum pulado.
+121 testes Python aprovados, incluindo discord.py 2.7.1 real; nenhum pulado.
 28 testes JavaScript da ponte aprovados, com serviços Google simulados.
 7 testes JavaScript do script da planilha aprovados, incluindo pedidos reais do layout.
-TOTAL: 155 aprovados, nenhuma falha. Sintaxe dos três scripts e git diff --check aprovados.
+TOTAL: 156 aprovados, nenhuma falha. Sintaxe dos três scripts e git diff --check aprovados.
 
 Comandos: python -m unittest discover -s tests -q
           node tests/test_bridge.js
@@ -22,6 +22,11 @@ Aba de controle intacta; 61 grupos, mesclas, fórmulas e validações preservado
 https://docs.google.com/spreadsheets/d/11XYpi_yJT5Nf7mBIp0VeOBDFb1O5ZtoBL_b_zEMl4L0/edit#gid=1001
 Conferência por valores calculados e metadados da API; captura visual indisponível.
 
-Ainda pendente: OAuth da conta dedicada, criação automática e compartilhamento real
-por essa conta, segunda conta Discord sem staff, restauração e transferência ao vivo.
-Veja docs/GOOGLE-MANTENEDOR.md para ativação. O restante funciona sem essas credenciais.
+Conta dedicada: OAuth drive.file em produção; renovação de token e identidade conferidas.
+Formulário privado Discord: criação real, arquivo privado, editor concedido ao e-mail
+informado e oito cadastros sincronizados em duas abas de membros. Acesso público ausente.
+Ensaio isolado pela conta dedicada: 18 / 40, visor e recuperação do mesmo arquivo.
+Propriedade de liberação de imagens externas validada na API real; retomada coberta
+por teste que recusa regravar o campo quando ele já está habilitado.
+
+Ainda pendente: segunda conta Discord sem staff, restauração e transferência ao vivo.

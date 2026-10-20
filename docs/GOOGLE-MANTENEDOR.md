@@ -6,7 +6,7 @@ Esta configuração é do mantenedor do bot, uma vez para a hospedagem. Donos de
 
 1. Crie uma conta Google dedicada ao Arquivista. Ela será dona dos arquivos, que usam seu armazenamento e os limites das APIs Google. Não use a conta pessoal que guarda documentos privados.
 2. Num projeto do Google Cloud, ative **Google Drive API** e **Google Sheets API**.
-3. Configure o aplicativo OAuth no Google Auth Platform com público externo e o escopo **`https://www.googleapis.com/auth/drive.file`**. Esse escopo permite administrar os arquivos criados pelo aplicativo; não é preciso pedir acesso ao Drive inteiro.
+3. Configure o aplicativo OAuth no Google Auth Platform com público externo e o escopo **`https://www.googleapis.com/auth/drive.file`**. Esse escopo permite administrar os arquivos criados pelo aplicativo; não é preciso pedir acesso ao Drive inteiro. Complete também os links públicos de apresentação, privacidade e termos em Branding e registre o domínio que os hospeda. Publicação do aplicativo e verificação de marca são etapas distintas; siga os requisitos apresentados pelo Google.
 4. Crie um cliente OAuth do tipo **Aplicativo para computador** e baixe o JSON. Salve como `client_secret_arquivista.json`, dentro da pasta do projeto. Esse nome está ignorado pelo Git. Nunca publique o conteúdo.
 5. Para os primeiros testes, inclua a conta dedicada como usuário de teste do aplicativo. Antes de manter a integração ligada permanentemente, passe o consentimento OAuth para **Em produção** e siga as exigências que o Google mostrar. Tokens de atualização de um aplicativo externo em modo de teste podem expirar em sete dias.
 
@@ -32,9 +32,9 @@ No painel de variáveis da aplicação, cadastre os valores de `.env.google`:
 - `GOOGLE_CLIENT_SECRET`
 - `GOOGLE_REFRESH_TOKEN`
 
-Use também uma **`AC_MASTER_KEY` estável, com pelo menos 32 caracteres**, para cifrar o e-mail de edição guardado no banco. Sem ela, a cifra depende do token Discord; se esse token mudar durante uma criação interrompida, será necessário recuperar a chave antiga para retomar o pedido.
+Em instalações novas, use também uma **`AC_MASTER_KEY` estável, com pelo menos 32 caracteres**, para cifrar o e-mail de edição guardado no banco. Sem ela, a cifra depende do token Discord. **Numa instalação existente, não troque nem acrescente essa chave sem migrar os valores cifrados com a chave anterior**: isso pode tornar ilegíveis tanto e-mails de pedidos em andamento quanto chaves de conexões antigas. Preserve o token e a chave atuais durante a ativação do Google.
 
-Envie o pacote gerado por `python empacotar.py` e reinicie o bot. O diagnóstico informa se as três variáveis estão preenchidas; a autorização real é conferida quando uma operação Google é executada. O assistente e o JSON OAuth não vão para a hospedagem.
+Envie o pacote gerado por `python empacotar.py`. Após salvar novas variáveis no painel da Discloud, faça **rebuild ou deploy** para aplicá-las; somente reiniciar não conclui essa etapa no painel atual. Preserve o banco e confira `/diagnostico` depois. O diagnóstico informa se as três variáveis estão preenchidas; a autorização real é conferida quando uma operação Google é executada. O assistente e o JSON OAuth não vão para a hospedagem.
 
 ## Teste real antes de anunciar
 
@@ -45,7 +45,11 @@ Envie o pacote gerado por `python empacotar.py` e reinicie o bot. O diagnóstico
 5. Preencha até 18 posições: a aba deve ter 40. Continue até 38: deve ter 60. Confira fórmula do visor, imagens, agrupamentos e a outra aba intacta. Teste também preencher as 20 posições manualmente antes de uma sincronização.
 6. Desconecte e reconecte pelo comando; o arquivo deve ser preservado.
 
-Os testes automáticos simulam a API e a grade. Não substituem a conferência de layout e permissões no Google real. **Nenhuma conta dedicada foi configurada nem este teste real foi executado nesta entrega.**
+Os testes automáticos simulam a API e a grade. Não substituem a conferência de layout e permissões no Google real. Em 20/10/2026, a conta dedicada foi autorizada com `drive.file`, o aplicativo passou para produção e o fluxo real no Discord criou uma planilha privada, concedeu edição ao e-mail informado e sincronizou os oito cadastros existentes. Um arquivo isolado também confirmou expansão de 20 para 40 posições ao preencher 18 fichas.
+
+### Imagens prontas na criação
+
+A partir da 0.4.1, a inicialização da planilha nova habilita `importFunctionsExternalUrlAccessAllowed`, propriedade oficial do Sheets necessária às fórmulas `IMAGE`. Assim as imagens podem carregar sem o botão adicional de liberação ao abrir o arquivo. Essa permissão vale para o arquivo, inclusive outras fórmulas de importação que seus editores acrescentarem; compartilhe edição somente com staff confiável. O bot não altera essa configuração ao abrir uma conexão antiga. O Google não permite voltar esse campo a `false` pela API.
 
 ## Interrupções e manutenção
 
@@ -64,3 +68,4 @@ Planilhas antigas continuam pela ponte Apps Script. O novo comando não substitu
 - [Expiração de tokens de atualização](https://developers.google.com/identity/protocols/oauth2#expiration)
 - [Contas de serviço e propriedade de arquivos](https://developers.google.com/workspace/drive/api/guides/about-shareddrives)
 - [Compartilhamento e papel de editor](https://developers.google.com/workspace/drive/api/guides/manage-sharing)
+- [Propriedades do Sheets e acesso externo das imagens](https://developers.google.com/workspace/sheets/api/reference/rest/v4/spreadsheets#SpreadsheetProperties)

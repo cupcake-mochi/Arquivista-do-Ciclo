@@ -146,7 +146,7 @@ class DirectSheet:
 
     async def metadata(self):
         return await self.api.request("GET", self.url, params={
-            "fields": "properties(locale),sheets(properties(sheetId,title,gridProperties(rowCount,columnCount)))"})
+            "fields": "properties(locale,importFunctionsExternalUrlAccessAllowed),sheets(properties(sheetId,title,gridProperties(rowCount,columnCount)))"})
 
     async def values(self, ranges):
         if not ranges:
