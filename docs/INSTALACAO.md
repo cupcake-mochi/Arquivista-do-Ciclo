@@ -1,5 +1,29 @@
 # Instalação — Arquivista do Ciclo
 
+> **v0.3 (multi-servidor, sem planilha ainda):** pule as seções 2, 3 e 4. Rode `python configurar.py` (token e, opcional, servidor de testes), `python verificar.py` e `python iniciar.py`. No Discord, a gerência de cada servidor usa `/configurar` pra escolher cargos de staff e os canais de histórico e imagens. Pra trazer os cadastros da planilha, rode `exportarParaArquivista` no Apps Script (gera um .json no seu Drive), baixe o arquivo e rode `python importar.py arquivo.json --servidor ID` com o bot desligado; sem `--aplicar` ele só confere. Pra ligar uma planilha, veja a seção **Planilha conectada** logo abaixo. O restante deste guia descreve a ponte da v0.2 e não é usado na v0.3.
+
+## Planilha conectada (v0.3, opcional)
+
+A planilha recebe uma cópia de tudo que é cadastrado pelo bot, e o que a staff mudar nela volta pro bot.
+
+**Editar pela planilha:** a cada 5 minutos o bot lê a planilha e compara com o banco. Aparência, nome no servidor, obra, situação, data, link da imagem e justificativa mudados à mão entram como alteração com autor "Planilha; autor não identificado" (aparece no canal de histórico e no `/historico`). Uma linha digitada numa posição vazia vira cadastro novo do dono daquela guia, naquela mesma linha. O que o bot recusa (aparência + obra já ocupadas, situação fora da lista, link sem https, data ilegível) é desfeito na planilha, e o motivo aparece no `/diagnostico`. Apagar uma linha à mão não apaga o cadastro: ela volta; para apagar, use `/remover` ou `/limpar`. Se a mesma ficha mudar pelo Discord antes de o bot ler a planilha, ele junta os dois: o campo mexido na planilha entra, e só o campo mexido dos dois lados fica com o Discord. Inserir ou apagar uma linha no meio das fichas de alguém trava a atualização daquela pessoa até desfazer (o `/diagnostico` avisa). Qualquer pessoa com permissão de edição na planilha consegue mudar cadastros por ela, então compartilhe só com a staff.
+
+1. Crie uma planilha **nova e vazia** no Google Sheets.
+2. Extensões → Apps Script. Apague o conteúdo de `Código.gs` e cole o de `apps_script/Planilha.gs`.
+3. No editor, em Serviços (+), adicione **Google Sheets API**.
+4. Salve, volte pra planilha e recarregue a página. No menu **Arquivista → Instalar ou reinstalar**, informe o ID do servidor do Discord e autorize.
+5. No Apps Script: Implantar → Nova implantação → Tipo **App da Web**, executar como **você**, acesso **Qualquer pessoa**. Copie o link que termina em `/exec`.
+6. Na planilha, **Arquivista → Mostrar a chave da conexão** e copie a chave.
+7. No Discord, `/configurar` → **Conectar planilha**, cole o link e a chave. O bot testa a conexão antes de salvar e manda todos os cadastros do servidor.
+
+Cada membro ganha uma guia própria, com o nome de usuário do Discord (o `@`, não o apelido do servidor). Se o nome de usuário mudar, a guia é renomeada na próxima vez que o bot gravar algo dessa pessoa. Não crie guias com o mesmo nome de um membro: se acontecer, a guia do membro vira `nome (2)`.
+
+**O script não muda mais:** desde a versão 2.0 ele só confere a assinatura, lê e aplica o que o bot manda. Quem monta as guias (posições, cores, bordas, fórmulas) é o bot, então melhorias na planilha chegam só atualizando o bot. Quem tem o script 1.x precisa colar o 2.0 uma última vez: cole o `Planilha.gs` novo por cima, salve, e em Implantar → Gerenciar implantações → lápis → Versão **Nova versão** → Implantar (o link `/exec` continua o mesmo). Se o bot avisar "o script da planilha é antigo", é isso que falta.
+
+Guias criadas por versões antigas continuam funcionando, mas não ganham o visual novo sozinhas. Pra refazer: apague as guias dos membros (a planilha é só uma cópia do que está no bot) e use `/configurar` → **Conectar planilha** de novo com o mesmo link e chave.
+
+A chave fica cifrada no banco do bot. Sem `AC_MASTER_KEY`, a cifra depende do token: se o token mudar, conecte a planilha de novo. Quem tiver a chave consegue escrever na planilha; se ela vazar, use **Trocar a chave da conexão** e reconecte.
+
 ## Antes de começar
 
 Este é um **novo bot**, separado dos Guias do Ciclo. Não substitua a pasta, o token, os comandos nem o processo dos Guias.
@@ -101,7 +125,7 @@ Permissões necessárias nos canais usados: **Ver canal, Enviar mensagens, Incor
 
 Os webhooks da Amiya pertencem à aplicação do Arquivista. Não reutilize os webhooks dos Guias. Se faltar permissão ou associação à aplicação para botões interativos, o código usa uma resposta pela própria conta do Arquivista, mantendo o avatar e a identificação da personagem no cartão.
 
-O arquivo da imagem foi incluído. Com `CONFIGURAR_AVATAR=true`, o processo tenta aplicar o avatar na primeira conexão bem-sucedida e grava o hash para não alterá-lo repetidamente. Isso ainda não foi feito na conta real. O nome público das mensagens por webhook é `Amiya`; o aplicativo continua Arquivista do Ciclo.
+A conta do bot mantém o ícone dela. As respostas da Amiya no canal (ajuda, guia, listas, avisos) saem por um webhook com nome `Amiya` e a foto de `assets/amiya.png`, e o cabeçalho das respostas privadas usa a mesma foto. Para isso o bot precisa da permissão **Gerenciar Webhooks** no canal; sem ela, a mensagem sai pela conta do bot, com o ícone dele, e o `/diagnostico` avisa. `CONFIGURAR_AVATAR=true` troca também a foto da conta do bot pela da Amiya.
 
 ## 6. Testar antes de hospedar
 
@@ -120,21 +144,10 @@ Faça os testes de aceitação de `TESTES.md` em um canal da staff antes de abri
 
 ## 7. Configurar os canais pelo próprio bot
 
-Como staff, no canal destinado às notificações:
+Quem gerencia o servidor usa `/configurar` (ou `AC:cfg`) e escolhe, no painel privado:
 
-```text
-AC:registrarhistorico
-```
-
-Abra o painel privado e confirme a configuração apresentada. As **próximas** inclusões e alterações serão notificadas ali. A configuração não republica todo o catálogo anterior. O registro completo continua privado, acessível por `/historico` ou pelo painel de `AC:historico`.
-
-Para aceitar arquivos anexados ao cadastro, escolha um canal de armazenamento e execute nele:
-
-```text
-AC:registrarimagens
-```
-
-Isso autoriza o bot a armazenar ali os futuros anexos enviados nos comandos. Ele verifica tamanho e assinatura de PNG/JPEG/GIF/WebP, até 8 MB. Mantenha as mensagens desse canal: elas permitem recuperar os endereços atuais dos anexos. Sem esse canal, o cadastro por link direto continua disponível.
+- **Canal de histórico:** recebe as **próximas** inclusões e alterações. Não republica o catálogo anterior. O registro completo continua privado, em `/historico`.
+- **Canal de imagens:** guarda os anexos dos cadastros. O bot confere tamanho e tipo (PNG, JPEG, GIF ou WebP, até 8 MB). Não apague as mensagens desse canal, porque é delas que vêm os links atuais das imagens. Sem esse canal, o cadastro por link continua funcionando, e o campo de anexo do formulário não aparece.
 
 ## 8. Hospedar na Discloud
 

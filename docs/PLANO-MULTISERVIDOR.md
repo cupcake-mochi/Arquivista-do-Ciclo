@@ -3,7 +3,7 @@
 **Decidido com o Mizuki em 19/10/2026:** o bot passa a ser público e funciona em
 vários servidores. Um banco próprio vira a fonte dos dados, e cada servidor pode
 **opcionalmente** conectar a sua própria cópia da Planilha Aparências, com
-sincronização nos dois sentidos. Nada neste plano foi implementado ainda.
+sincronização nos dois sentidos. **Etapas 1, 2 e 3 implementadas** (branch `claude/project-thread-zzfh12`, não implantada).
 
 ## Como fica
 
@@ -85,12 +85,15 @@ marcados como "fora da planilha", até ampliarem.
 A ficha continua sendo onde se edita, no visual de blocos de hoje. O que muda é
 como o espaço é reservado:
 
-- **Guias por faixa de membros** ("FICHAS 1–20", "FICHAS 21–40"…), criadas só
-  quando necessário, no lugar de uma guia única de 41 mil linhas.
+- **Uma guia por membro**, com o nome de usuário do Discord dele (não o apelido
+  do servidor), criada no primeiro cadastro. Nome repetido ganha " (2)". Se o
+  nome de usuário mudar, a guia é renomeada na próxima gravação. (Até a 1.0.1
+  eram guias por faixa, "FICHAS 1–20"; uma guia antiga com um membro só é
+  renomeada sozinha.)
 - **Posições sob demanda:** cada membro começa com 20 posições e ganha mais 20
   quando chega perto do fim (ex.: posição 18), até 200. Os blocos + / − ficam.
-  Pior caso (todos com 200): ~9 mil células por membro, como hoje, mas em guias
-  de 20 membros (~8 mil linhas cada) em vez de uma guia de 41 mil.
+  Pior caso (todos com 200): ~9 mil células por membro, como hoje, cada membro
+  na sua guia em vez de uma guia de 41 mil linhas.
 - **Expansão automática:** o gatilho de edição que já existe acrescenta o
   bloco, copiando um modelo pequeno de uma guia escondida. Membro novo em
   MEMBROS ganha bloco (e guia nova, se a faixa estiver cheia). O bot pede a
@@ -118,11 +121,15 @@ importação.
 
 ## Para ser público
 
-- **Verificação:** a partir de 100 servidores o Discord exige verificação, e o
-  Message Content Intent (usado pelo `AC:`) precisa de aprovação. Os comandos
-  `/` e as menções funcionam sem ele.
+- **Verificação do app:** a partir de 100 servidores o Discord pede a
+  verificação (identidade do dono). Desde 10/06/2026 ela é separada da revisão
+  de intents.
+- **Message Content Intent** (usado pelo `AC:`): desde 10/06/2026 a revisão é
+  por usuários, não por servidores. Passando de 10.000 usuários somando os
+  servidores, o Discord avisa e dá 90 dias pra pedir; aprovado, renova todo
+  ano. Sem ele, os comandos `/` e as menções continuam funcionando.
 - **Sharding:** obrigatório a partir de 2.500 servidores (`AutoShardedClient`).
-- **Política de privacidade e termos**, exigidos pra verificação.
+- **Política de privacidade e termos:** `docs/PRIVACIDADE.md` e `docs/TERMOS.md`.
 - **Limites por servidor:** taxa de comandos, tamanho de anexos (já existe) e
   limite de polling às pontes.
 - **Backups** do banco.
@@ -131,10 +138,36 @@ importação.
 
 1. **Núcleo multi-servidor sem planilha:** banco, repositório, configuração por
    servidor, comandos globais, `/configurar` (cargos e canais). Testes locais.
+   *Feito:* `store.py` (tabelas), `archive.py` (mesmas ações e erros da ponte),
+   limite de 200 aparências ocupadas por membro em cada servidor, avisos de
+   histórico gravados na mesma transação, `DISCORD_DEV_GUILD_ID` pra testar
+   (comandos só nesse servidor e na hora). Configuração da v0.2 (canais e
+   `STAFF_ROLE_IDS`) é levada pro servidor de testes uma vez.
 2. **Importação** da Planilha Aparências atual pro banco.
+   *Feito:* ação `export` na ponte e função `exportarParaArquivista` (grava um
+   .json no Drive do dono, só leitura na planilha, funciona sem a ponte
+   instalada). `python importar.py arquivo.json --servidor ID` confere tudo e só
+   grava com `--aplicar`. Em 20/10 a planilha tinha 1 cadastro (Takao, de teste).
 3. **Bot → planilha:** modelo novo da planilha (guias por faixa e posições sob demanda), ação `apply` na ponte, fila e `/configurar planilha`.
    Script sem ID fixo.
+   *Feito:* `apps_script/Planilha.gs` (planilha nova, um bloco vertical por membro,
+   uma guia por membro com o nome de usuário dele, bloco cresce sozinho quando faltam 2 posições), ação `apply`
+   com revisão por cadastro (pedido repetido ou antigo é ignorado), fila
+   `sheet_outbox` no bot que guarda só a última versão de cada cadastro, botão
+   "Conectar planilha" no `/configurar` (testa antes de salvar, chave cifrada no
+   banco) e estado da planilha no `/diagnostico`.
+   *Script 2.0:* a montagem saiu do script e foi pro bot (`src/arquivista/layout.py`). O script
+   ficou fixo: confere a assinatura, lê (`status`, `read`) e aplica (`write`) uma lista de
+   pedidos permitidos, recusando a gravação se a planilha mudou desde a leitura. Mudar o visual
+   da planilha não exige mais que cada servidor cole e reimplante o script.
 4. **Planilha → bot:** consumo dos eventos por servidor, eco e conflitos.
+   *Feito sem mudar o script:* o bot lê a planilha (`read`) a cada 5 minutos, quando a fila
+   dele está vazia, e compara com o banco (`src/arquivista/pull.py`). Linha com a mesma
+   revisão do banco e valor diferente é edição; linha digitada sem ID vira cadastro na mesma
+   posição. Eco não acontece porque cada gravação do bot sobe a revisão na coluna K. Conflito:
+   cadastro com mudança na fila do bot fica de fora e a versão do bot vai por cima (sem a
+   tabela `conflicts`). Recusa é desfeita na planilha e explicada no `/diagnostico`; linha
+   apagada à mão é regravada.
 5. **Guia de instalação** pra donos de servidor e planilha modelo pública.
 6. **Público:** privacidade, termos, verificação.
 

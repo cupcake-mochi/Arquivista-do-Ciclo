@@ -5,6 +5,9 @@ permissions:
 jobs:
   logica:
     runs-on: ubuntu-latest
+    env:
+      # test_layout.py grava os pedidos de um cenário e test_planilha.js confere que o script os aceita.
+      PLANILHA_CENARIO: /tmp/cenario-planilha.json
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -18,3 +21,5 @@ jobs:
       - run: node tests/test_bridge.js
       - run: node --check < apps_script/Arquivista.gs
       - run: node --check < apps_script/Aparencias.gs
+      - run: node tests/test_planilha.js
+      - run: node --check < apps_script/Planilha.gs

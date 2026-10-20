@@ -1,10 +1,12 @@
 # Arquivista do Ciclo · Amiya
 
-**Versão 0.2.0 · projeto independente dos Guias do Ciclo.**
+**Versão 0.3.0 (em desenvolvimento) · projeto independente dos Guias do Ciclo.**
+
+> **Pra dono de servidor:** o passo a passo de convidar, configurar e ligar a planilha está em [docs/GUIA-DONO.md](docs/GUIA-DONO.md). Os comandos estão em [docs/COMANDOS.md](docs/COMANDOS.md).
 
 Bot de cadastro de aparências com comandos `AC:` e `/`, consultas públicas, formulários privados e integração com a Planilha Aparências. A imagem fornecida da Amiya está em `assets/amiya.png`, sem alteração. Não usa um modelo de IA nem a chave de outro provedor.
 
-**Estado desta entrega:** código implementado e testes locais executados. Não está implantado, não foi conectado ao Discord e não alterou a planilha nesta etapa. A ativação na conta Google e na hospedagem ainda é necessária. Leia o relatório em `docs/TESTES.md` antes de abrir o cadastro ao servidor inteiro.
+**Estado:** multi-servidor, com banco próprio, planilha conectada nos dois sentidos, backup e restauração pelo Discord. Testes automáticos em `tests/` (rodam no CI a cada envio).
 
 ## O que está incluído
 
@@ -49,15 +51,15 @@ python iniciar.py
 AC:ajuda
 AC:aparencias
 AC:aparencias @membro
-AC:galeria Takao
-AC:galeria @membro
-AC:consultar Takao Azur Lane
-AC:minhas
+AC:gal Takao
+AC:gal @membro
+AC:busca Takao Azur Lane
+AC:min
 AC:registrar
 AC:editar Takao
 ```
 
-A staff também tem `AC:situacao`, `AC:transferir`, `AC:remover`, `AC:historico`, `AC:registrarhistorico`, `AC:registrarimagens` e seus equivalentes por barra. Veja [docs/COMANDOS.md](docs/COMANDOS.md).
+A staff também tem `AC:sit`, `AC:tr`, `AC:rm`, `AC:hist`, `AC:diag` e `AC:cfg`, com os equivalentes por barra. Veja [docs/COMANDOS.md](docs/COMANDOS.md).
 
 ## O que não muda automaticamente
 
