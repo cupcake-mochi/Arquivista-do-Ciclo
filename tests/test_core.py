@@ -359,22 +359,28 @@ class SheetTests(unittest.TestCase):
             def get_guild(self,_):return Guild()
             def now_text(self):return 'agora'
         sync=SheetSync(Bot())
-        class FakeBridge:
-            def __init__(self,answer):self.answer=answer
-            async def call(self,action,actor,data):
-                sent.append((action,data))
-                if isinstance(self.answer,Exception):raise self.answer
-                return self.answer
-        sync.bridge=lambda gid,cfg=None:FakeBridge(BridgeError('BUSY','ocupado'))
+        sys.path.insert(0,str(ROOT/'tests'));from sheet_sim import FakeSheet
+        sheet=FakeSheet();sheet.fail=BridgeError('BUSY','ocupado')
+        sync.bridge=lambda gid,cfg=None:sheet
         asyncio.run(sync.run())
         self.assertEqual(self.s.sheet_pending(G1),(3,0));self.assertEqual(self.s.guild(G1)['sheet_error'],'BUSY')
         self.assertEqual(self.s.sheet_due(),[])  # em espera depois da falha
         self.s.db.execute("UPDATE sheet_outbox SET next_try=0");self.s.db.commit()
-        sync.bridge=lambda gid,cfg=None:FakeBridge({'results':[{'id':ids[0],'status':'ok'},{'id':ids[1],'status':'stale'},{'id':ids[2],'status':'invalid'}]})
+        # Um dos três chega com dado que a planilha recusa; os outros dois vão.
+        self.s.db.execute("UPDATE sheet_outbox SET payload=replace(payload,'Em prepara','Qualquer') WHERE record_id=?",(ids[2],));self.s.db.commit()
+        sheet.fail=None
         asyncio.run(sync.run())
-        action,data=sent[-1];self.assertEqual(action,'apply');self.assertEqual([o['record']['owner_name'] for o in data['ops']],['mizuki_sama']*3)
-        self.assertEqual(list(self.queue()),[]);self.assertEqual(self.s.sheet_pending(G1),(1,1))
+        self.assertEqual([a for a,_ in sheet.calls[-2:]],['status','write'])
+        _,data=sheet.calls[-1]
+        names=[q['updateSheetProperties'] for q in data['requests'] if 'updateSheetProperties' in q]
+        added=[q['addSheet']['properties']['title'] for q in data['requests'] if 'addSheet' in q]
+        self.assertEqual(added,['mizuki_sama'])
+        self.assertEqual(list(self.queue()),[]);self.assertEqual(self.s.sheet_pending(G1),(1,1))  # o recusado espera bem mais
         g=self.s.guild(G1);self.assertIsNone(g['sheet_error']);self.assertEqual(g['sheet_ok'],'agora')
+        # Sincronização completa: só o que faltava (o recusado, agora válido) gera gravação.
+        self.s.db.execute("DELETE FROM sheet_outbox");self.s.db.commit()
+        self.s.queue_full_sync(G1);asyncio.run(sync.run())
+        self.assertEqual(sheet.writes,2);self.assertEqual(list(self.queue()),[]);self.assertEqual(len(sheet.calls[-1][1]['requests']),3)
     def test_refresh_image_keeps_revision(self):
         self.connect()
         r=self.call('create',self.user,{'fields':{'appearance':'Takao','work':'Azur Lane','media_ref':f'discord://{G1}/1{"0"*17}/1{"0"*17}/1{"0"*17}','image_url':'https://cdn.discordapp.com/a.png'}})['record']

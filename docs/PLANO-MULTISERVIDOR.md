@@ -157,6 +157,11 @@ importação.
    "Conectar planilha" no `/configurar` (testa antes de salvar, chave cifrada no
    banco) e estado da planilha no `/diagnostico`. Edições feitas na planilha ainda não
    voltam pro bot.
+   *Script 2.0:* a montagem saiu do script e foi pro bot (`src/arquivista/layout.py`). O script
+   ficou fixo: confere a assinatura, lê (`status`, `read`) e aplica (`write`) uma lista de
+   pedidos permitidos, recusando a gravação se a planilha mudou desde a leitura. Mudar o visual
+   da planilha não exige mais que cada servidor cole e reimplante o script. A etapa 4 vai
+   precisar de uma ação nova de leitura de eventos, que entra no script uma vez só.
 4. **Planilha → bot:** consumo dos eventos por servidor, eco e conflitos.
 5. **Guia de instalação** pra donos de servidor e planilha modelo pública.
 6. **Público:** privacidade, termos, verificação.

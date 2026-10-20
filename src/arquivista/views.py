@@ -374,7 +374,7 @@ class SheetModal(discord.ui.Modal):
         self.add_item(self.url)
         self.add_item(self.key)
     async def on_submit(self, i: discord.Interaction):
-        from .sheet import SHEET_KEY, SHEET_URL, seal
+        from .sheet import SHEET_KEY, SHEET_URL, read_sheet, seal
         if i.user.id != self.author_id or not self.bot.can_configure(i.user):
             return await private_reply(i, content="Só quem pode gerenciar o servidor conecta a planilha.")
         url, key = str(self.url.value).strip(), str(self.key.value).strip().lower()
@@ -386,13 +386,14 @@ class SheetModal(discord.ui.Modal):
         cfg = {"sheet_url": url, "sheet_key": seal(self.bot.config.master_key, key)}
         try:
             # Testa antes de salvar: com URL ou chave erradas nada muda na configuração atual.
-            data = await self.bot.sheets.bridge(str(self.guild.id), cfg).call("status", self.bot.sheets.actor(), {})
+            model, _ = await read_sheet(self.bot.sheets.bridge(str(self.guild.id), cfg), self.bot.sheets.actor())
+            found_records = model.records()
         except BridgeError as exc:
             return await private_reply(i, content="Não consegui falar com a planilha: " + str(exc))
         self.bot.store.set_guild(self.guild.id, **cfg, sheet_error=None)
         count = self.bot.store.queue_full_sync(str(self.guild.id))
         self.bot.notify_soon()
-        found = f" A planilha já tinha {data.get('records', 0)} cadastro(s); os que vierem do bot ficam no lugar certo pelo ID." if data.get("records") else ""
+        found = f" A planilha já tinha {found_records} cadastro(s); os que vierem do bot ficam no lugar certo pelo ID." if found_records else ""
         await private_reply(i, embed=self.bot.carteiro.decorate(card("Planilha conectada",
             f"Vou mandar os {count} cadastro(s) deste servidor agora e, daqui pra frente, cada mudança.{found}\n\n"
             "Por enquanto a planilha só recebe: o que for editado direto nela não volta para o bot.")))

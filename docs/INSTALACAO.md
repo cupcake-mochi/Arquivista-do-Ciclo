@@ -16,7 +16,9 @@ A planilha recebe uma cópia de tudo que é cadastrado pelo bot. Por enquanto o 
 
 Cada membro ganha uma guia própria, com o nome de usuário do Discord (o `@`, não o apelido do servidor). Se o nome de usuário mudar, a guia é renomeada na próxima vez que o bot gravar algo dessa pessoa. Não crie guias com o mesmo nome de um membro: se acontecer, a guia do membro vira `nome (2)`.
 
-**Atualizar o script:** cole o `Planilha.gs` novo por cima, salve, e em Implantar → Gerenciar implantações → lápis → Versão **Nova versão** → Implantar (o link `/exec` continua o mesmo). Depois, `/configurar` → **Conectar planilha** de novo com o mesmo link e chave, pra reenviar tudo na hora.
+**O script não muda mais:** desde a versão 2.0 ele só confere a assinatura, lê e aplica o que o bot manda. Quem monta as guias (posições, cores, bordas, fórmulas) é o bot, então melhorias na planilha chegam só atualizando o bot. Quem tem o script 1.x precisa colar o 2.0 uma última vez: cole o `Planilha.gs` novo por cima, salve, e em Implantar → Gerenciar implantações → lápis → Versão **Nova versão** → Implantar (o link `/exec` continua o mesmo). Se o bot avisar "o script da planilha é antigo", é isso que falta.
+
+Guias criadas por versões antigas continuam funcionando, mas não ganham o visual novo sozinhas. Pra refazer: apague as guias dos membros (a planilha é só uma cópia do que está no bot) e use `/configurar` → **Conectar planilha** de novo com o mesmo link e chave.
 
 A chave fica cifrada no banco do bot. Sem `AC_MASTER_KEY`, a cifra depende do token: se o token mudar, conecte a planilha de novo. Quem tiver a chave consegue escrever na planilha; se ela vazar, use **Trocar a chave da conexão** e reconecte.
 

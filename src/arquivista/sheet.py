@@ -13,13 +13,34 @@ import logging
 import os
 import re
 
+from . import layout
 from .bridge import Bridge
-from .domain import Actor, BridgeError
+from .domain import Actor, BridgeError, ERRORS
 
 log = logging.getLogger(__name__)
 SHEET_URL = re.compile(r"^https://script\.google\.com/macros/s/[A-Za-z0-9_-]{20,200}/exec$")
 SHEET_KEY = re.compile(r"^[0-9a-f]{32,128}$")
 BATCH = 50
+# Pedidos de uma gravação, em bytes de JSON. O script aceita até 4 MB por chamada; um membro novo dá ~130 KB.
+BUDGET = 2_500_000
+
+async def read_sheet(bridge: Bridge, actor: Actor) -> tuple[layout.Model, list[dict]]:
+    """Lê a planilha como o bot precisa: lista de guias, coluna K de todas e A:K das guias de membro.
+    Devolve o modelo e o estado das guias de membro, que a gravação confere antes de aplicar."""
+    st = await bridge.call("status", actor, {})
+    if not str(st.get("version", "")).startswith("2."):
+        raise BridgeError("OLD_SCRIPT", ERRORS["OLD_SCRIPT"])
+    sheets = [x for x in st.get("sheets", []) if isinstance(x, dict)]
+    async def read(ranges: list[str], step: int) -> list:
+        out = []
+        for i in range(0, len(ranges), step):
+            out += (await bridge.call("read", actor, {"ranges": ranges[i:i + step]}))["values"]
+        return out
+    marks = await read([layout.a1(x["title"], f"K1:K{x['rows']}") for x in sheets], 400)
+    members = [x for x, k in zip(sheets, marks) if layout.is_member_tab(k)]
+    values = await read([layout.a1(x["title"], f"A1:K{x['rows']}") for x in members], 40)
+    model = layout.load(st.get("sep") or ";", sheets, {x["sheetId"]: v for x, v in zip(members, values)})
+    return model, [{"sheetId": x["sheetId"], "rows": x["rows"], "title": x["title"]} for x in members]
 
 def _keys(master: bytes) -> tuple[bytes, bytes]:
     return (hmac.new(master, b"arquivista:cifra", hashlib.sha256).digest(),
@@ -95,7 +116,14 @@ class SheetSync:
                 ops.append(op)
             ids = [r["record_id"] for r in rows]
             try:
-                data = await self.bridge(guild_id).call("apply", self.actor(), {"ops": ops})
+                bridge = self.bridge(guild_id)
+                model, expect = await read_sheet(bridge, self.actor())
+                requests, planned = model.plan(ops, BUDGET)
+                if requests:
+                    # Se a planilha mudou de tamanho ou de nome desde a leitura, o script recusa (CHANGED)
+                    # e nada é aplicado; isso também torna seguro repetir uma gravação cuja resposta se perdeu.
+                    await bridge.call("write", self.actor(), {"requests": requests, "expect": expect})
+                data = {"results": planned}
             except (BridgeError, ValueError) as exc:
                 code = getattr(exc, "code", "KEY")
                 store.sheet_retry(guild_id, ids, code)
@@ -103,6 +131,8 @@ class SheetSync:
                 return
             results = {x.get("id"): x.get("status") for x in data.get("results", []) if isinstance(x, dict)}
             for r in rows:
+                if r["record_id"] not in results:
+                    continue  # ficou para a próxima gravação (limite de tamanho); continua na fila como está
                 status = results.get(r["record_id"])
                 if status in ("ok", "stale"):
                     store.sheet_done(guild_id, r["record_id"], r["revision"])
@@ -110,5 +140,5 @@ class SheetSync:
                     # Dado que a planilha recusou não melhora com pressa: tenta de novo bem depois.
                     store.sheet_retry(guild_id, [r["record_id"]], status or "missing", long=True)
             store.set_guild(guild_id, sheet_error=None, sheet_ok=self.bot.now_text())
-            if len(rows) < BATCH:
+            if len(rows) < BATCH and len(results) == len(rows):
                 return
