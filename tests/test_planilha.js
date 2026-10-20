@@ -222,17 +222,17 @@ test('Web App: só aceita pedido assinado, recente e do servidor certo; apply gr
   eq(post(env('status', {}, {guild_id: '444444444444444444'})), {ok: false, code: 'GUILD'});
   eq(post(env('status', {}, {ts: Math.floor(Date.now() / 1000) - 600})), {ok: false, code: 'CLOCK'});
   eq(web.doPost({postData: {contents: 'x'.repeat(500000)}}), {ok: false, code: 'AUTH'});
-  eq(post(env('status', {})), {ok: true, data: {version: '1.1.0', tabs: 0, members: 0, records: 0}});
+  eq(post(env('status', {})), {ok: true, data: {version: '1.1.1', tabs: 0, members: 0, records: 0}});
   const r = rec(A);
   eq(post(env('apply', {ops: [up(r)]})), {ok: true, data: {results: [{id: r.id, status: 'ok'}]}});
   eq(post(env('apply', {ops: [up(r)]})), {ok: true, data: {results: [{id: r.id, status: 'ok'}]}});
-  eq(post(env('status', {})).data, {version: '1.1.0', tabs: 1, members: 1, records: 1});
+  eq(post(env('status', {})).data, {version: '1.1.1', tabs: 1, members: 1, records: 1});
   // Guia antiga do 1.0 com um membro só é renomeada; guia sem marcador é ignorada.
   assert.equal(meta[0].title, 'mizuki_sama');
   meta[0].title = "FICHAS 1–20"; meta.push({title: "Notas d'staff", sheetId: 7}); sheets.set(7, [['x']]);
   eq(post(env('apply', {ops: [up(Object.assign({}, r, {owner_name: "kal'tsits"}))]})), {ok: true, data: {results: [{id: r.id, status: 'ok'}]}});
   eq(meta.map(t => t.title), ["kal'tsits", "Notas d'staff"]);
-  eq(post(env('status', {})).data, {version: '1.1.0', tabs: 1, members: 1, records: 1});
+  eq(post(env('status', {})).data, {version: '1.1.1', tabs: 1, members: 1, records: 1});
   eq(post(env('apply', {ops: 'x'})), {ok: false, code: 'INVALID'});
   assert.equal(batches, 2);  // o pedido repetido não gerou outra gravação; o renomear gerou uma
 });

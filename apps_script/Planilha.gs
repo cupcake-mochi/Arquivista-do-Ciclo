@@ -16,7 +16,7 @@
  * Nesta versão, editar a planilha à mão NÃO volta para o bot (isso é a etapa 4).
  */
 const PL = Object.freeze({
-  version: '1.1.0', step: 20, head: 13, width: 11,
+  version: '1.1.1', step: 20, head: 13, width: 11,
   maxBody: 400000, maxOps: 100, firstBlock: 5,
   statuses: ['Em preparação', 'Em uso', 'Arquivado', 'Liberado'],
   headers: ['Nº', 'Aparência', 'Nome no servidor', 'Obra de origem', 'Situação', 'Cadastro', 'Imagem', 'Link da imagem', 'ID do registro', 'ID Discord', 'Revisão']
@@ -55,7 +55,7 @@ const PS = Object.freeze({
   photo: plRgb_(0.937, 0.945, 0.961), name: plRgb_(0.969, 0.969, 0.98), note: plRgb_(0.976, 0.973, 1),
   columns: plRgb_(0.204, 0.267, 0.365), section: plRgb_(0.922, 0.91, 0.953), slot: plRgb_(0.878, 0.859, 0.929),
   slotInk: plRgb_(0.31, 0.227, 0.4), media: plRgb_(0.961, 0.965, 0.976), label: plRgb_(0.898, 0.859, 0.949),
-  justify: plRgb_(0.984, 0.976, 1)
+  justify: plRgb_(0.984, 0.976, 1), line: plRgb_(0.796, 0.776, 0.855), frame: plRgb_(0.541, 0.494, 0.639)
 });
 function plRange_(sid, r1, r2, c1, c2) { return {sheetId: sid, startRowIndex: r1 - 1, endRowIndex: r2, startColumnIndex: c1 - 1, endColumnIndex: c2}; }
 function plFormat_(req, sid, r1, r2, c1, c2, f) {
@@ -63,6 +63,12 @@ function plFormat_(req, sid, r1, r2, c1, c2, f) {
     backgroundColor: f.bg || PS.white, verticalAlignment: f.v || 'MIDDLE', horizontalAlignment: f.h || 'LEFT', wrapStrategy: f.wrap || 'WRAP'};
   if (f.date) fmt.numberFormat = {type: 'DATE', pattern: 'dd/mm/yyyy'};
   req.push({repeatCell: {range: plRange_(sid, r1, r2, c1, c2), cell: {userEnteredFormat: fmt}, fields: 'userEnteredFormat'}});
+}
+/** Bordas: contorno mais escuro em volta e linhas claras dentro (só onde 'inner' pedir). Vem depois do plFormat_, que apaga bordas. */
+function plBorder_(req, sid, r1, r2, c1, c2, inner) {
+  const frame = {style: 'SOLID', color: PS.frame}, line = {style: 'SOLID', color: PS.line}, q = {range: plRange_(sid, r1, r2, c1, c2), top: frame, bottom: frame, left: frame, right: frame};
+  if (inner) { q.innerHorizontal = line; q.innerVertical = line; }
+  req.push({updateBorders: q});
 }
 function plMerge_(req, sid, r1, r2, c1, c2) { req.push({mergeCells: {range: plRange_(sid, r1, r2, c1, c2), mergeType: 'MERGE_ALL'}}); }
 function plHeight_(req, sid, r1, r2, px) { req.push({updateDimensionProperties: {range: {sheetId: sid, dimension: 'ROWS', startIndex: r1 - 1, endIndex: r2}, properties: {pixelSize: px}, fields: 'pixelSize'}}); }
@@ -175,13 +181,15 @@ function plSlots_(m, tab, first, from, count) {
     plSet_(m, tab, r, PC.n, [n]);
     plSet_(m, tab, r, PC.image, [{f: plF_(m, '=IF(H' + r + '="","",IFERROR(IMAGE(H' + r + '),""))')}]);
     plSet_(m, tab, r + 1, PC.appearance, ['JUSTIFICATIVA / OBSERVAÇÃO   ·   campo interno da equipe']);
-    plMerge_(req, sid, r, r + 3, 1, 1); plMerge_(req, sid, r, r + 3, 7, 7); plMerge_(req, sid, r, r + 3, 8, 8);
+    // Imagem e link só nas 2 linhas sempre visíveis: mesclar com as linhas recolhidas faz a imagem passar por cima.
+    plMerge_(req, sid, r, r + 3, 1, 1); plMerge_(req, sid, r, r + 1, 7, 7); plMerge_(req, sid, r, r + 1, 8, 8);
     plMerge_(req, sid, r + 1, r + 1, 2, 6); plMerge_(req, sid, r + 2, r + 3, 2, 6);
     plGroup_(req, sid, r + 2, r + 3, 2, true);
   }
   const last = first + 4 * count - 1;
   plFormat_(req, sid, first, last, 1, 1, {bg: PS.slot, ink: PS.slotInk, bold: true, size: 11, h: 'CENTER', v: 'TOP'});
-  plFormat_(req, sid, first, last, 7, 8, {bg: PS.media, size: 9, h: 'CENTER'});
+  plFormat_(req, sid, first, last, 7, 7, {bg: PS.media, h: 'CENTER'});
+  plFormat_(req, sid, first, last, 8, 8, {bg: PS.media, size: 9, wrap: 'CLIP'});
   plFormat_(req, sid, first, last, 9, 11, {wrap: 'CLIP'});
   plHeight_(req, sid, first, last, 32);
   for (let i = 0; i < count; i++) {
@@ -191,6 +199,11 @@ function plSlots_(m, tab, first, from, count) {
     plFormat_(req, sid, r, r, 6, 6, {h: 'CENTER', date: true});
     plFormat_(req, sid, r + 1, r + 1, 2, 6, {bg: PS.label, ink: PS.slotInk, bold: true, size: 9});
     plFormat_(req, sid, r + 2, r + 3, 2, 6, {bg: PS.justify, v: 'TOP'});
+  }
+  for (let i = 0; i < count; i++) {
+    const r = first + 4 * i;
+    plBorder_(req, sid, r, r, 1, 10, true);       // linha da ficha, célula por célula
+    plBorder_(req, sid, r, r + 3, 1, 10, false);  // contorno da posição inteira
   }
   req.push({setDataValidation: {range: plRange_(sid, first, last, PC.status, PC.status), rule: {condition: {type: 'ONE_OF_LIST',
     values: PL.statuses.map(s => ({userEnteredValue: s}))}, strict: true, showCustomUi: true}}});
@@ -234,6 +247,9 @@ function plBlock_(m, owner, name) {
   plFormat_(req, sid, s + 9, s + 9, 3, 7, {bg: PS.note, size: 11, v: 'TOP'});
   plFormat_(req, sid, s + 11, s + 11, 1, 10, {bg: PS.columns, ink: PS.white, bold: true});
   plFormat_(req, sid, s + 12, s + 12, 1, 7, {bg: PS.section, ink: PS.purple, bold: true, size: 9});
+  plBorder_(req, sid, s, s + 9, 1, 7, false);
+  plBorder_(req, sid, s + 1, s + 1, 1, 7, false);
+  plBorder_(req, sid, s + 11, s + 11, 1, 10, true);
   plHeight_(req, sid, s, s, 44); plHeight_(req, sid, s + 1, s + 8, 32); plHeight_(req, sid, s + 9, s + 9, 96);
   plHeight_(req, sid, s + 10, s + 10, 12); plHeight_(req, sid, s + 11, s + 11, 44); plHeight_(req, sid, s + 12, s + 12, 32); plHeight_(req, sid, z, z, 24);
   req.push({setDataValidation: {range: plRange_(sid, s + 1, s + 1, 6, 6), rule: {condition: {type: 'NUMBER_BETWEEN',
