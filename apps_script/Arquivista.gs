@@ -145,9 +145,33 @@ function acDispatch_(ss,q){
     acPut_(req,CM.fichasId,r.row,r.col+7,[r.image_url]);
     const snaps=acSnapshots_(ss);acSnapshotPlan_(ss,snaps,r.id,r,req);acBatch_(req);return {};
   }
+  if(q.action==='export'){
+    // Leitura completa para importar no banco do bot (só staff; contém campos internos).
+    if(!a.staff)acFail_('FORBIDDEN');return acExport_(ss);
+  }
   if(!['create','edit','change_status','transfer','remove'].includes(q.action))acFail_('INVALID');
   if(['change_status','transfer','remove'].includes(q.action)&&!a.staff)acFail_('FORBIDDEN');
   return acMutate_(ss,q);
+}
+
+function acExport_(ss){
+  // Funciona antes de instalar a ponte: sem a aba de snapshots, só não há media_ref.
+  const idx=acIndex_(ss),snaps=ss.getSheetByName(AC.snapshots)?acSnapshots_(ss):new Map(),out=[];
+  for(let i=0;i<idx.length;i+=400)acReadMany_(ss,idx.slice(i,i+400),snaps).forEach(r=>out.push({id:r.id,owner_id:r.owner_id,
+    appearance:r.appearance,work:r.work,server_name:r.server_name,status:r.status,justification:r.justification,
+    image_url:r.image_url,date:r.date}));
+  return {format:'arquivista-export',version:1,exported_at:new Date().toISOString(),records:out};
+}
+/** Execute como dono: grava no seu Drive um .json para o importar.py do bot. Só leitura na planilha. */
+function exportarParaArquivista(){
+  const ss=SpreadsheetApp.openById(CM.id);cmExigirDono_(ss);
+  const l=LockService.getScriptLock();if(!l.tryLock(5000))throw new Error('Outra tarefa está usando a planilha. Tente de novo em instantes.');
+  try{
+    const data=acExport_(ss),name='arquivista-export-'+data.exported_at.slice(0,10)+'.json';
+    const file=DriveApp.createFile(name,JSON.stringify(data),'application/json');
+    console.log(data.records.length+' cadastros exportados para '+name+' no seu Drive (privado). '+file.getUrl());
+    ss.toast(data.records.length+' cadastros exportados para '+name+' no seu Drive.');
+  }finally{l.releaseLock();}
 }
 
 // ---------------- leituras pequenas / estruturas auxiliares ----------------

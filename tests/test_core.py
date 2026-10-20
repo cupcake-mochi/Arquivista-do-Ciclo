@@ -16,6 +16,7 @@ from arquivista.domain import (Actor, UserError, normalized, exact_key, parse_pr
     ranked, public_record, safe_image_url, signed_envelope, valid_attachment, can_manage, ALIASES)
 from arquivista.store import Store
 from arquivista.archive import Archive
+from arquivista.importer import apply, check, summary
 from arquivista.domain import BridgeError
 import asyncio
 from arquivista.config import load_env
@@ -231,6 +232,45 @@ class ArchiveTests(unittest.TestCase):
         self.call(self.a,'refresh_image',self.staff,{'id':r['id'],'media_ref':ref,'url':'https://cdn.discordapp.com/b.png'})
         self.assertEqual(self.call(self.a,'image',self.user,{'id':r['id']})['url'],'https://cdn.discordapp.com/b.png')
         self.assertEqual(self.code(self.a,'refresh_image',self.staff,{'id':r['id'],'media_ref':'x','url':'https://a.com/b'}),'STALE')
+
+class ImportTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp=tempfile.TemporaryDirectory();self.s=Store(Path(self.tmp.name)/'data.sqlite')
+    def tearDown(self):
+        self.s.close();self.tmp.cleanup()
+    def export(self,*records):
+        base={'id':'AP-0b0e4d0e-1111-4c2a-9a55-000000000001','owner_id':U1,'appearance':'Takao','work':'Azur Lane',
+              'server_name':'Kai','status':'Em uso','justification':'INTERNO','image_url':'https://i.pinimg.com/a.png','date':45000}
+        return {'format':'arquivista-export','version':1,'records':[{**base,**r} for r in records]}
+    def test_check_and_apply_preserves_fields(self):
+        data=self.export({},{'id':'AP-0b0e4d0e-1111-4c2a-9a55-000000000002','appearance':'Amiya','work':'Arknights','date':None,'status':'Arquivado'})
+        records,errors,warnings=check(data)
+        self.assertEqual(errors,[]);self.assertEqual(summary(records)['without_date'],1)
+        self.assertEqual(apply(self.s,G1,records),2)
+        a=Archive(self.s,G1);r=asyncio.run(a.call('get',Actor(STAFF,'S',True),{'id':data['records'][0]['id']}))['record']
+        self.assertEqual((r['date'],r['justification'],r['status'],r['revision']),('2023-03-15','INTERNO','Em uso',1))
+        self.assertIsNone(asyncio.run(a.call('get',Actor(STAFF,'S',True),{'id':data['records'][1]['id']}))['record']['date'])
+        # Importado ocupa de verdade: duplicata recusada pelo fluxo normal.
+        with self.assertRaises(BridgeError):asyncio.run(a.call('create',Actor(U2,'O'),{'fields':{'appearance':'takao','work':'AZUR LANE'}}))
+        events=asyncio.run(a.call('history',Actor(STAFF,'S',True)))['events']
+        self.assertEqual({e['kind'] for e in events},{'import'});self.assertEqual(self.s.pending(),[])
+    def test_errors_block_everything(self):
+        data=self.export({},{'id':'AP-0b0e4d0e-1111-4c2a-9a55-000000000002','owner_id':U2,'work':' azur  lane '},
+                         {'id':'sem-id'},{'id':'AP-0b0e4d0e-1111-4c2a-9a55-000000000003','status':'Talvez','owner_id':'x'})
+        records,errors,_=check(data)
+        text=' '.join(errors)
+        for part in ('ocupada também','formato AP-','desconhecida','Discord'):self.assertIn(part,text)
+    def test_released_duplicates_are_fine(self):
+        data=self.export({},{'id':'AP-0b0e4d0e-1111-4c2a-9a55-000000000002','status':'Liberado'})
+        records,errors,_=check(data);self.assertEqual(errors,[]);apply(self.s,G1,records)
+    def test_refuses_non_empty_guild_and_wrong_format(self):
+        records,_,_=check(self.export({}));apply(self.s,G1,records)
+        with self.assertRaises(ValueError):apply(self.s,G1,records)
+        with self.assertRaises(ValueError):apply(self.s,G2,records)  # mesmo ID em outro servidor
+        self.assertTrue(check({'format':'x'})[1])
+    def test_long_text_and_bad_image_only_warn(self):
+        records,errors,warnings=check(self.export({'justification':'x'*3000,'image_url':'http://a.com/b.png'}))
+        self.assertEqual(errors,[]);self.assertEqual(len(warnings),2);self.assertEqual(records[0]['image_url'],'')
 
 class FilesTests(unittest.TestCase):
     def test_python_syntax(self):
