@@ -9,6 +9,7 @@ SAIDA = ROOT / "dados" / "arquivista.zip"
 def arquivos():
     lista = [ROOT / n for n in ("discloud.config", "iniciar.py", "requirements.txt", "assets/amiya.png")]
     lista += sorted(p for p in (ROOT / "src" / "arquivista").glob("*.py"))
+    lista += sorted((ROOT / "src/arquivista/recursos").glob("*.json"))
     return lista
 
 if __name__ == "__main__":

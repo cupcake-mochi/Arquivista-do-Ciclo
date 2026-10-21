@@ -5,6 +5,7 @@ para as telas não precisarem saber de onde vêm os dados. Cada servidor só enx
 os próprios cadastros: toda consulta é filtrada por `guild_id`.
 """
 from __future__ import annotations
+from .idiomas import tr
 import hashlib
 import json
 import re
@@ -154,7 +155,7 @@ class Archive:
         used = self.db.execute("SELECT COUNT(*) FROM appearances WHERE guild_id=? AND owner_id=?",
                                (self.guild, owner_id)).fetchone()[0]
         if used >= MAX_PER_MEMBER:
-            fail("CAPACITY", f"Esse membro já tem {MAX_PER_MEMBER} cadastros neste servidor. Remova um cadastro seu ou peça ajuda à staff antes de cadastrar outro.")
+            fail("CAPACITY", tr("Esse membro já tem {0} cadastros neste servidor. Remova um cadastro seu ou peça ajuda à staff antes de cadastrar outro.").format(MAX_PER_MEMBER))
     def taken(self, r: dict) -> bool:
         if r["status"] == "Liberado":
             return False

@@ -4,6 +4,7 @@ import asyncio
 import logging
 import discord
 from .config import ROOT
+from .idiomas import preparar_interface
 
 log = logging.getLogger(__name__)
 MENTIONS = discord.AllowedMentions.none()
@@ -50,6 +51,7 @@ class Carteiro:
             return self.cache[base.id]
     async def send(self, channel, *, content: str | None = None, embed: discord.Embed | None = None,
                    view: discord.ui.View | None = None):
+        preparar_interface(view)
         thread = channel if isinstance(channel, discord.Thread) else None
         base = thread.parent if thread else channel
         kwargs = {"content": content, "embed": embed, "allowed_mentions": MENTIONS}

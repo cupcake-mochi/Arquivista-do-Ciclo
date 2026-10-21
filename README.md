@@ -1,6 +1,6 @@
 # Arquivista do Ciclo · Amiya
 
-**Versão 1.0.1 · projeto independente dos Guias do Ciclo.**
+**Versão 1.1.0 · publicada em 21/10/2026 às 13:25 de Brasília.** Idioma por servidor, planilhas novas em inglês, arquivos antigos preservados. [Validação e retomada](docs/RETOMADA-IDIOMA.md). Projeto independente das Guias do Ciclo.
 
 > **Para configurar no seu servidor:** siga o [guia público no Google Docs](https://docs.google.com/document/d/1xuehlkhU3EhMsSE4hjLIfQY9p-eEF6ynS5ikAmlqnhw/view). Para aprender a usar o bot, comece por `/guia`; `/ajuda` traz a lista de comandos.
 >
@@ -13,6 +13,14 @@ Cada servidor tem seus próprios cadastros e configurações. O banco SQLite gua
 **Planilha pronta:** `/planilha criar` pede um e-mail em privado e entrega o arquivo montado, conectado e com edição para esse e-mail. A planilha pertence à conta do Arquivista. `/planilha membro` exige selecionar um membro real do servidor e prepara uma aba para preenchimento manual; cadastros pelo bot também criam as abas. Não é preciso instalar script. Para ativar na hospedagem, veja [a configuração única do mantenedor](docs/GOOGLE-MANTENEDOR.md).
 
 **Abrir novamente:** `/planilha abrir` ou `AC:planilha` recupera o painel privado com o link do arquivo já conectado.
+
+## Idioma por servidor
+
+`/language` ou `/idioma` escolhe **English** ou **Português do Brasil**. Dono, administradores, quem tem Gerenciar servidor e os cargos de staff configurados podem mudar essa opção. A configuração é independente da das Guias.
+
+A interface e os guias seguem o idioma do servidor. Os nomes no menu nativo seguem o idioma do aplicativo Discord; os aliases em inglês também funcionam com `AC:`. Planilhas **novas** usam o idioma escolhido; arquivos existentes mantêm o idioma em que foram criados. Nomes, obras e justificativas escritos pelos membros não são traduzidos. Dados e backups JSON mantêm códigos estáveis.
+
+[Implementação, testes e limites](docs/IDIOMAS.md).
 
 ## O que está incluído
 

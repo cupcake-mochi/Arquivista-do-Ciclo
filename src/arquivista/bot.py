@@ -24,12 +24,15 @@ from .sheet import SheetSync
 from .managed import ManagedSheets
 from .google import GoogleError
 from .store import Store
+from .idiomas import preparar_interface, arvore_e_tradutor, preparar, definir, atual, tr, usar
+
+ArvoreLocalizada, Tradutor = arvore_e_tradutor()
 from .transport import Carteiro, MENTIONS
 from .views import Confirm, Gate, Guide, RestoreConfirm, Picker, Paginator, RecordModal, Settings, backup_problem, private_reply, card, clean
 
 log = logging.getLogger(__name__)
 PUBLIC = frozenset(("ajuda", "guia", "aparencias", "minhas", "galeria", "consultar", "obra"))
-SLASH = ("ajuda", "guia", "aparencias", "obra", "registrar", "editar", "situacao", "transferir", "remover", "limpar", "apelido", "historico", "configurar", "restaurar", "planilha", "diagnostico")
+SLASH = ("language","idioma","ajuda", "guia", "aparencias", "obra", "registrar", "editar", "situacao", "transferir", "remover", "limpar", "apelido", "historico", "configurar", "restaurar", "planilha", "diagnostico")
 
 HELP = """**Consultar o arquivo**
 `/aparencias` ou `AC:ap [aparência] [@membro]` — consulte a lista. Use **Ver em galeria** para ver as imagens.
@@ -59,6 +62,7 @@ STAFF_HELP = """
 
 **Gerência do servidor**
 `/configurar` ou `AC:cfg` — escolha os cargos de staff, os canais e a frequência do backup; conecte a planilha.
+`/language` ou `/idioma` — mude o idioma das respostas; exige gerência ou cargo de staff. Só planilhas novas usam o novo idioma. A configuração das Guias é independente.
 `/restaurar` ou `AC:restaurar` com o .json anexado — recupere os cadastros de um backup. Confira o resumo antes de confirmar.
 `/planilha criar` — informe seu e-mail Google em privado para receber a planilha pronta, com acesso de editor. Se ela já existe, abre o mesmo arquivo.
 `/planilha abrir` ou `AC:planilha` — recupere o link e abra o painel da planilha.
@@ -106,6 +110,7 @@ GUIDE = (
      "Quer uma aba para outra pessoa? Use `/planilha membro` e selecione o @membro do servidor. "
      "Preencha as posições prontas; as edições no Sheets chegam ao bot em cerca de 5 minutos. Compartilhe edição só com a staff.\n\n"
      "Em **Backup**, escolha o canal e a frequência. **Fazer backup agora** envia uma cópia na hora. Para recuperar os cadastros, anexe o `.json` ao `/restaurar`.\n\n"
+     "Use `/language` ou `/idioma` para escolher português ou inglês. A staff também pode mudar o idioma. Os arquivos já criados mantêm a língua original; só planilhas novas usam a língua escolhida. Essa opção é independente do idioma das Guias.\n\n"
      "Para as mensagens saírem com a foto da Amiya, o bot precisa da permissão **Gerenciar Webhooks**.\n\n" + SETUP_LINK),
 )
 STAFF_PAGES = 2
@@ -119,8 +124,9 @@ SHEET_ERRORS = {"AUTH": "a planilha recusou a chave ou a URL; conecte de novo no
     "OLD_SCRIPT": SCRIPT_UPDATE,
     "OLD_BOT": "o script da planilha é mais novo que o bot; atualize o bot",
     "CHANGED": "a planilha mudou enquanto eu gravava; vou tentar de novo", "INTERNAL": "erro na integração da planilha; avise o mantenedor"}
-SHEET_ERRORS.update({code: str(GoogleError(code)) for code in
-    ("GOOGLE_SETUP", "GOOGLE_AUTH", "GOOGLE_ACCESS", "GOOGLE_MISSING", "GOOGLE_LOCALE", "GOOGLE_INVALID", "GOOGLE_STORAGE")})
+with usar('pt-BR'):
+    SHEET_ERRORS.update({code: str(GoogleError(code)) for code in
+        ("GOOGLE_SETUP", "GOOGLE_AUTH", "GOOGLE_ACCESS", "GOOGLE_MISSING", "GOOGLE_LOCALE", "GOOGLE_INVALID", "GOOGLE_STORAGE")})
 
 class Arquivista(commands.Bot):
     def __init__(self, config: Config):
@@ -128,7 +134,7 @@ class Arquivista(commands.Bot):
         intents.message_content = True
         # Sem Presence Intent ou lista completa de membros: resolução é sob demanda.
         super().__init__(command_prefix="AC:", intents=intents, help_command=None,
-                         allowed_mentions=MENTIONS, max_messages=300)
+                         allowed_mentions=MENTIONS, max_messages=300, tree_cls=ArvoreLocalizada)
         self.config = config
         self.store = Store(config.db_path)
         self.carteiro = Carteiro(self)
@@ -147,6 +153,7 @@ class Arquivista(commands.Bot):
         self.add_listener(self.expired_panel, "on_interaction")
         install_slash_commands(self)
     async def setup_hook(self):
+        await self.tree.set_translator(Tradutor())
         self.session = aiohttp.ClientSession(headers={"User-Agent":f"ArquivistaDoCiclo/{__version__}"})
         if self.config.dev_guild_id:
             # Servidor de testes: comandos só nele e na hora. Sem ele, valem em todos (o Discord leva até 1 h).
@@ -183,13 +190,13 @@ class Arquivista(commands.Bot):
         if i.response.is_done():
             return
         try:
-            await i.response.send_message("Este painel expirou. Isso acontece após uma atualização ou um tempo sem uso. Abra o comando novamente.",
+            await i.response.send_message(tr('Este painel expirou. Isso acontece após uma atualização ou um tempo sem uso. Abra o comando novamente.'),
                                           ephemeral=True)
         except discord.HTTPException:
             pass  # o painel respondeu no meio tempo
     def archive(self, guild_id: int) -> Archive:
         if not guild_id:
-            raise UserError("Use este comando dentro de um servidor.")
+            raise UserError(tr('Use este comando dentro de um servidor.'))
         return Archive(self.store, guild_id, self.config.timezone)
     def can_configure(self, member) -> bool:
         guild = getattr(member, "guild", None)
@@ -201,15 +208,27 @@ class Arquivista(commands.Bot):
             return False
         roles = set(self.store.guild(guild.id)["staff_roles"])
         return self.can_configure(member) or any(str(role.id) in roles for role in member.roles)
+    async def change_language(self, i, language=None):
+        if not i.guild_id or getattr(getattr(i.user,"guild",None),"id",None) != i.guild_id or not self.is_staff_member(i.user):
+            text="You need Manage Server or a configured staff role." if i.guild_id and self.store.guild(i.guild_id).get("language")=="en" else "Você precisa de Gerenciar servidor ou de um cargo de staff configurado."
+            return await private_reply(i,content=text)
+        if language is not None:
+            self.store.set_guild(i.guild_id,language=language)
+        language=self.store.guild(i.guild_id).get("language","pt-BR")
+        definir(language)
+        text=("Server language: **English**. New spreadsheets will be created in English. Existing files keep their original language and are not reformatted. This setting does not change the Guides bot." if language=="en" else
+              "Idioma do servidor: **Português do Brasil**. Novas planilhas serão criadas em português. Arquivos existentes conservam o idioma original e não são reformatados. Esta opção não muda as Guias.")
+        return await private_reply(i,content=text)
+
     async def actor(self, user_id: int | str, guild_id: int | None) -> Actor:
         guild = self.get_guild(guild_id) if guild_id else None
         if not guild:
-            raise UserError("Não encontrei este servidor. Confira se o Arquivista ainda está nele.")
+            raise UserError(tr('Não encontrei este servidor. Confira se o Arquivista ainda está nele.'))
         try:
             # Revalida no Discord em vez de confiar em um painel aberto antes da remoção de um cargo.
             member = await guild.fetch_member(int(user_id))
         except (discord.NotFound, ValueError, TypeError):
-            raise UserError("Essa pessoa não foi encontrada neste servidor.") from None
+            raise UserError(tr('Essa pessoa não foi encontrada neste servidor.')) from None
         return Actor(str(member.id), member.display_name, self.is_staff_member(member))
     def service_actor(self) -> Actor:
         return Actor(str(self.user.id), "Arquivista · sincronização", True)
@@ -231,13 +250,13 @@ class Arquivista(commands.Bot):
         is_reply = (not message.mention_everyone and message.reference and message.reference.message_id
                     and self.store.is_ours(message.reference.message_id))
         if direct or own_role or is_reply:
+            preparar(self,message.guild.id)
             now = time.monotonic()
             if now-self.last_mention.get(message.author.id, -1000) < 8:
                 return
             self.last_mention[message.author.id] = now
             await self.carteiro.send(message.channel, embed=card("Amiya · Arquivista do Ciclo",
-                "Estou aqui. Posso consultar as aparências do arquivo ou ajudar com seu cadastro.\n\n"
-                "Use **AC:ajuda**, **AC:gal** ou **AC:reg**, ou os comandos de barra."))
+                tr('Estou aqui. Posso consultar as aparências do arquivo ou ajudar com seu cadastro.\n\nUse **AC:ajuda**, **AC:gal** ou **AC:reg**, ou os comandos de barra.')))
     async def reply_public(self, source, *, embed, view=None):
         interaction = source if isinstance(source, discord.Interaction) else None
         if interaction and not interaction.response.is_done():
@@ -250,11 +269,11 @@ class Arquivista(commands.Bot):
                 pass
         return result
     async def failure(self, source, error):
-        text = str(error) if isinstance(error,UserError) else "Não consegui confirmar se a alteração foi salva. Confira a ficha antes de tentar de novo; a staff pode consultar o /diagnostico."
+        text = str(error) if isinstance(error,UserError) else tr("Não consegui confirmar se a alteração foi salva. Confira a ficha antes de tentar de novo; a staff pode consultar o /diagnostico.")
         if isinstance(source,discord.Interaction):
             await private_reply(source,content=text)
         else:
-            await self.carteiro.send(source.channel,embed=card("Amiya · Atenção",text))
+            await self.carteiro.send(source.channel,embed=card(tr('Amiya · Atenção'),text))
         if not isinstance(error,UserError):
             log.warning("Falha de comando: %s",type(error).__name__)
     async def run_action(self, source, action, query="", member_id=None, attachment=None, mode=None):
@@ -262,41 +281,46 @@ class Arquivista(commands.Bot):
         gid = source.guild_id if isinstance(source,discord.Interaction) else source.guild.id
         if not gid:
             return
+        preparar(self,gid)
         try:
             now=time.monotonic()
             if now-self.last_use.get(user.id,-1000)<2:
-                raise UserError("Aguarde dois segundos antes de abrir outro comando.")
+                raise UserError(tr('Aguarde dois segundos antes de abrir outro comando.'))
             self.last_use[user.id]=now
             if action=="unknown":
-                raise UserError("Não reconheci esse comando. Use AC:ajuda para abrir o índice.")
+                raise UserError(tr('Não reconheci esse comando. Use AC:ajuda para abrir o índice.'))
             if isinstance(source,discord.Interaction) and not source.response.is_done():
                 await source.response.defer(ephemeral=True,thinking=True)
             actor=await self.actor(user.id,gid)
             if action in STAFF_ACTIONS and not actor.staff:
-                raise UserError("Esse comando é exclusivo da staff.")
+                raise UserError(tr('Esse comando é exclusivo da staff.'))
             if action not in PUBLIC:
                 if action=="transferir" and not member_id:
-                    raise UserError("Use AC:tr aparência @responsável.")
+                    raise UserError(tr('Use AC:tr aparência @responsável.'))
                 if action=="limpar":
                     member_id=member_id or (query.strip() if re.fullmatch(r"\d{17,20}",query.strip()) else None)
                     if not member_id and query.strip():
-                        raise UserError("Use AC:limpar @membro ou AC:limpar ID. Só AC:limpar lista quem tem cadastro e saiu do servidor.")
+                        raise UserError(tr('Use AC:limpar @membro ou AC:limpar ID. Só AC:limpar lista quem tem cadastro e saiu do servidor.'))
                     query=""
                 if action in ("editar","situacao","transferir","remover") and not query.strip():
-                    raise UserError("Informe o nome da aparência depois do comando. O bot apresentará opções quando houver mais de uma.")
+                    raise UserError(tr('Informe o nome da aparência depois do comando. O bot apresentará opções quando houver mais de uma.'))
                 if isinstance(source,discord.Interaction):
                     await self.open_private(source,action,query,member_id,attachment)
                 else:
                     gate=Gate(self,user.id,action,query,member_id,attachment)
-                    await self.reply_public(source,embed=card("Amiya · Atendimento", "Clique abaixo para continuar em privado. Só você verá o formulário e as respostas."),view=gate)
+                    await self.reply_public(source,embed=card(tr('Amiya · Atendimento'), tr('Clique abaixo para continuar em privado. Só você verá o formulário e as respostas.')),view=gate)
                 return
             if action=="guia":
-                pages=GUIDE if actor.staff else GUIDE[:-STAFF_PAGES]
+                from . import guide_en
+                guide=guide_en.GUIDE if atual()=="en" else GUIDE
+                pages=guide if actor.staff else guide[:-STAFF_PAGES]
                 view=Guide(self,user.id,pages)
                 await self.reply_public(source,embed=view.embed(),view=view)
                 return
             if action=="ajuda":
-                await self.reply_public(source,embed=card("Índice do Arquivista",HELP+(STAFF_HELP if actor.staff else "")))
+                from . import guide_en
+                help_text=guide_en.HELP+(guide_en.STAFF_HELP if actor.staff else "") if atual()=="en" else HELP+(STAFF_HELP if actor.staff else "")
+                await self.reply_public(source,embed=card(tr("Índice do Arquivista"),help_text))
                 return
             if action=="obra":
                 data=await self.archive(gid).call("list",actor,{"owner_id":"","include_released":False})
@@ -309,7 +333,7 @@ class Arquivista(commands.Bot):
                     keys={k for g in found for k in g["keys"]}
                     records=sorted((r for r in records if work_key(r["work"]) in keys),
                                    key=lambda r:(search_text(r["appearance"]),search_text(r["work"])))
-                    title="Obra: "+" · ".join(g["label"] for g in found[:3]) if found else "Obra: "+query
+                    title=tr('Obra: ')+" · ".join(g["label"] for g in found[:3]) if found else tr('Obra: ')+query
                     view=Paginator(self,user.id,records,"gallery" if mode=="galeria" else "list",actor=actor,guild_id=gid,title=title)
                 await self.reply_public(source,embed=await view.embed(),view=view if view.records else None)
                 return
@@ -337,40 +361,40 @@ class Arquivista(commands.Bot):
         if limit:
             now=time.monotonic()
             if now-self.last_use.get(i.user.id,-1000)<2:
-                return await private_reply(i,content="Aguarde dois segundos antes de abrir outro comando.")
+                return await private_reply(i,content=tr('Aguarde dois segundos antes de abrir outro comando.'))
             self.last_use[i.user.id]=now
         staff=self.is_staff_member(i.user)
         oid=str(member.id) if member else str(owner_id or i.user.id)
         if oid!=str(i.user.id) and not staff:
-            return await private_reply(i,content="Você pode cadastrar para si. Apenas a staff cadastra para outra pessoa.")
+            return await private_reply(i,content=tr('Você pode cadastrar para si. Apenas a staff cadastra para outra pessoa.'))
         name=member.display_name if member else (i.user.display_name if oid==str(i.user.id) else "")
         uploads=bool(i.guild_id and self.store.guild(i.guild_id).get("image_channel"))
-        await i.response.send_modal(RecordModal(self,i.user.id,"create",staff=staff,owner={"id":oid,"name":name},
-            attachment=attachment,uploads=uploads))
+        await i.response.send_modal(preparar_interface(RecordModal(self,i.user.id,"create",staff=staff,owner={"id":oid,"name":name},
+            attachment=attachment,uploads=uploads)))
     async def open_restore(self, i, attachment) -> None:
         """Confere o .json do backup e mostra o que vai mudar; grava só na confirmação."""
         if attachment is None or not attachment.filename.lower().endswith(".json"):
-            raise UserError("Anexe o arquivo .json do backup ao comando.")
+            raise UserError(tr('Anexe o arquivo .json do backup ao comando.'))
         if attachment.size > 25*1024*1024:
-            raise UserError("Arquivo grande demais para um backup do Arquivista.")
+            raise UserError(tr('Arquivo grande demais para um backup do Arquivista.'))
         try:
             data=json.loads(await attachment.read())
         except (ValueError,discord.HTTPException):
-            raise UserError("Não consegui ler o arquivo. Use o .json que o backup mandou, sem editar.") from None
+            raise UserError(tr('Não consegui ler o arquivo. Use o .json que o backup mandou, sem editar.')) from None
         records,errors,warnings=check(data)
         if errors:
-            raise UserError("Não consegui usar este backup. Nada foi alterado:\n"+"\n".join("• "+clean(e,180) for e in errors[:8])+
-                            (f"\n… e mais {len(errors)-8}" if len(errors)>8 else ""))
+            raise UserError(tr('Não consegui usar este backup. Nada foi alterado:\n')+"\n".join("• "+clean(e,180) for e in errors[:8])+
+                            (tr('\n… e mais {0}').format(len(errors)-8) if len(errors)>8 else ""))
         current=len(self.store.records(i.guild_id))
         other=str(data.get("guild_id") or "")!=str(i.guild_id)
-        when=clean(str(data.get("exported_at") or "data desconhecida")[:19].replace("T"," "),40)
-        text=(f"Backup de **{when}**.\n**Cadastros:** {len(records)} · **Membros:** {len({r['owner_id'] for r in records})}\n\n"
-              +(f"Isso **substitui todos os cadastros atuais deste servidor** (total: {current}). O histórico continua no /historico.\n" if current else "")
-              +("A planilha conectada será regravada com o backup.\n" if self.store.guild(i.guild_id).get("sheet_url") else "")
-              +("\n**Atenção:** esse backup é de outro servidor.\n" if other else "")
-              +(f"\nAvisos ({len(warnings)}): "+clean("; ".join(warnings[:3]),400) if warnings else ""))
+        when=clean(str(data.get("exported_at") or tr('data desconhecida'))[:19].replace("T"," "),40)
+        text=(tr('Backup de **{0}**.\n**Cadastros:** {1} · **Membros:** {2}\n\n').format(when, len(records), len({r['owner_id'] for r in records}))
+              +(tr('Isso **substitui todos os cadastros atuais deste servidor** (total: {0}). O histórico continua no /historico.\n').format(current) if current else "")
+              +(tr('A planilha conectada será regravada com o backup.\n') if self.store.guild(i.guild_id).get("sheet_url") else "")
+              +(tr('\n**Atenção:** esse backup é de outro servidor.\n') if other else "")
+              +(tr('\nAvisos ({0}): ').format(len(warnings))+clean("; ".join(warnings[:3]),400) if warnings else ""))
         v=RestoreConfirm(self,i.user.id,records)
-        await private_reply(i,embed=self.carteiro.decorate(card("Restaurar backup",text)),view=v)
+        await private_reply(i,embed=self.carteiro.decorate(card(tr('Restaurar backup'),text)),view=v)
     def restore(self, gid, records, actor_id) -> int:
         n=apply(self.store,gid,records,actor_id,replace=True)
         self.notify_soon()
@@ -390,121 +414,114 @@ class Arquivista(commands.Bot):
             try:
                 await guild.fetch_member(int(owner))
             except discord.NotFound:
-                gone.append(f"<@{owner}> · `{owner}` · Cadastros: {n}")
+                gone.append(tr('<@{0}> · `{1}` · Cadastros: {2}').format(owner, owner, n))
             except discord.HTTPException:
                 pass
         if not gone:
-            return "Todo mundo com cadastro ainda está no servidor."+(" (conferi os 150 com mais cadastros)" if checked<len(counts) else "")
+            return tr('Todo mundo com cadastro ainda está no servidor.')+(tr(' (conferi os 150 com mais cadastros)') if checked<len(counts) else "")
         text="\n".join(gone[:40])
-        return text+"\n\nPara apagar: `AC:limpar ID` ou `/limpar id:`. O histórico fica."
+        return text+tr('\n\nPara apagar: `AC:limpar ID` ou `/limpar id:`. O histórico fica.')
     def alias_command(self, gid, query: str) -> str:
         """`JJK = Jujutsu Kaisen` cadastra, `-JJK` tira, vazio lista. Só a staff chega aqui."""
         query=query.strip()
         aliases=self.store.aliases(gid)
         if not query:
             if not aliases:
-                return ("Nenhum apelido cadastrado. A busca por obra já junta grafias parecidas sozinha; "
-                        "apelido serve pro que não se parece, tipo `AC:apelido JJK = Jujutsu Kaisen`.")
+                return (tr('Nenhum apelido cadastrado. A busca por obra já junta grafias parecidas sozinha; apelido serve pro que não se parece, tipo `AC:apelido JJK = Jujutsu Kaisen`.'))
             lines=[f"**{clean(a,60)}** → {clean(w,80)}" for a,w in aliases.items()]
             text,shown="",0
             for line in lines:
                 if len(text)+len(line)>3800:
                     break
                 text+=("\n" if text else "")+line;shown+=1
-            return text+(f"\n… e mais {len(lines)-shown}" if shown<len(lines) else "")
+            return text+(tr('\n… e mais {0}').format(len(lines)-shown) if shown<len(lines) else "")
         if query.startswith("-"):
             alias=query[1:].strip()
             if not self.store.drop_alias(gid,work_key(alias)):
-                raise UserError("Esse apelido não está cadastrado. Use AC:apelido para ver a lista.")
-            return f"Apelido **{clean(alias,60)}** removido."
+                raise UserError(tr('Esse apelido não está cadastrado. Use AC:apelido para ver a lista.'))
+            return tr('Apelido **{0}** removido.').format(clean(alias,60))
         if "=" not in query:
-            raise UserError("Use AC:apelido JJK = Jujutsu Kaisen para cadastrar, AC:apelido -JJK para tirar ou só AC:apelido para listar.")
+            raise UserError(tr('Use AC:apelido JJK = Jujutsu Kaisen para cadastrar, AC:apelido -JJK para tirar ou só AC:apelido para listar.'))
         alias,work=(x.strip() for x in query.split("=",1))
         if not alias or not work or len(alias)>100 or len(work)>100 or not work_key(alias) or not work_key(work):
-            raise UserError("Escreva o apelido e o nome da obra, cada um com até 100 caracteres.")
+            raise UserError(tr('Escreva o apelido e o nome da obra, cada um com até 100 caracteres.'))
         if work_key(alias)==work_key(work):
-            raise UserError("O apelido é igual ao nome da obra; a busca já acha.")
+            raise UserError(tr('O apelido é igual ao nome da obra; a busca já acha.'))
         if work_key(alias) not in {work_key(a) for a in aliases} and len(aliases)>=500:
-            raise UserError("Este servidor já tem 500 apelidos. Tire algum antes.")
+            raise UserError(tr('Este servidor já tem 500 apelidos. Tire algum antes.'))
         self.store.set_alias(gid,work_key(alias),alias,work)
-        return f"Pronto: **{clean(alias,60)}** agora acha **{clean(work,80)}** no `/obra`, e o grupo aparece com esse nome."
+        return tr('Pronto: **{0}** agora acha **{1}** no `/obra`, e o grupo aparece com esse nome.').format(clean(alias,60), clean(work,80))
     async def open_private(self, i, action, query="", member_id=None, attachment=None):
         try:
             actor=await self.actor(i.user.id,i.guild_id)
             archive=self.archive(i.guild_id)
             if action in STAFF_ACTIONS and not actor.staff:
-                raise UserError("Esse comando é exclusivo da staff.")
+                raise UserError(tr('Esse comando é exclusivo da staff.'))
             if action=="planilha":
                 from .sheet_views import show_sheet
                 await show_sheet(self,i)
             elif action=="configurar":
                 if not self.can_configure(i.user):
-                    raise UserError("Só quem pode gerenciar o servidor configura o Arquivista.")
+                    raise UserError(tr('Só quem pode gerenciar o servidor configura o Arquivista.'))
                 v=Settings(self,i.user.id,i.guild)
                 await private_reply(i,embed=v.embed(),view=v)
             elif action=="restaurar":
                 if not self.can_configure(i.user):
-                    raise UserError("Só quem pode gerenciar o servidor restaura um backup.")
+                    raise UserError(tr('Só quem pode gerenciar o servidor restaura um backup.'))
                 await self.open_restore(i,attachment)
             elif action in ("editar","situacao","transferir","remover"):
                 data=await archive.call("list",actor,{"owner_id":"" if actor.staff else actor.id,"include_released":True})
                 records=ranked(data["records"],query,limit=250)
                 if not records:
-                    raise UserError("Não encontrei um cadastro correspondente que você possa gerenciar.")
+                    raise UserError(tr('Não encontrei um cadastro correspondente que você possa gerenciar.'))
                 v=Picker(self,i.user.id,records,action,member_id,attachment)
-                await private_reply(i,content=f"Selecione a aparência e a obra na lista abaixo. Resultados: **{len(records)}**.",view=v)
+                await private_reply(i,content=tr('Selecione a aparência e a obra na lista abaixo. Resultados: **{0}**.').format(len(records)),view=v)
             elif action=="apelido":
-                await private_reply(i,embed=self.carteiro.decorate(card("Apelidos de obra",self.alias_command(i.guild_id,query))))
+                await private_reply(i,embed=self.carteiro.decorate(card(tr('Apelidos de obra'),self.alias_command(i.guild_id,query))))
             elif action=="limpar" and not member_id:
-                await private_reply(i,embed=self.carteiro.decorate(card("Quem saiu do servidor",await self.departed(i.guild))))
+                await private_reply(i,embed=self.carteiro.decorate(card(tr('Quem saiu do servidor'),await self.departed(i.guild))))
             elif action=="limpar":
                 data=await archive.call("list",actor,{"owner_id":str(member_id),"include_released":True})
                 records=data["records"]
                 if not records:
-                    raise UserError("Esse membro não tem nenhum cadastro neste servidor.")
+                    raise UserError(tr('Esse membro não tem nenhum cadastro neste servidor.'))
                 names="\n".join(f"• {clean(r['appearance'],80)} · {clean(r['work'],60)}" for r in records[:15])
                 if len(records)>15:
-                    names+=f"\n… e mais {len(records)-15}"
+                    names+=tr('\n… e mais {0}').format(len(records)-15)
                 v=Confirm(self,i.user.id,"purge",{"owner_id":str(member_id),"ids":sorted(r["id"] for r in records)})
-                await private_reply(i,embed=self.carteiro.decorate(card("Confirmar limpeza",
-                    f"Apagar **todos os cadastros** de <@{member_id}> (total: **{len(records)}**)?\n\n{names}\n\n"
-                    "As aparências ficam livres e as fichas saem da planilha. As mudanças anteriores continuam no /historico.")),view=v)
+                await private_reply(i,embed=self.carteiro.decorate(card(tr('Confirmar limpeza'),
+                    tr('Apagar **todos os cadastros** de <@{0}> (total: **{1}**)?\n\n{2}\n\nAs aparências ficam livres e as fichas saem da planilha. As mudanças anteriores continuam no /historico.').format(member_id, len(records), names))),view=v)
             elif action=="historico":
                 data=await archive.call("history",actor,{"query":query})
                 v=Paginator(self,i.user.id,data["events"],"history",actor=actor,guild_id=i.guild_id)
-                await private_reply(i,content="Esta consulta mostra até 200 mudanças recentes. As anteriores continuam guardadas no banco." if data.get("truncated") else None,embed=await v.embed(),view=v if data["events"] else None)
+                await private_reply(i,content=tr('Esta consulta mostra até 200 mudanças recentes. As anteriores continuam guardadas no banco.') if data.get("truncated") else None,embed=await v.embed(),view=v if data["events"] else None)
             elif action=="diagnostico":
                 data=await archive.call("status",actor)
                 cfg=self.store.guild(i.guild_id)
-                channel=lambda c:f"<#{c}>" if c else "não configurado"
-                body=(f"**Versão do Arquivista:** {__version__}\n"
-                      f"**Cadastros:** {data['records']} ({data['occupied']} ocupando aparência)\n**Membros com cadastro:** {data['members']}\n"
-                      f"**Eventos na auditoria:** {data['events']}\n**Avisos esperando envio:** {data['pending_notices']}\n"
-                      f"**Canal de histórico:** {channel(cfg['log_channel'])}\n**Canal de imagens:** {channel(cfg['image_channel'])}\n"
-                      f"**Cargos de staff:** {', '.join(f'<@&{r}>' for r in cfg['staff_roles']) or 'só dono e quem gerencia o servidor'}\n"
-                      f"**Último envio de avisos:** {self.last_sync or 'ainda não realizado'}\n**Funcionamento:** {self.sync_problem or 'sem erro registrado nesta sessão'}")
+                channel=lambda c:f"<#{c}>" if c else tr('não configurado')
+                body=(tr('**Versão do Arquivista:** {0}\n**Cadastros:** {1} ({2} ocupando aparência)\n**Membros com cadastro:** {3}\n**Eventos na auditoria:** {4}\n**Avisos esperando envio:** {5}\n**Canal de histórico:** {6}\n**Canal de imagens:** {7}\n**Cargos de staff:** {8}\n**Último envio de avisos:** {9}\n**Funcionamento:** {10}').format(__version__, data['records'], data['occupied'], data['members'], data['events'], data['pending_notices'], channel(cfg['log_channel']), channel(cfg['image_channel']), ', '.join(f'<@&{r}>' for r in cfg['staff_roles']) or tr('só dono e quem gerencia o servidor'), self.last_sync or tr('ainda não realizado'), self.sync_problem or tr('sem erro registrado nesta sessão')))
                 me=getattr(i.guild,"me",None);here=i.channel
                 hooks=bool(me and here is not None and hasattr(here,"permissions_for") and here.permissions_for(me).manage_webhooks)
-                body+="\n**Amiya neste canal:** "+("com a foto dela" if hooks else "sai com o ícone do bot; dê ao bot a permissão Gerenciar Webhooks")
+                body+=tr('\n**Amiya neste canal:** ')+(tr('com a foto dela') if hooks else tr('sai com o ícone do bot; dê ao bot a permissão Gerenciar Webhooks'))
                 if cfg.get("sheet_url"):
                     queued,bad=self.store.sheet_pending(i.guild_id)
-                    body+=(f"\n**Planilha:** conectada · envios pendentes: {queued}"+(f", recusados pela planilha: {bad}" if bad else "")+
-                           f"\n**Último envio para a planilha:** {cfg.get('sheet_ok') or 'ainda não realizado'}"+
-                           (f"\n**Último erro da planilha:** {SHEET_ERRORS.get(cfg['sheet_error'],cfg['sheet_error'])}" if cfg.get("sheet_error") else "")+
-                           (f"\n**Edição da planilha que não entrou:** {clean(cfg['sheet_note'],900)}" if cfg.get("sheet_note") else ""))
+                    body+=(tr('\n**Planilha:** conectada · envios pendentes: {0}').format(queued)+(tr(', recusados pela planilha: {0}').format(bad) if bad else "")+
+                           tr('\n**Último envio para a planilha:** {0}').format(cfg.get('sheet_ok') or tr('ainda não realizado'))+
+                           (tr('\n**Último erro da planilha:** {0}').format(tr(SHEET_ERRORS.get(cfg['sheet_error'],cfg['sheet_error']))) if cfg.get("sheet_error") else "")+
+                           (tr('\n**Edição da planilha que não entrou:** {0}').format(clean(cfg['sheet_note'],900)) if cfg.get("sheet_note") else ""))
                 else:
-                    body+="\n**Planilha:** não conectada"
-                body+="\n**Criação automática de planilhas:** "+("ativada" if self.managed.ready else "aguardando ativação pelo mantenedor")
+                    body+=tr('\n**Planilha:** não conectada')
+                body+=tr('\n**Criação automática de planilhas:** ')+(tr("ativada") if self.managed.ready else tr('aguardando ativação pelo mantenedor'))
                 if cfg.get("backup_channel"):
                     nxt=cfg.get("backup_next")
-                    body+=(f"\n**Backup:** <#{cfg['backup_channel']}> · {backup.INTERVALS.get(cfg.get('backup_hours') or 24,'todo dia')}"+
-                           (f" · próximo <t:{int(nxt)}:R>" if nxt else "")+
-                           (f"\n**Último erro do backup:** {cfg['backup_error']}" if cfg.get("backup_error") else ""))
+                    body+=(tr('\n**Backup:** <#{0}> · {1}').format(cfg['backup_channel'], tr(backup.INTERVALS.get(cfg.get('backup_hours') or 24,'todo dia')))+
+                           (tr(' · próximo <t:{0}:R>').format(int(nxt)) if nxt else "")+
+                           (tr('\n**Último erro do backup:** {0}').format(cfg['backup_error']) if cfg.get("backup_error") else ""))
                 else:
-                    body+="\n**Backup:** desligado"
-                await private_reply(i,embed=self.carteiro.decorate(card("Diagnóstico privado",body)))
+                    body+=tr('\n**Backup:** desligado')
+                await private_reply(i,embed=self.carteiro.decorate(card(tr('Diagnóstico privado'),body)))
             else:
-                raise UserError("Operação não reconhecida.")
+                raise UserError(tr('Operação não reconhecida.'))
         except Exception as exc:
             await self.failure(i,exc)
     @tasks.loop(seconds=90)
@@ -546,9 +563,10 @@ class Arquivista(commands.Bot):
                 log.warning("Backup do servidor %s: %s", gid, type(exc).__name__)
                 cfg=self.store.guild(gid)
                 # Tenta de novo em 30 min, sem empurrar o horário normal para longe.
-                self.store.set_guild(gid,backup_error=str(exc)[:200] if isinstance(exc,UserError) else "não consegui enviar o arquivo",
+                self.store.set_guild(gid,backup_error=str(exc)[:200] if isinstance(exc,UserError) else tr('não consegui enviar o arquivo'),
                                      backup_next=time.time()+min(1800,(cfg.get("backup_hours") or 24)*3600))
     async def send_backup(self, gid: str, channel=None) -> None:
+        preparar(self,gid)
         """Manda o backup no canal configurado (ou no informado). Erro de configuração vira UserError com o motivo."""
         cfg=self.store.guild(gid)
         channel=channel or self.get_channel(int(cfg["backup_channel"] or 0))
@@ -561,12 +579,11 @@ class Arquivista(commands.Bot):
         files=[discord.File(io.BytesIO(backup.export_json(gid,records)),filename=name+".json")]
         if cfg.get("sheet_url"):
             names={o:await self.sheets.owner_name(gid,o) for o in {r["owner_id"] for r in records}}
-            files.append(discord.File(io.BytesIO(backup.workbook(records,names)),filename=name+".xlsx"))
-        text=(f"Cadastros: **{len(records)}** · Membros: **{len({r['owner_id'] for r in records})}**.\n\n"
-              "Para recuperar os cadastros, anexe o `.json` ao `/restaurar`"+
-              (". O `.xlsx` permite consultar os cadastros por membro, cada um na sua aba." if cfg.get("sheet_url") else ".")+
-              "\n\nOs arquivos incluem justificativas e nomes dos personagens no servidor. Mantenha este canal só para a staff.")
-        await channel.send(embed=self.carteiro.decorate(card("Backup do arquivo",text)),files=files,allowed_mentions=discord.AllowedMentions.none())
+            files.append(discord.File(io.BytesIO(backup.workbook(records,names,cfg.get("language","pt-BR"))),filename=name+".xlsx"))
+        text=(tr('Cadastros: **{0}** · Membros: **{1}**.\n\nPara recuperar os cadastros, anexe o `.json` ao `/restaurar`').format(len(records), len({r['owner_id'] for r in records}))+
+              (tr('. O `.xlsx` permite consultar os cadastros por membro, cada um na sua aba.') if cfg.get("sheet_url") else ".")+
+              tr('\n\nOs arquivos incluem justificativas e nomes dos personagens no servidor. Mantenha este canal só para a staff.'))
+        await channel.send(embed=self.carteiro.decorate(card(tr('Backup do arquivo'),text)),files=files,allowed_mentions=discord.AllowedMentions.none())
         hours=cfg.get("backup_hours") or 24
         self.store.set_guild(gid,backup_error=None,backup_next=time.time()+hours*3600)
     async def deliver_events(self):
@@ -582,6 +599,7 @@ class Arquivista(commands.Bot):
                 log.warning("Falha nos avisos: %s",type(exc).__name__)
     async def deliver_pending(self):
         for row in self.store.pending():
+            preparar(self,row["guild_id"])
             event=json.loads(row["data"])
             channel_id=self.store.guild(row["guild_id"]).get("log_channel")
             if not channel_id:
@@ -607,13 +625,13 @@ class Arquivista(commands.Bot):
                                 break
                 if found is None:
                     titles={"created":"Aparência registrada","removed":"Cadastro removido","transferred":"Responsável alterado","updated":"Cadastro atualizado"}
-                    actor=f"<@{event['actor_id']}>" if event.get("actor_id") else "Planilha; autor não identificado"
+                    actor=f"<@{event['actor_id']}>" if event.get("actor_id") else tr('Planilha; autor não identificado')
                     if event["kind"]=="purged":
-                        e=card("Cadastros de um membro apagados",
-                            f"**Membro:** <@{event['owner_id']}>\n**Cadastros apagados:** {event['count']}\n**Registro da alteração:** {actor}")
+                        e=card(tr('Cadastros de um membro apagados'),
+                            tr('**Membro:** <@{0}>\n**Cadastros apagados:** {1}\n**Registro da alteração:** {2}').format(event['owner_id'], event['count'], actor))
                     else:
-                        e=card(titles.get(event["kind"],"Cadastro atualizado"),
-                            f"**Aparência:** {clean(event['appearance'],200)}\n**Obra:** {clean(event['work'],200)}\n**Responsável:** <@{event['owner_id']}>\n**Registro da alteração:** {actor}")
+                        e=card(tr(titles.get(event["kind"],"Cadastro atualizado")),
+                            tr('**Aparência:** {0}\n**Obra:** {1}\n**Responsável:** <@{2}>\n**Registro da alteração:** {3}').format(clean(event['appearance'],200), clean(event['work'],200), event['owner_id'], actor))
                     e.set_footer(text=f"Evento {event['event_id']}")
                     try:e.timestamp=datetime.fromisoformat(event["at"].replace("Z","+00:00"))
                     except ValueError:pass
@@ -632,6 +650,16 @@ class Arquivista(commands.Bot):
 
 def install_slash_commands(bot):
     """As duas entradas usam o mesmo run_action e as mesmas permissões."""
+    @bot.tree.command(name="language",description="Set the server language. New spreadsheets use this language.")
+    @app_commands.guild_only()
+    @app_commands.choices(language=[app_commands.Choice(name="English",value="en"),app_commands.Choice(name="Português do Brasil",value="pt-BR")])
+    async def language(i:discord.Interaction,language:str|None=None):
+        await bot.change_language(i,language)
+    @bot.tree.command(name="idioma",description="Escolher idioma do servidor e das novas planilhas.")
+    @app_commands.guild_only()
+    @app_commands.choices(idioma=[app_commands.Choice(name="Português do Brasil",value="pt-BR"),app_commands.Choice(name="English",value="en")])
+    async def idioma(i:discord.Interaction,idioma:str|None=None):
+        await bot.change_language(i,idioma)
     @bot.tree.command(name="ajuda",description="Índice de comandos da Amiya.")
     @app_commands.guild_only()
     async def ajuda(i:discord.Interaction):await bot.run_action(i,"ajuda")
@@ -690,7 +718,7 @@ def install_slash_commands(bot):
     @app_commands.default_permissions(manage_guild=True)
     @app_commands.describe(arquivo="O .json que o backup mandou")
     async def restaurar(i:discord.Interaction,arquivo:discord.Attachment):await bot.run_action(i,"restaurar",attachment=arquivo)
-    planilha = app_commands.Group(name="planilha", description="Planilha pronta e edição manual conectada ao arquivo.",
+    planilha = app_commands.Group(name="planilha", description=tr('Planilha pronta e edição manual conectada ao arquivo.'),
         guild_only=True, default_permissions=discord.Permissions(manage_guild=True))
     @planilha.command(name="criar",description="Cria a planilha pronta e dá edição ao e-mail informado em privado.")
     async def planilha_criar(i:discord.Interaction):
@@ -704,13 +732,13 @@ def install_slash_commands(bot):
     @app_commands.describe(membro="Selecione um membro deste servidor pelo @; não aceita nick como texto.")
     async def planilha_membro(i:discord.Interaction,membro:discord.Member):
         if not bot.can_configure(i.user):
-            return await private_reply(i,content="Só quem pode gerenciar o servidor prepara as abas.")
+            return await private_reply(i,content=tr('Só quem pode gerenciar o servidor prepara as abas.'))
         await i.response.defer(ephemeral=True,thinking=True)
         try:
             url=await bot.managed.prepare_member(i.guild,i.user,membro)
             row=bot.store.managed_sheet(i.guild_id)
-            link=f"[Abrir planilha]({url})" if row and row["url"]==url else "Abra a planilha já conectada ao servidor."
-            await private_reply(i,content=f"A aba de <@{membro.id}> está preparada. {link}\nPreencha uma posição vazia; a sincronização lê as edições em cerca de 5 minutos.")
+            link=tr('[Abrir planilha]({0})').format(url) if row and row["url"]==url else tr('Abra a planilha já conectada ao servidor.')
+            await private_reply(i,content=tr('A aba de <@{0}> está preparada. {1}\nPreencha uma posição vazia; a sincronização lê as edições em cerca de 5 minutos.').format(membro.id, link))
         except UserError as exc:
             await private_reply(i,content=str(exc))
     bot.tree.add_command(planilha)

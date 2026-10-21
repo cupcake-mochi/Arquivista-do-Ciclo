@@ -27,6 +27,15 @@ Use `/configurar` (só o dono, quem é Administrador ou quem tem Gerenciar Servi
 
 Tudo isso é opcional. Sem nada configurado o bot já cadastra e consulta.
 
+## Idioma
+
+Antes de criar a planilha, use `/language` ou `/idioma` e escolha **English** ou **Português do Brasil**. Sem escolha, o comando só consulta. Os cargos de staff configurados também podem trocar o idioma; isso não lhes concede permissão para configurar ou compartilhar uma planilha.
+
+As respostas novas do bot seguem a escolha. Uma planilha nova é montada nesse idioma. Se o arquivo já existe, ele mantém o idioma original e continua conectado; o bot não o traduz nem cria outro. Os nomes dos comandos no menu nativo seguem o idioma do seu Discord. A escolha é independente da feita nas Guias.
+
+## Idioma do bot e das planilhas
+Use /language ou /idioma para escolher português ou inglês. Dono, Administrador, Gerenciar servidor e os cargos de staff cadastrados podem mudar essa preferência. Ela vale só neste servidor e é independente das Guias. Os nomes dos comandos nativos seguem o idioma do seu aplicativo Discord; as respostas seguem o idioma do servidor. Conteúdo digitado pelos membros não é traduzido. Cada planilha gerenciada recebe seu idioma ao ser criada: mudar a preferência não converte arquivos existentes, não altera seus acessos e não exige novas permissões Google. Não mude a localidade do arquivo manualmente; se isso ocorrer, a sincronização avisa para restaurá-la.
+
 ## 3. Planilha (opcional)
 
 Você pode preencher as fichas na planilha ou pelo Discord. O que mudar em um aparece no outro.
@@ -68,3 +77,26 @@ A staff usa `/situacao`, `/transferir`, `/remover`, `/limpar`, `/apelido` e `/hi
 - **Precisa recuperar os cadastros:** anexe o `.json` ao `/restaurar` e confira o resumo antes de confirmar. Ele substitui os cadastros atuais pelos do backup.
 
 Dados e regras: [política de privacidade](https://docs.google.com/document/d/1nMsutdyyrtb-YKCKziW3SmDY3ViKN31yO1OOW3zSRcw/view) e [termos de uso](https://docs.google.com/document/d/1uZlohyKEn7eOlM1wP5TbSeDBm_PkpLc13YnGmPYpZx8/view).
+
+---
+
+# Set up Arquivista in your server — English
+Invite and permissions
+Invite Arquivista using its invitation link. Keep its requested channel permissions. Manage Webhooks allows messages to use Amiya’s picture; without it, the bot still works with its own icon. The private diagnostic command identifies missing webhook permission.
+Configure your server
+Use the configuration command as server owner, administrator or a member with Manage Server. Choose staff roles, a history channel, an image channel and optionally backups and a spreadsheet. Staff roles can manage internal statuses, transfers, other members’ records, cleanup and history; they do not become Discord administrators.
+The history channel receives change notices without internal statuses or reasons. The image channel stores uploaded registration images; keep those messages. Backups must go to a channel restricted to authorized staff because they include internal reasons and server character names. Use Back up now to check delivery. A JSON record backup does not include all settings or full audit history; the maintainer must also retain full hosting backups.
+Language
+Use /language or /idioma to choose Portuguese or English. The server owner, administrators, members with Manage Server and configured staff roles can change this setting. It applies only to this server and is independent of Guias do Ciclo. Native command names follow the Discord client language; replies follow the server setting. Member-written names and content are not translated. Each managed spreadsheet keeps the language assigned when it was created. Changing the server setting does not convert existing files, change sharing or require new Google permissions. Do not manually change the spreadsheet locale: synchronization will ask you to restore it.
+Optional spreadsheet
+Use /spreadsheet create (Portuguese: /planilha criar), or the configuration panel’s spreadsheet option, then Create or resume. Enter the authorized editor’s Google email in the private form. That address receives access to internal server data. Open the supplied link: the file is already prepared and connected. If automatic creation is unavailable, contact the maintainer and continue registering through the bot.
+Repeating creation resumes or opens the same managed file. To retrieve the link, open the spreadsheet command or AC:spreadsheet. Disconnecting only stops synchronization; the file and Google access remain. Use the creation flow to reconnect.
+To prepare another member’s tab, use the spreadsheet member option and select that person from Discord’s member list. Typing a nickname alone does not select a member. Registering through the bot also creates the needed tab.
+Fill the prepared slots with appearance, source work, status and optional fields. Sheets edits reach the bot in about five minutes after validation. Check the private diagnostic panel for rejected changes. Use the remove command to delete a record: clearing a row does not remove it from the bot.
+Tabs start with 20 slots and expand by 20 when only two are free. Preserve formulas and identifier columns; do not insert or delete rows inside record blocks. English files display ISO dates. Give edit access only to staff. Previously connected Portuguese files remain compatible.
+Guide your members
+AC:guide introduces the bot; AC:help lists commands. AC:register opens registration, AC:appearances searches, AC:gallery shows images and AC:edit changes server character name or image. Members can remove their own records after confirmation.
+Staff can manage statuses, transfer or remove records, clear a former member’s records, define source-work aliases and inspect private history. Diagnostics reports bot and spreadsheet status.
+Troubleshooting
+Native slash commands may take time to appear; prefix commands are available immediately. If a panel expires after an update, reopen the command. Check diagnostics for synchronization errors. To restore a record backup, attach the JSON to the restore command and review the summary before confirming; it replaces current records with those in the backup.
+Privacy and terms are linked in help and the bot profile.

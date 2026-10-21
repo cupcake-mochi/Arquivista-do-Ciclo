@@ -99,7 +99,7 @@ class PanelAccessTests(unittest.IsolatedAsyncioTestCase):
         for content,everyone,mentions,roles,reply,expected in cases:
             with self.subTest(content=content,reply=reply):
                 bot=SimpleNamespace(user=SimpleNamespace(id=bot_id),last_mention={},
-                    store=SimpleNamespace(is_ours=lambda mid:mid==123),carteiro=SimpleNamespace(send=AsyncMock()),run_action=AsyncMock())
+                    store=SimpleNamespace(is_ours=lambda mid:mid==123,guild=lambda gid:{"language":"pt-BR"}),carteiro=SimpleNamespace(send=AsyncMock()),run_action=AsyncMock())
                 message=SimpleNamespace(content=content,mention_everyone=everyone,mentions=mentions,role_mentions=roles,
                     reference=SimpleNamespace(message_id=reply) if reply else None,author=SimpleNamespace(id=30,bot=False),
                     webhook_id=None,guild=SimpleNamespace(id=1),channel=SimpleNamespace(id=2),attachments=[])

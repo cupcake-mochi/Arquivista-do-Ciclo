@@ -5,6 +5,7 @@ O .xlsx é montado à mão (zip + XML) para não depender de biblioteca. É uma 
 dos dados; a formatação da planilha conectada (blocos, visor, cores) não vai junto.
 """
 from __future__ import annotations
+from .sheet_language import label
 import io
 import json
 import re
@@ -60,7 +61,7 @@ def _sheet_xml(rows: list[list]) -> str:
             f'<cols>{cols}</cols><sheetData>{"".join(body)}</sheetData></worksheet>')
 
 
-def workbook(records: list[dict], names: dict[str, str]) -> bytes:
+def workbook(records: list[dict], names: dict[str, str], language="pt-BR") -> bytes:
     """Uma guia por membro (nome de usuário), na ordem dos cadastros. names: owner_id -> nome."""
     by_owner: dict[str, list[dict]] = {}
     for r in records:
@@ -68,18 +69,19 @@ def workbook(records: list[dict], names: dict[str, str]) -> bytes:
     taken: set[str] = set()
     sheets = []
     for owner, items in by_owner.items():
-        rows = [[c[0] for c in COLUMNS]]
+        rows = [[label(c[0],language) for c in COLUMNS]]
         for r in items:
             line = []
             for _, key, _ in COLUMNS:
                 v = r.get(key) or ""
                 if key == "date" and v:
-                    v = date.fromisoformat(v).strftime("%d/%m/%Y")
+                    v = date.fromisoformat(v).strftime("%Y-%m-%d" if language=="en" else "%d/%m/%Y")
+                if key == "status":v=label(v,language)
                 line.append(v)
             rows.append(line)
-        sheets.append((_sheet_name(names.get(owner) or f"Membro {owner}", taken), rows))
+        sheets.append((_sheet_name(names.get(owner) or f"Member {owner}" if language=="en" else names.get(owner) or f"Membro {owner}", taken), rows))
     if not sheets:
-        sheets.append(("Sem cadastros", [[c[0] for c in COLUMNS]]))
+        sheets.append(("No records" if language=="en" else "Sem cadastros", [[label(c[0],language) for c in COLUMNS]]))
     ns = 'xmlns="http://schemas.openxmlformats.org/package/2006/relationships"'
     files = {
         "[Content_Types].xml": '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'

@@ -1,0 +1,8 @@
+{
+  "projeto": "arquivista",
+  "fontes_instalados_iguais_ao_pacote": 27,
+  "arquivos_de_ambiente_preservados": 1,
+  "banco_integro_com_wal": true,
+  "backup_pos_sha256": "149a43767741eec469198bb667b5e0ce791814026ae5370bc8cf734b887dc07f",
+  "cadastros_historico_planilhas_configuracoes_preservados": true
+}

@@ -1,5 +1,13 @@
 # Histórico de versões
 
+## 1.1.0 · 21/10/2026
+
+Idioma por servidor: português ou inglês, com autorização da gerência ou de cargos de staff cadastrados. Interface, formulários, guias e mensagens em inglês; aliases ingleses disponíveis. Dados dos membros e códigos internos permanecem canônicos.
+
+Planilhas gerenciadas novas seguem o idioma escolhido na criação. Arquivos existentes conservam localidade, idioma, acesso e sincronização; não são convertidos pela troca de idioma do servidor. Documentação pública bilíngue e preferências independentes das Guias.
+
+Publicada e auditada: 27 arquivos instalados iguais ao pacote, bancos/WAL íntegros e dados anteriores preservados. 149 testes Python e 36 JavaScript; ensaio privado Google com fórmulas, expansão e transferência; Discord com duas contas, idiomas e permissões. A concessão real de editor por e-mail não foi repetida nesta rodada. Detalhes em docs/RETOMADA-IDIOMA.md.
+
 ## 1.0.3 · 20/10/2026
 
 Cada membro pode remover os próprios cadastros pelo `/remover` ou `AC:rm`, com confirmação. A permissão e a revisão da ficha são conferidas novamente ao salvar; transferir a ficha revoga o acesso do antigo responsável. A auditoria fica preservada e a remoção segue para a planilha.

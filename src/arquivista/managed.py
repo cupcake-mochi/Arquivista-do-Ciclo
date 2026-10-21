@@ -1,5 +1,6 @@
 """Criação retomável de uma planilha privada por servidor, sem instalar Apps Script."""
 from __future__ import annotations
+from .sheet_language import label
 import re
 import uuid
 import discord
@@ -56,7 +57,7 @@ class ManagedSheets:
                 raise GoogleError("GOOGLE_SETUP")
             if not row:
                 email = valid_email(email or "")
-                row = self.bot.store.begin_managed_sheet(guild.id, str(uuid.uuid4()), seal(self.bot.config.master_key, email))
+                row = self.bot.store.begin_managed_sheet(guild.id, str(uuid.uuid4()), seal(self.bot.config.master_key, email), cfg.get("language","pt-BR"))
             elif row["state"] == "awaiting_email":
                 email = valid_email(email or "")
                 self.bot.store.update_managed_sheet(guild.id, editor=seal(self.bot.config.master_key, email), state="sharing")
@@ -79,7 +80,7 @@ class ManagedSheets:
                     raise GoogleError("INTERNAL", uncertain=True)
                 self.bot.store.update_managed_sheet(guild.id, file_id=file_id, url=url, state="initializing")
                 row = self.bot.store.managed_sheet(guild.id)
-            sheet = DirectSheet(self.api, row["file_id"])
+            sheet = DirectSheet(self.api, row["file_id"], row.get("language","pt-BR"))
             if row["state"] != "ready":
                 if row["state"] != "sharing":
                     await self.initialize(sheet, guild, manager)
@@ -109,7 +110,7 @@ class ManagedSheets:
 
     async def initialize(self, sheet, guild, manager):
         meta = await sheet.metadata()
-        properties = {"locale": "pt_BR", "timeZone": self.bot.config.timezone}
+        properties = {"locale": sheet.locale, "timeZone": self.bot.config.timezone}
         # IMAGE precisa dessa liberação por arquivo. O Google não permite revogá-la pela API;
         # configure apenas o arquivo novo e omita o campo quando já estiver habilitado numa retomada.
         if not meta.get("properties", {}).get("importFunctionsExternalUrlAccessAllowed"):
@@ -118,7 +119,7 @@ class ManagedSheets:
         sid = first["sheetId"]
         # Na fase de inicialização ninguém recebeu acesso ainda. O conteúdo pode ser repetido após uma queda.
         instructions = [
-            ["ARQUIVISTA DO CICLO · " + guild.name],
+            [label("ARQUIVISTA DO CICLO · ",sheet.language) + guild.name],
             ["Esta planilha pertence à conta do Arquivista. O e-mail informado no Discord recebe acesso de editor."],
             ["Você pode preencher as fichas aqui ou pelo bot. O que mudar em um aparece no outro."],
             ["Abra a aba de um membro e preencha uma posição vazia com Aparência, Obra e Situação."],
@@ -129,9 +130,10 @@ class ManagedSheets:
             ["Para remover um cadastro, use /remover no Discord. Limpar uma linha não apaga o cadastro do bot."],
             ["Compartilhe edição somente com a staff: quem edita a planilha pode alterar os cadastros do servidor."],
         ]
+        instructions = [[label(row[0],sheet.language)] for row in instructions]
         await self.api.request("POST", sheet.url + ":batchUpdate", body={"requests": [
             {"updateSpreadsheetProperties": {"properties": properties, "fields": ",".join(properties)}},
-            {"updateSheetProperties": {"properties": {"sheetId": sid, "title": "COMECE AQUI",
+            {"updateSheetProperties": {"properties": {"sheetId": sid, "title": label("COMECE AQUI",sheet.language),
                 "gridProperties": {"rowCount": max(30, first["gridProperties"]["rowCount"]), "columnCount": max(11, first["gridProperties"]["columnCount"])}},
                 "fields": "title,gridProperties.rowCount,gridProperties.columnCount"}},
             {"updateDimensionProperties": {"range": {"sheetId": sid, "dimension": "COLUMNS", "startIndex": 0, "endIndex": 1},

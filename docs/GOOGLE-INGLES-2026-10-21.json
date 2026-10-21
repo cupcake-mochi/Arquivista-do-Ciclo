@@ -1,0 +1,19 @@
+{
+  "passed": true,
+  "date": "2026-10-21",
+  "private_synthetic_only": true,
+  "steps": [
+    "20 slots / 2 records",
+    "40 slots / 18 records",
+    "60 slots / 38 records",
+    "transfer: 37 + 1; stable record ID"
+  ],
+  "locale": "en_US",
+  "native_formulas_no_errors": true,
+  "native_counts_viewer_iso_date": true,
+  "row_groups": 61,
+  "merges": 316,
+  "conditional_formats": 5,
+  "sharing_unchanged": true,
+  "trashed_after_test": true
+}

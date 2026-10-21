@@ -8,6 +8,7 @@ Cada função que gera pedidos também atualiza a grade, para o planejamento seg
 planilha como ela vai ficar. Linhas e colunas começam em 1, como na planilha.
 """
 from __future__ import annotations
+from .sheet_language import label, formula
 import datetime as dt
 import json
 import re
@@ -46,7 +47,8 @@ STATUS_COLORS = {"Em preparação": (rgb(1, 0.953, 0.867), rgb(0.557, 0.357, 0.0
 
 
 class Tab:
-    def __init__(self, name: str, sheet_id: int, grid: list[list]):
+    def __init__(self, name: str, sheet_id: int, grid: list[list], language="pt-BR"):
+        self.language = language
         self.name, self.sheet_id, self.grid = name, sheet_id, grid
 
 
@@ -67,13 +69,18 @@ class Block:
 
 class Model:
     """Planilha como o bot a enxerga: separador das fórmulas, guias de membro e nomes de todas as guias."""
-    def __init__(self, sep: str = ";", tabs: list[Tab] | None = None, names: list[str] | None = None, next_sheet_id: int = 1000):
+    def __init__(self, sep: str = ";", tabs: list[Tab] | None = None, names: list[str] | None = None, next_sheet_id: int = 1000, language="pt-BR"):
+        self.language = language
         self.sep, self.tabs, self.names, self.next_sheet_id = sep, tabs or [], names or [], next_sheet_id
         self.req: list[dict] = []
 
     # ---------- utilitários ----------
+    def label(self, text):
+        return label(text,self.language)
+
     def f(self, text: str) -> str:
         """Fórmulas são escritas com vírgula e convertidas para o separador da planilha (pt-BR usa ;)."""
+        text = formula(text,self.language)
         if self.sep == ",":
             return text
         out, quoted = [], False
@@ -147,7 +154,7 @@ class Model:
     # ---------- estrutura: guia, bloco de membro e posições ----------
     def tab_name(self, name: str, owner: str, current: str | None = None) -> str:
         """Nome de usuário do dono, com (2), (3)... se já existir outra guia com ele."""
-        base = re.sub(r"[\x00-\x1f]", "", str(name or ("Membro " + owner))).strip()[:90] or ("Membro " + owner)
+        base = re.sub(r"[\x00-\x1f]", "", str(name or (("Member " if self.language == "en" else "Membro ") + owner))).strip()[:90] or (("Member " if self.language == "en" else "Membro ") + owner)
         # O Sheets não aceita duas guias com o mesmo nome, nem só mudando maiúsculas.
         taken = lambda n: any(x.lower() == n.lower() and x != current for x in self.names)
         out, i = base, 2
@@ -157,7 +164,7 @@ class Model:
     def new_tab(self, name: str, owner: str) -> Tab:
         sid = self.next_sheet_id
         self.next_sheet_id += 1
-        tab = Tab(self.tab_name(name, owner), sid, _empty(FIRST_BLOCK))
+        tab = Tab(self.tab_name(name, owner), sid, _empty(FIRST_BLOCK), self.language)
         self.names.append(tab.name)
         req = self.req
         req.append({"addSheet": {"properties": {"sheetId": sid, "title": tab.name,
@@ -168,9 +175,9 @@ class Model:
         req.append({"updateDimensionProperties": {"range": {"sheetId": sid, "dimension": "COLUMNS", "startIndex": MARK - 1, "endIndex": MARK},
                                                   "properties": {"hiddenByUser": True}, "fields": "hiddenByUser"}})
         self.tabs.append(tab)
-        self.set(tab, 1, 1, ["CATÁLOGO DE APARÊNCIAS"])
-        self.set(tab, 2, 1, ["Edite as fichas aqui ou pelo bot. As mudanças chegam ao Discord em cerca de 5 minutos. Use + / − para ver as justificativas. Em vermelho: aparência e obra repetidas nas fichas deste membro."])
-        self.set(tab, 3, 1, ["Escolha o número da ficha para vê-la no visor. A aba começa com 20 posições e ganha mais 20 quando restam duas livres."])
+        self.set(tab, 1, 1, [self.label('CATÁLOGO DE APARÊNCIAS')])
+        self.set(tab, 2, 1, [self.label('Edite as fichas aqui ou pelo bot. As mudanças chegam ao Discord em cerca de 5 minutos. Use + / − para ver as justificativas. Em vermelho: aparência e obra repetidas nas fichas deste membro.')])
+        self.set(tab, 3, 1, [self.label('Escolha o número da ficha para vê-la no visor. A aba começa com 20 posições e ganha mais 20 quando restam duas livres.')])
         for r in (1, 2, 3):
             _merge(req, sid, r, r, 1, 10)
         _format(req, sid, 1, 1, 1, 10, bg=TITLE, ink=WHITE, bold=True, size=16)
@@ -181,7 +188,7 @@ class Model:
         for s in STATUSES:
             bg, ink = STATUS_COLORS[s]
             req.append({"addConditionalFormatRule": {"index": 0, "rule": {"ranges": [status], "booleanRule": {
-                "condition": {"type": "TEXT_EQ", "values": [{"userEnteredValue": s}]},
+                "condition": {"type": "TEXT_EQ", "values": [{"userEnteredValue": self.label(s)}]},
                 "format": {"backgroundColor": bg, "textFormat": {"bold": True, "foregroundColor": ink}}}}}})
         r = FIRST_BLOCK
         req.append({"addConditionalFormatRule": {"index": 0, "rule": {
@@ -196,7 +203,7 @@ class Model:
             n, r = start_n + i, first + 4 * i
             self.set(tab, r, N, [n])
             self.set(tab, r, IMAGE, [{"f": self.f(f'=IF(H{r}="","",IFERROR(IMAGE(H{r}),""))')}])
-            self.set(tab, r + 1, APPEARANCE, ["JUSTIFICATIVA / OBSERVAÇÃO   ·   só para a staff"])
+            self.set(tab, r + 1, APPEARANCE, [self.label('JUSTIFICATIVA / OBSERVAÇÃO   ·   só para a staff')])
             # Imagem e link só nas 2 linhas sempre visíveis: mesclar com as linhas recolhidas faz a imagem passar por cima.
             _merge(req, sid, r, r + 3, 1, 1); _merge(req, sid, r, r + 1, 7, 7); _merge(req, sid, r, r + 1, 8, 8)
             _merge(req, sid, r + 1, r + 1, 2, 6); _merge(req, sid, r + 2, r + 3, 2, 6)
@@ -211,7 +218,7 @@ class Model:
             r = first + 4 * i
             _format(req, sid, r, r, 2, 2, bold=True, ink=PURPLE)
             _format(req, sid, r, r, 3, 5)
-            _format(req, sid, r, r, 6, 6, h="CENTER", date=True)
+            _format(req, sid, r, r, 6, 6, h="CENTER", date=True, language=self.language)
             _format(req, sid, r + 1, r + 1, 2, 6, bg=LABEL, ink=SLOT_INK, bold=True, size=9)
             _format(req, sid, r + 2, r + 3, 2, 6, bg=JUSTIFY, v="TOP")
         for i in range(count):
@@ -219,7 +226,7 @@ class Model:
             _border(req, sid, r, r, 1, 10, True)       # linha da ficha, célula por célula
             _border(req, sid, r, r + 3, 1, 10, False)  # contorno da posição inteira
         req.append({"setDataValidation": {"range": _range(sid, first, last, STATUS, STATUS), "rule": {"condition": {"type": "ONE_OF_LIST",
-            "values": [{"userEnteredValue": s} for s in STATUSES]}, "strict": True, "showCustomUi": True}}})
+            "values": [{"userEnteredValue": self.label(s)} for s in STATUSES]}, "strict": True, "showCustomUi": True}}})
         # A validação vale para a coluna toda do trecho; as linhas de justificativa não usam E/F.
         req.append({"setDataValidation": {"range": _range(sid, first, last, DATE, DATE), "rule": {"condition": {"type": "DATE_IS_VALID"}, "strict": True}}})
     def new_block(self, owner: str, name: str) -> Block:
@@ -233,21 +240,21 @@ class Model:
         M = f"MATCH(F{s + 1},{A},0)"
         pick = lambda col: f"INDEX({at(col)},{M})"
         f = self.f
-        self.set(tab, s, 1, [name or ("Membro " + owner)])
+        self.set(tab, s, 1, [name or (("Member " if self.language == "en" else "Membro ") + owner)])
         self.set(tab, s, 6, [{"f": f(f'=COUNTIFS({A},">=1",{at("I")},"<>")&" / "&MAX({A})')}])
         self.set(tab, s, MARK, ["BLOCO:" + owner])
-        self.set(tab, s + 1, 1, ["VISOR DO PERSONAGEM · consulta"])
-        self.set(tab, s + 1, 5, ["Escolher nº", 1])
+        self.set(tab, s + 1, 1, [self.label('VISOR DO PERSONAGEM · consulta')])
+        self.set(tab, s + 1, 5, [self.label('Escolher nº'), 1])
         self.set(tab, s + 2, 1, [{"f": f(f'=IFERROR({pick("G")},"")')}])
         self.set(tab, s + 2, 3, [{"f": f(f'=IFERROR(IF({pick("B")}="","Nenhuma aparência nesta posição",IF({pick("C")}="",{pick("B")},{pick("C")})),"Escolha uma posição válida")')}])
         self.set(tab, s + 4, 3, [{"f": f(f'=IFERROR("Aparência: "&{pick("B")},"")')}])
         self.set(tab, s + 5, 3, [{"f": f(f'=IFERROR("Obra: "&{pick("D")},"")')}])
         self.set(tab, s + 6, 3, [{"f": f(f'=IFERROR("Situação: "&{pick("E")},"")')}])
         self.set(tab, s + 7, 3, [{"f": f(f'=IFERROR("Cadastro: "&IF({pick("F")}="","não informado",TEXT({pick("F")},"dd/mm/yyyy")),"")')}])
-        self.set(tab, s + 8, 3, ["OBSERVAÇÃO / JUSTIFICATIVA · leitura"])
+        self.set(tab, s + 8, 3, [self.label('OBSERVAÇÃO / JUSTIFICATIVA · leitura')])
         self.set(tab, s + 9, 3, [{"f": f(f'=IFERROR(IF(INDEX({at("B")},{M}+2)="","Sem observação / justificativa.",INDEX({at("B")},{M}+2)),"")')}])
-        self.set(tab, s + 11, 1, list(HEADERS))
-        self.set(tab, s + 12, 1, ["POSIÇÕES   ·   abra o + ao lado de cada ficha para ver a justificativa"])
+        self.set(tab, s + 11, 1, [self.label(h) for h in HEADERS])
+        self.set(tab, s + 12, 1, [self.label('POSIÇÕES   ·   abra o + ao lado de cada ficha para ver a justificativa')])
         self.set(tab, z, MARK, ["FIM:" + owner])
         _merge(req, sid, s, s, 1, 5); _merge(req, sid, s, s, 6, 7); _merge(req, sid, s + 1, s + 1, 1, 4); _merge(req, sid, s + 1, s + 1, 6, 7)
         _merge(req, sid, s + 2, s + 9, 1, 2); _merge(req, sid, s + 2, s + 3, 3, 7)
@@ -270,7 +277,7 @@ class Model:
         _height(req, sid, s, s, 44); _height(req, sid, s + 1, s + 8, 32); _height(req, sid, s + 9, s + 9, 96)
         _height(req, sid, s + 10, s + 10, 12); _height(req, sid, s + 11, s + 11, 44); _height(req, sid, s + 12, s + 12, 32); _height(req, sid, z, z, 24)
         req.append({"setDataValidation": {"range": _range(sid, s + 1, s + 1, 6, 6), "rule": {"condition": {"type": "NUMBER_BETWEEN",
-            "values": [{"userEnteredValue": "1"}, {"userEnteredValue": "10000"}]}, "strict": True, "inputMessage": "Número da posição que o visor mostra."}}})
+            "values": [{"userEnteredValue": "1"}, {"userEnteredValue": "10000"}]}, "strict": True, "inputMessage": self.label('Número da posição que o visor mostra.')}}})
         # O grupo do bloco vem antes dos grupos das posições (que ficam no nível 2) e inclui o
         # rodapé, então as linhas inseridas antes dele na expansão entram no grupo.
         _group(req, sid, s + 1, z, 1, False)
@@ -329,7 +336,7 @@ class Model:
                 n = b.slots - STEP + 1
             loc = (b, b.row(n), n)
         tab, row = loc[0].tab, loc[1]
-        self.set(tab, row, APPEARANCE, [r["appearance"], r["server_name"], r["work"], r["status"], r["date"]])
+        self.set(tab, row, APPEARANCE, [r["appearance"], r["server_name"], r["work"], self.label(r["status"]), r["date"]])
         self.set(tab, row, URL, [r["image_url"], r["id"], r["owner_id"], r["revision"]])
         self.set(tab, row + 2, APPEARANCE, [r["justification"]])
         # Como a expansão por edição: perto do fim (2 posições livres), o bloco ganha mais 20.
@@ -402,9 +409,9 @@ def record(r) -> dict:
             "justification": _text(r.get("justification") or "", 2000), "image_url": _url(r.get("image_url") or ""),
             "date": _serial(r.get("date")), "revision": r["revision"]}
 
-def load(sep: str, sheets: list[dict], values: dict[int, list[list]]) -> Model:
+def load(sep: str, sheets: list[dict], values: dict[int, list[list]], language="pt-BR") -> Model:
     """Monta o modelo a partir do que o script devolveu: todas as guias e os valores A:K das guias de membro."""
-    m = Model(sep, names=[s["title"] for s in sheets], next_sheet_id=max([1000] + [s["sheetId"] + 1 for s in sheets]))
+    m = Model(sep, language=language, names=[s["title"] for s in sheets], next_sheet_id=max([1000] + [s["sheetId"] + 1 for s in sheets]))
     for s in sheets:
         if s["sheetId"] not in values:
             continue
@@ -413,7 +420,7 @@ def load(sep: str, sheets: list[dict], values: dict[int, list[list]]) -> Model:
         for i in range(s["rows"]):
             line = list(rows[i][:WIDTH]) if i < len(rows) else []
             grid.append(line + [""] * (WIDTH - len(line)))
-        m.tabs.append(Tab(s["title"], s["sheetId"], grid))
+        m.tabs.append(Tab(s["title"], s["sheetId"], grid, language))
     return m
 
 def is_member_tab(column_k: list[list]) -> bool:
@@ -441,11 +448,11 @@ def _range(sid: int, r1: int, r2: int, c1: int, c2: int) -> dict:
     return {"sheetId": sid, "startRowIndex": r1 - 1, "endRowIndex": r2, "startColumnIndex": c1 - 1, "endColumnIndex": c2}
 
 def _format(req: list, sid: int, r1: int, r2: int, c1: int, c2: int, *, bg=None, ink=None, bold=False, size=10,
-            h="LEFT", v="MIDDLE", wrap="WRAP", date=False) -> None:
+            h="LEFT", v="MIDDLE", wrap="WRAP", date=False, language="pt-BR") -> None:
     fmt = {"textFormat": {"fontFamily": "Arial", "fontSize": size, "bold": bold, "foregroundColor": ink or INK},
            "backgroundColor": bg or WHITE, "verticalAlignment": v, "horizontalAlignment": h, "wrapStrategy": wrap}
     if date:
-        fmt["numberFormat"] = {"type": "DATE", "pattern": "dd/mm/yyyy"}
+        fmt["numberFormat"] = {"type": "DATE", "pattern": "yyyy-mm-dd" if language == "en" else "dd/mm/yyyy"}
     req.append({"repeatCell": {"range": _range(sid, r1, r2, c1, c2), "cell": {"userEnteredFormat": fmt}, "fields": "userEnteredFormat"}})
 
 def _border(req: list, sid: int, r1: int, r2: int, c1: int, c2: int, inner: bool) -> None:
