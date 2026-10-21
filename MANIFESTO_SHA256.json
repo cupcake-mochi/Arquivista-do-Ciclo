@@ -1,25 +1,25 @@
 {
   "project": "Arquivista do Ciclo",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "scope": "runtime files in the deployment ZIP; documentation and this manifest are excluded",
   "package": "arquivista.zip",
-  "package_sha256": "8e27955a27c9a1a386b5e9022b0287f94b6b394e936fc534fde07e840181e811",
-  "live_deployment_audited": true,
+  "package_sha256": "61d283140f3a311132d4a1c4d3556a12418ffb0011d18332745db87fd9a3e221",
+  "live_deployment_audited": false,
   "files": {
     "discloud.config": "4ba7396de9e0927987dfd0cf863bc3ecbb9d252f44563fb3c7400dc1d3d24933",
     "iniciar.py": "da9301a997fb9f7fb606a36785dca3ff84fa8a1e50afa120838a349dc2a16e22",
     "requirements.txt": "3f8f6acbcdfd6e16f3da6151a22336359b26c99471f423681ec12716cdcecd91",
     "assets/amiya.png": "ead1584952f7bcbf0bfc979cce1a141b74bf5e98094552e075fb3153832be8d0",
-    "src/arquivista/__init__.py": "9a5774b3c0e72e74f01544f3a05fe4b914f173b47a65636fafdbccaab62b31b6",
+    "src/arquivista/__init__.py": "cb464e29a0756176323f3cb7f64a04e8a76fea87eb628fa60313734123cce4de",
     "src/arquivista/archive.py": "3bcd94e53c85b7eaccbb21aec8012c83fc8fa4e5ed5d45d563ad4e75fbf7f867",
     "src/arquivista/backup.py": "80f9467dd274826006ae98ef974b959b03dec2bc42d7e788e972caf7d550dda1",
-    "src/arquivista/bot.py": "1f9f398359aa13ac76073e6b60852dc73288b2031ab092c9b4cd09347f779508",
+    "src/arquivista/bot.py": "d051a80490d076546263b97a640e1891b1dc7774b5cd0e360eb169d7045d77bf",
     "src/arquivista/bridge.py": "5db51b7ebc216f7607d93860565b195ddb29a7ef80eb47a46785c1f3708517ee",
     "src/arquivista/config.py": "076317ad0799498b06ed901dc9d74bf2ffccfe0ce2a24b1f543f1d75865da0c9",
     "src/arquivista/docs.py": "5cf87941fd236b8abd0641b5d4a37c8b4e8e8eb22b5c7f29c1cc15ed6c511944",
     "src/arquivista/domain.py": "47dbe39a5979a319eeb7532ae5a0e463e4429666f13dcc0fa953e14e519783cf",
     "src/arquivista/google.py": "d9cf403f81a9f7764581165440328e91a6175529a4ba8f3c7057aba115539a65",
-    "src/arquivista/guide_en.py": "c7cc73c845c86564d98f9dbaf9a881fbbae0455a9b7c8cccec3dae059856730b",
+    "src/arquivista/guide_en.py": "85ba281ced4ca645f83ecfc506ef2021fb92adc7c042666a76908a5e51b019e1",
     "src/arquivista/idiomas.py": "8e2980f94b1a3bef8e0b0f0e2c11cd708cd855ca65967504445a55bcaca45e8c",
     "src/arquivista/importer.py": "324ca299317170d34ae608bbbcd29504cf03237885cdb15257e82ac4690d0d8e",
     "src/arquivista/layout.py": "4eef6af87832fc2f9a49452c8ab281f0c76be74aa6321f2d0cb0556c97abd944",
@@ -33,6 +33,5 @@
     "src/arquivista/transport.py": "60462094511c8d12406218e994efe7b40ab808c24c3f0035054b88a36d758a03",
     "src/arquivista/views.py": "56503976642bca69b093f5a876778b80eb216311ae9aabffbaab6e8a739bd6b4",
     "src/arquivista/recursos/ingles.json": "ff3c7eb5128571e429e339121e4b64db334788d2626e9ebd63e68259fc069d55"
-  },
-  "audited_on": "2026-10-21"
+  }
 }
