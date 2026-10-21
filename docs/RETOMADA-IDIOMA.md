@@ -1,3 +1,5 @@
+**Fechamento vigente:** manutenção editorial 1.1.2 publicada em 21/10/2026; termos e siglas explicados. [Validação e retomada](CLAREZA-SIGLAS.md). O registro abaixo preserva a rodada anterior.
+
 **Fechamento vigente:** manutenção editorial 1.1.1 publicada às 15:57:26 de
 21/10. 149 testes Python + 36 JS; 27 arquivos instalados conferidos, ambiente
 e dados preservados. [Revisão final](REVISAO-FINAL-APRESENTACAO.md). O registro
