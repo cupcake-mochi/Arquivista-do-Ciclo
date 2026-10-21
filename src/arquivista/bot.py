@@ -50,10 +50,10 @@ Os nomes completos também valem (`AC:registrar`, `AC:galeria`...). `ac:` minús
 Situação e justificativa não aparecem nas consultas públicas.""" + "\n\n" + DATA_LINKS
 STAFF_HELP = """
 
-**Staff**
+**Equipe autorizada (staff)**
 `AC:reg @membro` — cadastrar para outra pessoa.
 `/situacao` ou `AC:sit aparência` — situação e justificativa internas.
-`/transferir` ou `AC:tr aparência @membro` — mudar o responsável, mantendo ID e data.
+`/transferir` ou `AC:tr aparência @membro` — mudar o responsável, mantendo o identificador do cadastro (ID) e a data.
 `/remover` ou `AC:rm aparência` — a staff também pode remover cadastros de outras pessoas.
 `/limpar` ou `AC:limpar @membro` — apagar todos os cadastros de alguém (vale o ID de quem já saiu; só `AC:limpar` lista quem saiu).
 `/apelido` ou `AC:apelido JJK = Jujutsu Kaisen` — apelido de obra para a busca por obra. `AC:apelido -JJK` tira; `AC:apelido` lista.
@@ -63,7 +63,7 @@ STAFF_HELP = """
 **Gerência do servidor**
 `/configurar` ou `AC:cfg` — escolha os cargos de staff, os canais e a frequência do backup; conecte a planilha.
 `/language` ou `/idioma` — mude o idioma das respostas; exige gerência ou cargo de staff. Só planilhas novas usam o novo idioma. A configuração das Guias é independente.
-`/restaurar` ou `AC:restaurar` com o .json anexado — recupere os cadastros de um backup. Confira o resumo antes de confirmar.
+`/restaurar` ou `AC:restaurar` com o arquivo de backup (.json) anexado — recupere os cadastros salvos. Confira o resumo antes de confirmar.
 `/planilha criar` — informe seu e-mail Google em privado para receber a planilha pronta, com acesso de editor. Se ela já existe, abre o mesmo arquivo.
 `/planilha abrir` ou `AC:planilha` — recupere o link e abra o painel da planilha.
 `/planilha membro` — selecione um @membro do servidor para preparar a aba antes de preencher à mão.
@@ -74,7 +74,7 @@ GUIDE = (
     ("O que é o arquivo",
      "Aqui fica registrado quem usa cada **aparência**: o personagem (ou a pessoa) que você usa no servidor, junto com a **obra** de onde ele vem.\n\n"
      "A combinação de aparência e obra só pode estar ocupada por uma pessoa de cada vez. Consulte a lista antes de escolher; ao salvar, eu confiro se já existe um cadastro.\n\n"
-     "Use **Próxima** para continuar.\n\n" + DATA_LINKS),
+     "**AC:** é o prefixo dos comandos da **Arquivista do Ciclo**. Use **Próxima** para continuar.\n\n" + DATA_LINKS),
     ("Como consultar aparências",
      "`AC:ap Takao` ou `/aparencias` — busque pelo nome e veja quem usa a aparência. Pequenos erros de digitação também são aceitos.\n"
      "`AC:gal` — o mesmo, mas uma por página, com imagem.\n"
@@ -85,11 +85,11 @@ GUIDE = (
      "`AC:reg` ou `/registrar` abre um formulário com:\n"
      "• **Aparência** — o nome do personagem;\n• **Obra** — de onde ele vem;\n"
      "• **Nome no servidor** (opcional) — como o seu personagem se chama aqui; aparece na lista e na galeria;\n"
-     "• **Imagem** — cole um link HTTPS direto da imagem ou anexe a imagem à mensagem do comando antes de abrir o formulário.\n\n"
+     "• **Imagem** — cole um link direto da imagem que comece com `https://` ou anexe a imagem à mensagem do comando antes de abrir o formulário.\n\n"
      "Depois, confira os dados numa mensagem que só você vê, escolha a situação e clique em **Confirmar e salvar**. Se não escolher, fica **Em preparação**. Se a aparência estiver ocupada, eu aviso sem salvar outro cadastro."),
     ("Como editar ou remover seu cadastro",
      "`AC:ed nome` ou `/editar` — muda o nome no servidor ou a imagem. Para tirar a imagem, escreva `-` no campo.\n\n"
-     "`/remover` ou `AC:rm nome` — remove um cadastro seu, depois da sua confirmação. A aparência fica livre e o histórico continua guardado para a staff.\n\n"
+     "`/remover` ou `AC:rm nome` — remove um cadastro seu, depois da sua confirmação. A aparência fica livre e o histórico continua guardado para a equipe autorizada (staff).\n\n"
      "Depois do cadastro, só a staff pode mudar a aparência, a obra ou a situação. Editar ou remover cadastros de outras pessoas também exige staff."),
     ("O que cada situação significa",
      "**Em preparação** — reservada, ainda sendo montada.\n**Em uso** — sendo usada.\n"
@@ -100,6 +100,8 @@ GUIDE = (
      "`AC:rm nome` — remove um cadastro. `AC:limpar @membro` — apaga todos de alguém (vale o ID de quem saiu).\n"
      "`AC:apelido JJK = Jujutsu Kaisen` — apelido de obra para a busca.\n"
      "`AC:hist` — mudanças recentes, inclusive de cadastros removidos. `AC:diag` — veja se o bot e a planilha estão funcionando.\n\n"
+     "**ID** é o número ou código que identifica um cadastro ou uma conta do Discord. "
+     "**Staff** é a equipe autorizada a cuidar dos cadastros.\n\n"
      "Antes de transferir, remover ou mudar a situação, confira a ficha selecionada e confirme. O histórico do cadastro fica guardado."),
     ("Configurar o servidor e a planilha",
      "`/configurar` (dono, Administrador ou Gerenciar Servidor):\n"
@@ -109,7 +111,7 @@ GUIDE = (
      "Para abrir novamente, use `/planilha abrir` ou `AC:planilha`.\n"
      "Quer uma aba para outra pessoa? Use `/planilha membro` e selecione o @membro do servidor. "
      "Preencha as posições prontas; as edições no Sheets chegam ao bot em cerca de 5 minutos. Compartilhe edição só com a staff.\n\n"
-     "Em **Backup**, escolha o canal e a frequência. **Fazer backup agora** envia uma cópia na hora. Para recuperar os cadastros, anexe o `.json` ao `/restaurar`.\n\n"
+     "Em **Backup**, escolha o canal e a frequência. **Fazer backup agora** envia uma cópia na hora. Para recuperar os cadastros, anexe o arquivo de backup `.json` ao `/restaurar`. JSON é o formato desse arquivo de dados; guarde-o sem editar o conteúdo.\n\n"
      "Use `/language` ou `/idioma` para escolher português ou inglês. A staff também pode mudar o idioma. Os arquivos já criados mantêm a língua original; só planilhas novas usam a língua escolhida. Essa opção é independente do idioma das Guias.\n\n"
      "Para as mensagens saírem com a foto da Amiya, o bot precisa da permissão **Gerenciar Webhooks**.\n\n" + SETUP_LINK),
 )

@@ -1,6 +1,6 @@
 # Arquivista do Ciclo · Amiya
 
-**Versão estável 1.1.1 · publicada em 21/10/2026.** Idioma por servidor, planilhas novas em inglês e arquivos antigos preservados. [Revisão final de apresentação](docs/REVISAO-FINAL-APRESENTACAO.md). [Validação e retomada](docs/RETOMADA-IDIOMA.md). Projeto independente das Guias do Ciclo.
+**Versão estável 1.1.2 · publicada em 21/10/2026.** Idioma por servidor, planilhas novas em inglês e arquivos antigos preservados. [Clareza de siglas](docs/CLAREZA-SIGLAS.md). [Revisão final de apresentação](docs/REVISAO-FINAL-APRESENTACAO.md). [Validação e retomada](docs/RETOMADA-IDIOMA.md). Projeto independente das Guias do Ciclo.
 
 > **Para configurar no seu servidor:** siga o [guia público no Google Docs](https://docs.google.com/document/d/1xuehlkhU3EhMsSE4hjLIfQY9p-eEF6ynS5ikAmlqnhw/view). Para aprender a usar o bot, comece por `/guia`; `/ajuda` traz a lista de comandos.
 >
@@ -37,7 +37,7 @@ A interface e os guias seguem o idioma do servidor. Os nomes no menu nativo segu
 
 O nome do personagem no servidor aparece na lista e na galeria, junto da aparência e do responsável. Situação e justificativa continuam privadas; as notificações públicas também não incluem o nome no servidor. Arquivado continua ocupado. Liberado permite reutilização. Não há aprovação obrigatória para o cadastro inicial.
 
-Cada membro pode editar o nome e a imagem dos próprios registros e removê-las com `/remover`, depois de confirmar. Só a staff altera cadastros de outras pessoas, muda aparência, obra ou situação, transfere e usa a limpeza em lote. A remoção preserva o histórico para a staff.
+Cada membro pode editar o nome e a imagem dos próprios registros e removê-los com `/remover`, depois de confirmar. Só a staff altera cadastros de outras pessoas, muda aparência, obra ou situação, transfere e usa a limpeza em lote. A remoção preserva o histórico para a staff.
 
 ## Comece por aqui
 

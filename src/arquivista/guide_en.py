@@ -21,7 +21,7 @@ STAFF_HELP='''
 **Staff**
 `AC:register @member` registers for someone else.
 `AC:status_change appearance` changes internal status and notes.
-`AC:transfer appearance @member` transfers ownership, preserving ID and original date.
+`AC:transfer appearance @member` transfers ownership, preserving the record identifier (ID) and original date.
 Staff may also remove other people's records. `AC:clear @member` removes all of a person's records; a former member's ID is accepted. With no target it lists former members with records.
 `AC:alias JJK = Jujutsu Kaisen` adds a work alias; `AC:alias -JJK` removes it; no arguments lists aliases.
 `AC:history [appearance]` opens private history, including removed records. `AC:diagnostics` shows archive, channel and spreadsheet health.
@@ -29,7 +29,7 @@ Staff may also remove other people's records. `AC:clear @member` removes all of 
 
 **Server management**
 `AC:settings` or `/settings` sets staff roles, channels, backup frequency and spreadsheet connection.
-`/restore` with an attached JSON backup restores records after a reviewed confirmation.
+`/restore` with an attached backup data file (.json) restores records after a reviewed confirmation.
 `/spreadsheet create` privately asks for a Google editor email and delivers a ready spreadsheet. Repeating it reuses the existing file.
 `/spreadsheet open` or `AC:spreadsheet` reopens the link and private panel.
 `/spreadsheet member` prepares a selected real server member's tab for manual input.
@@ -39,7 +39,7 @@ GUIDE=(
 
 One appearance-and-work combination may be occupied by only one person at a time. Check the list before choosing; saving also checks whether it is already taken.
 
-Use **Next** to continue.\n\n'''+LINKS),
+**AC:** is the command prefix for the **Archivist of the Cycle**. Use **Next** to continue.\n\n'''+LINKS),
 ('Browse records', '''`AC:appearances Takao` or `/appearances` searches by name and shows the owner. Small spelling errors are supported.
 `AC:gallery` shows one record per page with its picture.
 `AC:work arknights` or `/work` groups records by work, including alternate spellings.
@@ -50,7 +50,7 @@ If nothing matches, try the work name too: the appearance may use another spelli
 • **Appearance:** source character's name.
 • **Source work:** where they come from.
 • **Server character name** (optional): their name here, shown in public lists and galleries.
-• **Image:** paste a direct HTTPS image link, or attach an image to the command message before opening the form.
+• **Image:** paste a direct image link beginning with `https://`, or attach an image to the command message before opening the form.
 
 Review the private preview, select a status, then choose **Confirm and save**. The default is **In preparation**. If occupied, the bot tells you without saving another record.'''),
 ('Change your record', '''`AC:edit name` or `/edit` changes your server character name or image. Enter `-` to remove the image.
@@ -78,7 +78,7 @@ Use `/spreadsheet create` and enter a Google email privately. The bot provides a
 
 Fill prepared slots. Sheets edits reach the bot in about 5 minutes. Share editor access only with staff. New files use the server language selected at creation; existing files keep their original language when the server setting changes.
 
-In **Backup**, select a channel and frequency. **Back up now** sends a copy immediately. Attach its JSON to `/restore` to restore records after confirmation.
+In **Backup**, select a channel and frequency. **Back up now** sends a copy immediately. Attach its backup data file (.json) to `/restore` to restore records after confirmation.
 
 The bot needs **Manage Webhooks** to send messages with Amiya's picture.\n\n'''+SETUP_LINK),
 )
