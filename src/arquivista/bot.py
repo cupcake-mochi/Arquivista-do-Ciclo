@@ -266,7 +266,7 @@ class Arquivista(commands.Bot):
                 pass
         return result
     async def failure(self, source, error):
-        text = str(error) if isinstance(error,UserError) else "Não consegui confirmar se a alteração foi salva. Confira a ficha antes de tentar de novo; a staff pode consultar o /diagnostico."
+        text = str(error) if isinstance(error,UserError) else tr("Não consegui confirmar se a alteração foi salva. Confira a ficha antes de tentar de novo; a staff pode consultar o /diagnostico.")
         if isinstance(source,discord.Interaction):
             await private_reply(source,content=text)
         else:
@@ -504,7 +504,7 @@ class Arquivista(commands.Bot):
                     queued,bad=self.store.sheet_pending(i.guild_id)
                     body+=(tr('\n**Planilha:** conectada · envios pendentes: {0}').format(queued)+(tr(', recusados pela planilha: {0}').format(bad) if bad else "")+
                            tr('\n**Último envio para a planilha:** {0}').format(cfg.get('sheet_ok') or 'ainda não realizado')+
-                           (tr('\n**Último erro da planilha:** {0}').format(SHEET_ERRORS.get(cfg['sheet_error'],cfg['sheet_error'])) if cfg.get("sheet_error") else "")+
+                           (tr('\n**Último erro da planilha:** {0}').format(tr(SHEET_ERRORS.get(cfg['sheet_error'],cfg['sheet_error']))) if cfg.get("sheet_error") else "")+
                            (tr('\n**Edição da planilha que não entrou:** {0}').format(clean(cfg['sheet_note'],900)) if cfg.get("sheet_note") else ""))
                 else:
                     body+=tr('\n**Planilha:** não conectada')

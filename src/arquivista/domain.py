@@ -70,6 +70,9 @@ ERRORS = {
 
 class UserError(Exception):
     """Mensagem deliberadamente segura para o usuário; não contém segredos ou tracebacks."""
+    def __init__(self, message):
+        from .idiomas import tr
+        super().__init__(tr(message))
 
 class BridgeError(UserError):
     def __init__(self, code: str, message: str):

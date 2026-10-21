@@ -79,9 +79,9 @@ def workbook(records: list[dict], names: dict[str, str], language="pt-BR") -> by
                 if key == "status":v=label(v,language)
                 line.append(v)
             rows.append(line)
-        sheets.append((_sheet_name(names.get(owner) or f"Membro {owner}", taken), rows))
+        sheets.append((_sheet_name(names.get(owner) or f"Member {owner}" if language=="en" else names.get(owner) or f"Membro {owner}", taken), rows))
     if not sheets:
-        sheets.append(("Sem cadastros", [[c[0] for c in COLUMNS]]))
+        sheets.append(("No records" if language=="en" else "Sem cadastros", [[label(c[0],language) for c in COLUMNS]]))
     ns = 'xmlns="http://schemas.openxmlformats.org/package/2006/relationships"'
     files = {
         "[Content_Types].xml": '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'

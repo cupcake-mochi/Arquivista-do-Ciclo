@@ -33,7 +33,7 @@ class GoogleError(BridgeError):
             "GOOGLE_STORAGE": "A conta Google do Arquivista está sem espaço para criar planilhas. Avise o mantenedor.",
             "GOOGLE_MISSING": "A planilha não foi encontrada. Confira se foi removida ou se o Arquivista perdeu o acesso.",
             "GOOGLE_INVALID": "O Google recusou os dados. Confira o e-mail informado e tente novamente.",
-            "GOOGLE_LOCALE": "A localidade da planilha mudou. Em Arquivo > Configurações, escolha Brasil para retomar a sincronização.",
+            "GOOGLE_LOCALE": "A localidade da planilha mudou. Em Arquivo > Configurações, escolha a localidade original do arquivo (Brasil ou Estados Unidos) para retomar a sincronização.",
             "BUSY": "O Google demorou ou atingiu o limite de pedidos. Tente novamente em alguns minutos.",
         }
         super().__init__(code, messages.get(code, "Não consegui concluir no Google. Avise quem mantém o Arquivista."))
