@@ -1,5 +1,12 @@
 # Idioma por servidor · versão 1.1.0 publicada, 21/10/2026
 
+Fechamento posterior: a criação completa pelo Discord, a concessão real de
+edição, a sincronização inglesa nos dois sentidos e a reutilização do arquivo
+foram conferidas. Ver [validação nativa](VALIDACAO-INGLES-DISCORD-2026-10-21.md).
+A limitação de editor citada abaixo descreve somente a rodada inicial. O teste
+foi limpo, desconectado e enviado à lixeira; não há nova implantação por estas
+alterações documentais. A PR 10 já foi mesclada e a release 1.1.0 permanece.
+
 Branch `codex/idioma-ingles`, runtime `932df0e`, base `338cfda`, PR 10 como revisão da entrega; estado atual no GitHub. Publicada na Discloud às 13:25:33 de Brasília. 27 arquivos instalados iguais ao pacote; banco com WAL íntegro; cadastros, histórico, configurações e planilhas anteriores preservados.
 
 149 testes Python, 29 JS da ponte e 7 da planilha aprovados. Ensaio Google privado: fórmulas inglesas, datas ISO, expansão 20→40→60, visor/contador e transferência; arquivo descartado. Discord real: inglês e retorno a português pela conta autorizada, ajuda inglesa, diagnóstico privado 1.1.0, guia para membro sem staff e recusa de idioma para membro comum. Preferências do servidor de teste restauradas. Nenhuma chamada a modelo.
