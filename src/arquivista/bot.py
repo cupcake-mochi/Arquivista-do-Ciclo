@@ -75,33 +75,33 @@ GUIDE = (
      "Aqui fica registrado quem usa cada **aparência**: o personagem (ou a pessoa) que você usa no servidor, junto com a **obra** de onde ele vem.\n\n"
      "A combinação de aparência e obra só pode estar ocupada por uma pessoa de cada vez. Consulte a lista antes de escolher; ao salvar, eu confiro se já existe um cadastro.\n\n"
      "Use **Próxima** para continuar.\n\n" + DATA_LINKS),
-    ("Consultar",
+    ("Como consultar aparências",
      "`AC:ap Takao` ou `/aparencias` — busque pelo nome e veja quem usa a aparência. Pequenos erros de digitação também são aceitos.\n"
      "`AC:gal` — o mesmo, mas uma por página, com imagem.\n"
      "`AC:obra arknights` ou `/obra` — tudo de uma obra, juntando jeitos diferentes de escrever o nome.\n"
      "`AC:ap @membro` — as aparências de alguém. `AC:min` — as suas.\n\n"
      "Se não encontrar, tente também o nome da obra: a aparência pode ter sido cadastrada com outra grafia."),
-    ("Registrar a sua",
+    ("Como cadastrar sua aparência",
      "`AC:reg` ou `/registrar` abre um formulário com:\n"
      "• **Aparência** — o nome do personagem;\n• **Obra** — de onde ele vem;\n"
      "• **Nome no servidor** (opcional) — como o seu personagem se chama aqui; aparece na lista e na galeria;\n"
-     "• **Imagem** — link https ou anexo.\n\n"
+     "• **Imagem** — cole um link HTTPS direto da imagem ou anexe a imagem à mensagem do comando antes de abrir o formulário.\n\n"
      "Depois, confira os dados numa mensagem que só você vê, escolha a situação e clique em **Confirmar e salvar**. Se não escolher, fica **Em preparação**. Se a aparência estiver ocupada, eu aviso sem salvar outro cadastro."),
-    ("Mudar o seu cadastro",
+    ("Como editar ou remover seu cadastro",
      "`AC:ed nome` ou `/editar` — muda o nome no servidor ou a imagem. Para tirar a imagem, escreva `-` no campo.\n\n"
      "`/remover` ou `AC:rm nome` — remove um cadastro seu, depois da sua confirmação. A aparência fica livre e o histórico continua guardado para a staff.\n\n"
      "Depois do cadastro, só a staff pode mudar a aparência, a obra ou a situação. Editar ou remover cadastros de outras pessoas também exige staff."),
-    ("Situações",
+    ("O que cada situação significa",
      "**Em preparação** — reservada, ainda sendo montada.\n**Em uso** — sendo usada.\n"
      "**Arquivado** — fora de uso, mas continua ocupada.\n**Liberado** — livre para outra pessoa.\n\n"
      "A situação e a justificativa ficam só nos painéis privados; as listas públicas não mostram."),
-    ("Para a staff",
+    ("Ações da equipe autorizada",
      "`AC:sit nome` — situação e justificativa. `AC:tr nome @membro` — muda o dono.\n"
      "`AC:rm nome` — remove um cadastro. `AC:limpar @membro` — apaga todos de alguém (vale o ID de quem saiu).\n"
      "`AC:apelido JJK = Jujutsu Kaisen` — apelido de obra para a busca.\n"
      "`AC:hist` — mudanças recentes, inclusive de cadastros removidos. `AC:diag` — veja se o bot e a planilha estão funcionando.\n\n"
      "Antes de transferir, remover ou mudar a situação, confira a ficha selecionada e confirme. O histórico do cadastro fica guardado."),
-    ("Configurar o servidor",
+    ("Configurar o servidor e a planilha",
      "`/configurar` (dono, Administrador ou Gerenciar Servidor):\n"
      "• cargos de staff;\n• canal de histórico (avisos de cada mudança);\n• canal de imagens (guarda os anexos);\n"
      "• planilha para editar as fichas pelo Google Sheets;\n• backup automático num canal só da staff.\n\n"
@@ -320,7 +320,7 @@ class Arquivista(commands.Bot):
             if action=="ajuda":
                 from . import guide_en
                 help_text=guide_en.HELP+(guide_en.STAFF_HELP if actor.staff else "") if atual()=="en" else HELP+(STAFF_HELP if actor.staff else "")
-                await self.reply_public(source,embed=card(tr("Índice do Arquivista"),help_text))
+                await self.reply_public(source,embed=card(tr("Comandos da Arquivista"),help_text))
                 return
             if action=="obra":
                 data=await self.archive(gid).call("list",actor,{"owner_id":"","include_released":False})

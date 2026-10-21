@@ -1,4 +1,4 @@
-# Idioma da Arquivista · 1.1.0
+# Idioma da Arquivista
 
 `/idioma` e `/language` usam a autorização atual de staff: dono, Administrador, Gerenciar servidor ou cargo registrado em `/configurar`. O cargo não recebe permissão administrativa do Discord por causa desta opção. A configuração vale somente no servidor da interação e é independente das Guias.
 
@@ -15,7 +15,7 @@ Cada planilha gerenciada recebe `language` na criação. Essa propriedade não a
 - 149 testes Python passaram, incluindo autorização, concorrência de idiomas, migração aditiva, criação retomável, idioma fixo do arquivo, expansão, transferência, leitura manual, escrita de volta, erros e backup inglês.
 - 29 testes JS da ponte e 7 do script da planilha passaram; o cenário de pedidos do layout foi fornecido. Sintaxe dos três scripts aprovada.
 - Google real, arquivo privado sintético: criação, fórmulas inglesas calculadas, contador e visor, datas ISO, expansão 20→40→60, transferência sem mudar ID. 61 grupos, 316 mesclas e 5 regras condicionais presentes. Nenhuma fórmula de erro detectada. Sem compartilhar com terceiros; arquivo enviado à lixeira após o teste.
-- Esse ensaio nativo não valida a concessão de edição por e-mail nem uma criação completa por interação Discord: essas partes têm regressões com Google/Discord simulados. Planilhas oficiais não foram alteradas.
+- A continuação posterior validou a criação completa no Discord, a concessão real de edição e a sincronização nos dois sentidos. [Resultado e limpeza da cópia sintética](VALIDACAO-INGLES-DISCORD-2026-10-21.md). Planilhas oficiais não foram alteradas.
 
 Publicada em 21/10/2026 às 13:25:33 de Brasília. Testes reais com duas contas, diagnóstico 1.1.0, inglês/retorno ao português e recusa de permissão concluídos. Pacote e dados instalados auditados; docs/PUBLICACAO-1.1.0.json. Nenhuma chamada a modelos de IA foi usada.
 
