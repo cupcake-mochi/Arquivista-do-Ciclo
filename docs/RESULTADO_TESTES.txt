@@ -1,3 +1,12 @@
+VALIDAÇÃO 1.1.0 — 21/10/2026
+
+149 testes Python, 29 JavaScript da ponte e 7 da planilha aprovados.
+Google privado real: fórmulas inglesas, ISO, visor/contador, 20→40→60 posições, transferência. Arquivo descartado.
+Discord com conta autorizada e comum: inglês/PT, ajuda, guia do membro, diagnóstico 1.1.0 e recusa de idioma para membro comum.
+Publicada às 13:25:33 de Brasília. 27 arquivos instalados iguais ao pacote; banco/WAL íntegro e dados/configurações anteriores preservados.
+Não repetida a concessão real de editor por e-mail; regressões simuladas cobrem criação e retomada.
+Retomada: docs/RETOMADA-IDIOMA.md. Registros abaixo preservam os ensaios históricos.
+
 VALIDAÇÃO FINAL — ARQUIVISTA DO CICLO 1.0.3 — 20/10/2026
 
 Remoção dos próprios cadastros com confirmação; terceiros e limpeza em lote exigem staff.

@@ -1,6 +1,6 @@
 # Arquivista do Ciclo · Amiya
 
-**Versão 1.1.0 · projeto independente dos Guias do Ciclo.**
+**Versão 1.1.0 · publicada em 21/10/2026 às 13:25 de Brasília.** Idioma por servidor, planilhas novas em inglês, arquivos antigos preservados. [Validação e retomada](docs/RETOMADA-IDIOMA.md). Projeto independente das Guias do Ciclo.
 
 > **Para configurar no seu servidor:** siga o [guia público no Google Docs](https://docs.google.com/document/d/1xuehlkhU3EhMsSE4hjLIfQY9p-eEF6ynS5ikAmlqnhw/view). Para aprender a usar o bot, comece por `/guia`; `/ajuda` traz a lista de comandos.
 >

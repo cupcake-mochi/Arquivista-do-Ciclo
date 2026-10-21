@@ -17,7 +17,7 @@ Cada planilha gerenciada recebe `language` na criação. Essa propriedade não a
 - Google real, arquivo privado sintético: criação, fórmulas inglesas calculadas, contador e visor, datas ISO, expansão 20→40→60, transferência sem mudar ID. 61 grupos, 316 mesclas e 5 regras condicionais presentes. Nenhuma fórmula de erro detectada. Sem compartilhar com terceiros; arquivo enviado à lixeira após o teste.
 - Esse ensaio nativo não valida a concessão de edição por e-mail nem uma criação completa por interação Discord: essas partes têm regressões com Google/Discord simulados. Planilhas oficiais não foram alteradas.
 
-Publicação e testes nas contas reais do Discord ainda serão registrados no fechamento. Nenhuma chamada a modelos de IA foi usada.
+Publicada em 21/10/2026 às 13:25:33 de Brasília. Testes reais com duas contas, diagnóstico 1.1.0, inglês/retorno ao português e recusa de permissão concluídos. Pacote e dados instalados auditados; docs/PUBLICACAO-1.1.0.json. Nenhuma chamada a modelos de IA foi usada.
 
 ## Retomada
 
