@@ -1,3 +1,8 @@
+**Fechamento vigente:** manutenção editorial 1.1.1 publicada às 15:57:26 de
+21/10. 149 testes Python + 36 JS; 27 arquivos instalados conferidos, ambiente
+e dados preservados. [Revisão final](REVISAO-FINAL-APRESENTACAO.md). O registro
+abaixo descreve a entrega de idioma 1.1.0; não repetir publicação por documentação.
+
 # Idioma por servidor · versão 1.1.0 publicada, 21/10/2026
 
 Fechamento posterior: a criação completa pelo Discord, a concessão real de

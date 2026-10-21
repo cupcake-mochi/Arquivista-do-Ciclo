@@ -37,8 +37,17 @@ longos, em português/inglês, tiveram descrições entre 3.145 e 3.721 caracter
 abaixo de 4.096. As 253 chamadas estáticas de tradução têm entrada no catálogo.
 
 Pacote preparado com 27 arquivos, sem ambiente, banco ou credenciais; hashes em
-`MANIFESTO_SHA256.json`. Publicação e conferência visual são registradas após
-ocorrerem. Nenhuma chamada a modelo de IA foi usada.
+`MANIFESTO_SHA256.json`. Publicado na Discloud, online às **15:57:26 de Brasília**, em seis servidores.
+Os 27 arquivos instalados conferem com o pacote. O ambiente é idêntico; SQLite
+e WAL passaram na integridade. Cadastros (18), histórico (46 eventos), pedidos,
+planilhas gerenciadas e configurações foram preservados. Só o registro de duas
+mensagens e a data de atualização do servidor mudaram no ensaio.
+
+Discord: ajuda administrativa com o título novo e guia público de membro sem
+cargo, páginas 1→2→3, confirmados. O texto de imagem e os títulos novos ficaram
+legíveis no painel real. O fallback de webhook apareceu no guia e conservou
+retrato/autoria no embed; ajuda enviada como Amiya. Não há erro de aplicação
+nos logs desta inicialização. Nenhuma chamada a modelo de IA foi usada.
 
 A criação inglesa, editor Google e sincronização nos dois sentidos continuam
 validados no relatório de 21/10. Não se repetiu esse fluxo por uma mudança de

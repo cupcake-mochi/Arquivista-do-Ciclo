@@ -4,7 +4,7 @@
   "scope": "runtime files in the deployment ZIP; documentation and this manifest are excluded",
   "package": "arquivista.zip",
   "package_sha256": "8e27955a27c9a1a386b5e9022b0287f94b6b394e936fc534fde07e840181e811",
-  "live_deployment_audited": false,
+  "live_deployment_audited": true,
   "files": {
     "discloud.config": "4ba7396de9e0927987dfd0cf863bc3ecbb9d252f44563fb3c7400dc1d3d24933",
     "iniciar.py": "da9301a997fb9f7fb606a36785dca3ff84fa8a1e50afa120838a349dc2a16e22",
@@ -33,5 +33,6 @@
     "src/arquivista/transport.py": "60462094511c8d12406218e994efe7b40ab808c24c3f0035054b88a36d758a03",
     "src/arquivista/views.py": "56503976642bca69b093f5a876778b80eb216311ae9aabffbaab6e8a739bd6b4",
     "src/arquivista/recursos/ingles.json": "ff3c7eb5128571e429e339121e4b64db334788d2626e9ebd63e68259fc069d55"
-  }
+  },
+  "audited_on": "2026-10-21"
 }
