@@ -30,9 +30,9 @@ Staff may also remove other people's records. `AC:clear @member` removes all of 
 **Server management**
 `AC:settings` or `/settings` sets staff roles, channels, backup frequency and spreadsheet connection.
 `/restore` with an attached JSON backup restores records after a reviewed confirmation.
-`/spreadsheet criar` privately asks for a Google editor email and delivers a ready spreadsheet. Repeating it reuses the existing file.
-`/spreadsheet abrir` or `AC:spreadsheet` reopens the link and private panel.
-`/spreadsheet membro` prepares a selected real server member's tab for manual input.
+`/spreadsheet create` privately asks for a Google editor email and delivers a ready spreadsheet. Repeating it reuses the existing file.
+`/spreadsheet open` or `AC:spreadsheet` reopens the link and private panel.
+`/spreadsheet member` prepares a selected real server member's tab for manual input.
 '''+ '\n'+SETUP_LINK
 GUIDE=(
 ('What the archive records', '''The archive records who uses each **appearance**: the source character or person represented in this server, together with their **source work**.
@@ -50,7 +50,7 @@ If nothing matches, try the work name too: the appearance may use another spelli
 • **Appearance:** source character's name.
 • **Source work:** where they come from.
 • **Server character name** (optional): their name here, shown in public lists and galleries.
-• **Image:** HTTPS link or attachment.
+• **Image:** paste a direct HTTPS image link, or attach an image to the command message before opening the form.
 
 Review the private preview, select a status, then choose **Confirm and save**. The default is **In preparation**. If occupied, the bot tells you without saving another record.'''),
 ('Change your record', '''`AC:edit name` or `/edit` changes your server character name or image. Enter `-` to remove the image.
@@ -74,7 +74,7 @@ Before transferring, removing or changing status, review the selected record and
 `/language` or `/idioma` changes the language for this server. Configured staff roles and members with Manage Server may use it. The Guides bot has its own independent setting.'''),
 ('Configure the server and spreadsheet', '''`/settings` requires server ownership, Administrator or Manage Server. It configures staff roles, history and image channels, spreadsheet connection, and automatic backup in a staff-only channel.
 
-Use `/spreadsheet criar` and enter a Google email privately. The bot provides an editable ready-made file. Reopen it with `/spreadsheet abrir` or `AC:spreadsheet`. Use `/spreadsheet membro` and select a server member to prepare another tab.
+Use `/spreadsheet create` and enter a Google email privately. The bot provides an editable ready-made file. Reopen it with `/spreadsheet open` or `AC:spreadsheet`. Use `/spreadsheet member` and select a server member to prepare another tab.
 
 Fill prepared slots. Sheets edits reach the bot in about 5 minutes. Share editor access only with staff. New files use the server language selected at creation; existing files keep their original language when the server setting changes.
 

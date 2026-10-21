@@ -127,7 +127,7 @@ class Paginator(GuardedView):
                 if len(g["names"]) > 1:
                     line += tr('\n-# também escrita como ') + clean(", ".join(g["names"][1:])[:120], 150)
                 lines.append(line)
-            e = card(tr('Obras do arquivo'), "\n".join(lines) + tr('\n\nUse `AC:obra nome` para ver as aparências de uma obra.'))
+            e = card(tr('Obras do arquivo'), "\n\n".join(lines) + tr('\n\nUse `AC:obra nome` para ver as aparências de uma obra.'))
         elif self.mode == "gallery":
             r = self.records[self.page]
             e = card(clean(r["appearance"], 200), tr('**Obra:** {0}\n**Responsável:** <@{1}>').format(clean(r['work'],200), r['owner_id']))
@@ -142,15 +142,15 @@ class Paginator(GuardedView):
             if self.title and not self.owner:
                 lines = [f"**{self.page*self.per_page+j+1}. {clean(r['appearance'],100)}** · {clean(r['work'],50)} · <@{r['owner_id']}>"
                          + (tr('\nNome no servidor: {0}').format(clean(r['server_name'],100)) if r.get('server_name') else "") for j,r in enumerate(chunk)]
-                e = card(clean(self.title, 200), "\n".join(lines))
+                e = card(clean(self.title, 200), "\n\n".join(lines))
             elif self.owner:
                 lines = [f"**{self.page*self.per_page+j+1}. {clean(r['appearance'],110)}** · {clean(r['work'],60)}"
                          + (tr('\nNome no servidor: {0}').format(clean(r['server_name'],100)) if r.get('server_name') else "") for j,r in enumerate(chunk)]
-                e = card(tr('Aparências de ') + clean(self.owner.display_name, 80), f"<@{self.owner.id}>\n\n" + "\n".join(lines))
+                e = card(tr('Aparências de ') + clean(self.owner.display_name, 80), f"<@{self.owner.id}>\n\n" + "\n\n".join(lines))
             else:
                 lines = [f"**{self.page*self.per_page+j+1}. {clean(r['appearance'],110)}** · <@{r['owner_id']}>"
                          + (tr('\nNome no servidor: {0}').format(clean(r['server_name'],100)) if r.get('server_name') else "") for j,r in enumerate(chunk)]
-                e = card(tr('Arquivo de aparências'), "\n".join(lines))
+                e = card(tr('Arquivo de aparências'), "\n\n".join(lines))
         if self.owner and self.mode != "history":
             e.set_thumbnail(url=self.owner.display_avatar.url)
         e.set_footer(text=tr('Página {0}/{1} · Resultados: {2} · refaça a consulta para atualizar').format(self.page+1, self.pages, len(self.records)))

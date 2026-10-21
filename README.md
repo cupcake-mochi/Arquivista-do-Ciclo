@@ -1,14 +1,14 @@
 # Arquivista do Ciclo · Amiya
 
-**Versão 1.1.0 · publicada em 21/10/2026 às 13:25 de Brasília.** Idioma por servidor, planilhas novas em inglês, arquivos antigos preservados. [Validação e retomada](docs/RETOMADA-IDIOMA.md). Projeto independente das Guias do Ciclo.
+**Arquivista do Ciclo · versão estável.** Idioma por servidor, planilhas novas em inglês e arquivos antigos preservados. [Revisão final de apresentação](docs/REVISAO-FINAL-APRESENTACAO.md). [Validação e retomada](docs/RETOMADA-IDIOMA.md). Projeto independente das Guias do Ciclo.
 
 > **Para configurar no seu servidor:** siga o [guia público no Google Docs](https://docs.google.com/document/d/1xuehlkhU3EhMsSE4hjLIfQY9p-eEF6ynS5ikAmlqnhw/view). Para aprender a usar o bot, comece por `/guia`; `/ajuda` traz a lista de comandos.
 >
 > [Política de privacidade](https://docs.google.com/document/d/1nMsutdyyrtb-YKCKziW3SmDY3ViKN31yO1OOW3zSRcw/view) · [Termos de uso](https://docs.google.com/document/d/1uZlohyKEn7eOlM1wP5TbSeDBm_PkpLc13YnGmPYpZx8/view) · [Código da planilha](https://drive.google.com/file/d/1-2UMIJg4TKzjXS5mFsy16221SVtZEncA/view)
 
-A Amiya cuida do arquivo de aparências do servidor. Os membros cadastram suas fichas pelo Discord, consultam a lista e a galeria e procuram personagens pela obra. A staff organiza as situações, transferências e remoções. As fichas também podem ser preenchidas pelo Google Sheets.
+A Amiya cuida do arquivo de aparências do servidor. Os membros cadastram suas aparências pelo Discord, consultam a lista e a galeria e procuram personagens pela obra. A equipe autorizada (staff) cuida das situações, transferências e cadastros de outras pessoas. Os registros também podem ser preenchidos pelo Google Sheets.
 
-Cada servidor tem seus próprios cadastros e configurações. O banco SQLite guarda as fichas e o histórico; a planilha recebe as mudanças do bot e envia de volta as edições manuais. Backup e restauração ficam no Discord. Os testes em `tests/` rodam no GitHub Actions a cada envio.
+Cada servidor tem seus próprios cadastros e configurações. O banco SQLite guarda os cadastros e o histórico; a planilha recebe as mudanças do bot e envia de volta as edições manuais. Backup e restauração ficam no Discord. Os testes em `tests/` rodam no GitHub Actions a cada envio.
 
 **Planilha pronta:** `/planilha criar` pede um e-mail em privado e entrega o arquivo montado, conectado e com edição para esse e-mail. A planilha pertence à conta do Arquivista. `/planilha membro` exige selecionar um membro real do servidor e prepara uma aba para preenchimento manual; cadastros pelo bot também criam as abas. Não é preciso instalar script. Para ativar na hospedagem, veja [a configuração única do mantenedor](docs/GOOGLE-MANTENEDOR.md).
 
@@ -29,7 +29,7 @@ A interface e os guias seguem o idioma do servidor. Os nomes no menu nativo segu
 | Amiya | Respostas públicas por webhook com nome/avatar da personagem; atende menções diretas à conta ou ao cargo exclusivo do bot e respostas às próprias mensagens. Ignora chamadas por `@everyone`, `@here` e outros cargos. |
 | Consulta | Lista paginada, galeria, filtro por membro e busca aproximada. A seleção confirma a aparência correta antes de editar. |
 | Cadastro | Qualquer membro cadastra para si. A staff cadastra para terceiros. Formulário, revisão e confirmação. |
-| Permissões | Membro edita nome no servidor e imagem dos próprios registros. Identidade da aparência, situação, transferência e remoção são da staff. |
+| Permissões | Membro edita nome no servidor e imagem dos próprios registros. Só a staff muda aparência, obra ou situação após o cadastro, transfere e remove registros de outras pessoas. |
 | Histórico | Canal configurável, auditoria privada antes/depois e fila persistente de notificações. Captura de alterações manuais na planilha. |
 | Imagens | Link direto, imagem na célula consultável e anexo preservado em um canal escolhido pela staff. |
 | Planilha | Uma aba por membro, com visor, imagens e posições que crescem conforme o uso. IDs e datas ligam a ficha ao cadastro no banco. |
@@ -37,7 +37,7 @@ A interface e os guias seguem o idioma do servidor. Os nomes no menu nativo segu
 
 O nome do personagem no servidor aparece na lista e na galeria, junto da aparência e do responsável. Situação e justificativa continuam privadas; as notificações públicas também não incluem o nome no servidor. Arquivado continua ocupado. Liberado permite reutilização. Não há aprovação obrigatória para o cadastro inicial.
 
-Cada membro pode editar o nome e a imagem das próprias fichas e removê-las com `/remover`, depois de confirmar. Só a staff altera cadastros de outras pessoas, muda aparência, obra ou situação, transfere e usa a limpeza em lote. A remoção preserva o histórico para a staff.
+Cada membro pode editar o nome e a imagem dos próprios registros e removê-las com `/remover`, depois de confirmar. Só a staff altera cadastros de outras pessoas, muda aparência, obra ou situação, transfere e usa a limpeza em lote. A remoção preserva o histórico para a staff.
 
 ## Comece por aqui
 
