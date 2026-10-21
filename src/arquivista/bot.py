@@ -24,7 +24,7 @@ from .sheet import SheetSync
 from .managed import ManagedSheets
 from .google import GoogleError
 from .store import Store
-from .idiomas import preparar_interface, arvore_e_tradutor, preparar, definir, atual, tr
+from .idiomas import preparar_interface, arvore_e_tradutor, preparar, definir, atual, tr, usar
 
 ArvoreLocalizada, Tradutor = arvore_e_tradutor()
 from .transport import Carteiro, MENTIONS
@@ -62,6 +62,7 @@ STAFF_HELP = """
 
 **Gerência do servidor**
 `/configurar` ou `AC:cfg` — escolha os cargos de staff, os canais e a frequência do backup; conecte a planilha.
+`/language` ou `/idioma` — mude o idioma das respostas; exige gerência ou cargo de staff. Só planilhas novas usam o novo idioma. A configuração das Guias é independente.
 `/restaurar` ou `AC:restaurar` com o .json anexado — recupere os cadastros de um backup. Confira o resumo antes de confirmar.
 `/planilha criar` — informe seu e-mail Google em privado para receber a planilha pronta, com acesso de editor. Se ela já existe, abre o mesmo arquivo.
 `/planilha abrir` ou `AC:planilha` — recupere o link e abra o painel da planilha.
@@ -109,6 +110,7 @@ GUIDE = (
      "Quer uma aba para outra pessoa? Use `/planilha membro` e selecione o @membro do servidor. "
      "Preencha as posições prontas; as edições no Sheets chegam ao bot em cerca de 5 minutos. Compartilhe edição só com a staff.\n\n"
      "Em **Backup**, escolha o canal e a frequência. **Fazer backup agora** envia uma cópia na hora. Para recuperar os cadastros, anexe o `.json` ao `/restaurar`.\n\n"
+     "Use `/language` ou `/idioma` para escolher português ou inglês. A staff também pode mudar o idioma. Os arquivos já criados mantêm a língua original; só planilhas novas usam a língua escolhida. Essa opção é independente do idioma das Guias.\n\n"
      "Para as mensagens saírem com a foto da Amiya, o bot precisa da permissão **Gerenciar Webhooks**.\n\n" + SETUP_LINK),
 )
 STAFF_PAGES = 2
@@ -122,8 +124,9 @@ SHEET_ERRORS = {"AUTH": "a planilha recusou a chave ou a URL; conecte de novo no
     "OLD_SCRIPT": SCRIPT_UPDATE,
     "OLD_BOT": "o script da planilha é mais novo que o bot; atualize o bot",
     "CHANGED": "a planilha mudou enquanto eu gravava; vou tentar de novo", "INTERNAL": "erro na integração da planilha; avise o mantenedor"}
-SHEET_ERRORS.update({code: str(GoogleError(code)) for code in
-    ("GOOGLE_SETUP", "GOOGLE_AUTH", "GOOGLE_ACCESS", "GOOGLE_MISSING", "GOOGLE_LOCALE", "GOOGLE_INVALID", "GOOGLE_STORAGE")})
+with usar('pt-BR'):
+    SHEET_ERRORS.update({code: str(GoogleError(code)) for code in
+        ("GOOGLE_SETUP", "GOOGLE_AUTH", "GOOGLE_ACCESS", "GOOGLE_MISSING", "GOOGLE_LOCALE", "GOOGLE_INVALID", "GOOGLE_STORAGE")})
 
 class Arquivista(commands.Bot):
     def __init__(self, config: Config):
@@ -496,22 +499,22 @@ class Arquivista(commands.Bot):
                 data=await archive.call("status",actor)
                 cfg=self.store.guild(i.guild_id)
                 channel=lambda c:f"<#{c}>" if c else tr('não configurado')
-                body=(tr('**Versão do Arquivista:** {0}\n**Cadastros:** {1} ({2} ocupando aparência)\n**Membros com cadastro:** {3}\n**Eventos na auditoria:** {4}\n**Avisos esperando envio:** {5}\n**Canal de histórico:** {6}\n**Canal de imagens:** {7}\n**Cargos de staff:** {8}\n**Último envio de avisos:** {9}\n**Funcionamento:** {10}').format(__version__, data['records'], data['occupied'], data['members'], data['events'], data['pending_notices'], channel(cfg['log_channel']), channel(cfg['image_channel']), ', '.join(f'<@&{r}>' for r in cfg['staff_roles']) or 'só dono e quem gerencia o servidor', self.last_sync or 'ainda não realizado', self.sync_problem or 'sem erro registrado nesta sessão'))
+                body=(tr('**Versão do Arquivista:** {0}\n**Cadastros:** {1} ({2} ocupando aparência)\n**Membros com cadastro:** {3}\n**Eventos na auditoria:** {4}\n**Avisos esperando envio:** {5}\n**Canal de histórico:** {6}\n**Canal de imagens:** {7}\n**Cargos de staff:** {8}\n**Último envio de avisos:** {9}\n**Funcionamento:** {10}').format(__version__, data['records'], data['occupied'], data['members'], data['events'], data['pending_notices'], channel(cfg['log_channel']), channel(cfg['image_channel']), ', '.join(f'<@&{r}>' for r in cfg['staff_roles']) or tr('só dono e quem gerencia o servidor'), self.last_sync or tr('ainda não realizado'), self.sync_problem or tr('sem erro registrado nesta sessão')))
                 me=getattr(i.guild,"me",None);here=i.channel
                 hooks=bool(me and here is not None and hasattr(here,"permissions_for") and here.permissions_for(me).manage_webhooks)
                 body+=tr('\n**Amiya neste canal:** ')+(tr('com a foto dela') if hooks else tr('sai com o ícone do bot; dê ao bot a permissão Gerenciar Webhooks'))
                 if cfg.get("sheet_url"):
                     queued,bad=self.store.sheet_pending(i.guild_id)
                     body+=(tr('\n**Planilha:** conectada · envios pendentes: {0}').format(queued)+(tr(', recusados pela planilha: {0}').format(bad) if bad else "")+
-                           tr('\n**Último envio para a planilha:** {0}').format(cfg.get('sheet_ok') or 'ainda não realizado')+
+                           tr('\n**Último envio para a planilha:** {0}').format(cfg.get('sheet_ok') or tr('ainda não realizado'))+
                            (tr('\n**Último erro da planilha:** {0}').format(tr(SHEET_ERRORS.get(cfg['sheet_error'],cfg['sheet_error']))) if cfg.get("sheet_error") else "")+
                            (tr('\n**Edição da planilha que não entrou:** {0}').format(clean(cfg['sheet_note'],900)) if cfg.get("sheet_note") else ""))
                 else:
                     body+=tr('\n**Planilha:** não conectada')
-                body+=tr('\n**Criação automática de planilhas:** ')+("ativada" if self.managed.ready else tr('aguardando ativação pelo mantenedor'))
+                body+=tr('\n**Criação automática de planilhas:** ')+(tr("ativada") if self.managed.ready else tr('aguardando ativação pelo mantenedor'))
                 if cfg.get("backup_channel"):
                     nxt=cfg.get("backup_next")
-                    body+=(tr('\n**Backup:** <#{0}> · {1}').format(cfg['backup_channel'], backup.INTERVALS.get(cfg.get('backup_hours') or 24,'todo dia'))+
+                    body+=(tr('\n**Backup:** <#{0}> · {1}').format(cfg['backup_channel'], tr(backup.INTERVALS.get(cfg.get('backup_hours') or 24,'todo dia')))+
                            (tr(' · próximo <t:{0}:R>').format(int(nxt)) if nxt else "")+
                            (tr('\n**Último erro do backup:** {0}').format(cfg['backup_error']) if cfg.get("backup_error") else ""))
                 else:

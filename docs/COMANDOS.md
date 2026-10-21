@@ -76,3 +76,13 @@ Notificações são normalmente consumidas pelo ciclo de sincronização, config
 A mensagem pública informa uma inclusão, remoção ou alteração genérica, com aparência, obra, responsável, autor quando conhecido e horário. Ela **não revela que um personagem está preparado, morto/arquivado ou liberado**, nem o conteúdo da justificativa. O detalhe completo fica em `/historico`, privadamente para staff.
 
 Trocar o visor, abrir +/− e recalcular fórmulas não cria uma mudança na ficha. Configurar o canal também não republica os avisos antigos. A consulta de histórico mostra até 200 resultados recentes e avisa quando há mais; o histórico completo continua no banco do bot.
+
+## Português e inglês
+
+Use `/language` ou `/idioma` para consultar ou escolher o idioma do servidor. A mudança exige Gerenciar servidor, Administrador, ser dono ou ter um cargo de staff configurado. Não concede novos acessos à planilha nem muda os cargos.
+
+A resposta usa o idioma do servidor; o menu por barra usa a preferência de idioma do seu Discord. Os valores internos permanecem iguais. Por exemplo, **In use** representa a situação **Em uso**; um cadastro não muda de situação ao trocar de idioma.
+
+Aliases com `AC:`: `help`, `guide`, `appearances`, `list`, `mine`, `gallery`, `search`, `register`, `edit`, `status_change`, `transfer`, `work`, `alias`, `remove`, `clear`, `history`, `diagnostics`, `restore`, `spreadsheet` e `settings`. Os nomes portugueses e atalhos anteriores continuam funcionando. Idioma é configurado pela barra.
+
+Novas planilhas acompanham o idioma escolhido antes da criação. Uma planilha já conectada não é convertida nem substituída. A opção das Guias é separada.

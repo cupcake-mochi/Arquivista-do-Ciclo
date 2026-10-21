@@ -8,7 +8,7 @@ import discord
 from .domain import Actor, UserError, BridgeError, STAFF_ACTIONS, STATUSES, safe_image_url
 from .transport import MENTIONS
 from .idiomas import atual, definir, preparar_interface, tr
-from .docs import SETUP_LINK
+from .docs import setup_link
 
 log = logging.getLogger(__name__)
 
@@ -501,7 +501,7 @@ class BackupPanel(GuardedView):
         current = cfg.get("backup_hours") or 24
         from .backup import INTERVALS
         self.every = discord.ui.Select(placeholder=tr('Frequência'), row=1, options=[
-            discord.SelectOption(label=text.capitalize(), value=str(h), default=h == current) for h, text in INTERVALS.items()])
+            discord.SelectOption(label=tr(text).capitalize(), value=str(h), default=h == current) for h, text in INTERVALS.items()])
         self.every.callback = self.save_every
         self.add_item(self.channel)
         self.add_item(self.every)
@@ -517,7 +517,7 @@ class BackupPanel(GuardedView):
         cfg = self.bot.store.guild(self.guild.id)
         where = f"<#{cfg['backup_channel']}>" if cfg.get("backup_channel") else tr('desligado')
         e = card(tr('Backup automático'),
-            tr('**Canal:** {0}\n**Frequência:** {1}\n\nEnvia uma cópia dos cadastros em `.json`, para usar no `/restaurar`. Com a planilha conectada, envia também um `.xlsx`, com uma aba por membro. Como esses arquivos incluem justificativas e nomes dos personagens no servidor, escolha um canal só da staff.').format(where, INTERVALS.get(cfg.get('backup_hours') or 24, tr('todo dia'))))
+            tr('**Canal:** {0}\n**Frequência:** {1}\n\nEnvia uma cópia dos cadastros em `.json`, para usar no `/restaurar`. Com a planilha conectada, envia também um `.xlsx`, com uma aba por membro. Como esses arquivos incluem justificativas e nomes dos personagens no servidor, escolha um canal só da staff.').format(where, tr(INTERVALS.get(cfg.get('backup_hours') or 24, 'todo dia'))))
         return self.bot.carteiro.decorate(e)
     async def refresh(self, i: discord.Interaction, note: str | None = None):
         await i.response.edit_message(content=note, embed=self.embed(), view=self, allowed_mentions=MENTIONS)
@@ -572,7 +572,7 @@ class SheetModal(LocalizedModal):
             return await private_reply(i, content=tr('Só quem pode gerenciar o servidor conecta a planilha.'))
         url, key = str(self.url.value).strip(), str(self.key.value).strip().lower()
         if not SHEET_URL.match(url):
-            return await private_reply(i, content="A URL precisa ser a do App da Web, no formato https://script.google.com/macros/s/.../exec.")
+            return await private_reply(i, content=tr("A URL precisa ser a do App da Web, no formato https://script.google.com/macros/s/.../exec."))
         if not SHEET_KEY.match(key):
             return await private_reply(i, content=tr('A chave não confere. Copie de novo pelo menu Arquivista > Mostrar a chave da conexão.'))
         await i.response.defer(ephemeral=True, thinking=True)
@@ -620,7 +620,7 @@ class Settings(GuardedView):
         channel = lambda c: f"<#{c}>" if c else tr('desligado')
         roles = ", ".join(f"<@&{r}>" for r in cfg["staff_roles"]) or tr('nenhum (só dono e quem gerencia o servidor)')
         e = card(tr('Configuração do Arquivista'),
-            tr('**Cargos de staff:** {0}\n**Canal de histórico:** {1}\n**Canal de imagens:** {2}\n**Planilha:** {3}\n**Backup:** {4}\n\nO canal de histórico recebe os avisos de novas mudanças, sem situação, justificativa ou nome do personagem no servidor. O canal de imagens guarda os anexos dos cadastros; não apague essas mensagens.\n\nUse **Planilha** ou `/planilha criar` para receber o arquivo pronto e poder editar no Google Sheets.\n\n').format(roles, channel(cfg['log_channel']), channel(cfg['image_channel']), tr('conectada') if cfg.get('sheet_url') else tr('não conectada'), channel(cfg.get('backup_channel'))) + SETUP_LINK)
+            tr('**Cargos de staff:** {0}\n**Canal de histórico:** {1}\n**Canal de imagens:** {2}\n**Planilha:** {3}\n**Backup:** {4}\n\nO canal de histórico recebe os avisos de novas mudanças, sem situação, justificativa ou nome do personagem no servidor. O canal de imagens guarda os anexos dos cadastros; não apague essas mensagens.\n\nUse **Planilha** ou `/planilha criar` para receber o arquivo pronto e poder editar no Google Sheets.\n\n').format(roles, channel(cfg['log_channel']), channel(cfg['image_channel']), tr('conectada') if cfg.get('sheet_url') else tr('não conectada'), channel(cfg.get('backup_channel'))) + setup_link())
         return self.bot.carteiro.decorate(e)
     async def refresh(self, i: discord.Interaction, note: str | None = None):
         await i.response.edit_message(content=note, embed=self.embed(), view=self, allowed_mentions=MENTIONS)

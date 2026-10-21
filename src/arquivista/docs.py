@@ -13,3 +13,8 @@ SCRIPT_UPDATE = (
     "Depois use Implantar > Gerenciar implantações > Editar > Nova versão > Implantar. "
     f"Para configurar o servidor, consulte o {SETUP_LINK}."
 )
+
+
+def setup_link():
+    from .idiomas import tr
+    return f"[{tr('Guia do dono do servidor')}]({OWNER_GUIDE})"

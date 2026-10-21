@@ -80,6 +80,21 @@ class LayoutLanguage(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(modal.fields['work'].default,'Nome no servidor')
             self.assertEqual(modal.fields['work'].label,'Source work')
 
+    async def test_backup_controls_and_setup_link_use_current_language(self):
+        from arquivista.views import BackupPanel
+        from arquivista.docs import setup_link
+        cfg={'backup_hours':12,'backup_channel':None}
+        bot=NS(store=NS(guild=lambda _:cfg),carteiro=NS(decorate=lambda e:e))
+        with usar('en'):
+            view=BackupPanel(bot,99,NS(id=123))
+            self.assertEqual([o.label for o in view.every.options],
+                ['Every 6 hours','Every 12 hours','Daily','Every 3 days','Weekly'])
+            self.assertEqual([o.value for o in view.every.options],['6','12','24','72','168'])
+            self.assertIn('every 12 hours',view.embed().description)
+            self.assertIn('[Server owner guide]',setup_link())
+        with usar('pt-BR'):
+            self.assertIn('[Guia do dono do servidor]',setup_link())
+
     async def test_languages_are_concurrent_task_local(self):
         async def f(lang):
             with usar(lang):
