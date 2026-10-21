@@ -139,7 +139,9 @@ class GoogleAPI:
 
 class DirectSheet:
     """A mesma interface status/read/write da ponte antiga, usando Sheets API."""
-    def __init__(self, api, file_id):
+    def __init__(self, api, file_id, language="pt-BR"):
+        self.language = language
+        self.locale = "en_US" if language == "en" else "pt_BR"
         self.api, self.file_id = api, file_id
         self.url = SHEETS + "/" + quote(file_id, safe="")
         self.reads = []
@@ -167,9 +169,9 @@ class DirectSheet:
             meta = await self.metadata()
             # As fórmulas produzidas pelo layout usam a localidade definida na criação.
             locale = meta.get("properties", {}).get("locale", "pt_BR")
-            if locale != "pt_BR":
+            if locale != self.locale:
                 raise GoogleError("GOOGLE_LOCALE")
-            return {"version": "2.direct", "sep": ";", "sheets": [
+            return {"version": "2.direct", "sep": "," if self.language == "en" else ";", "sheets": [
                 {"sheetId": x["properties"]["sheetId"], "title": x["properties"]["title"],
                  "rows": x["properties"]["gridProperties"]["rowCount"]} for x in meta.get("sheets", [])]}
         if action == "read":
@@ -182,7 +184,7 @@ class DirectSheet:
         if any(len(r) != 1 or next(iter(r)) not in ALLOWED for r in requests):
             raise GoogleError("GOOGLE_INVALID")
         meta = await self.metadata()
-        if meta.get("properties", {}).get("locale", "pt_BR") != "pt_BR":
+        if meta.get("properties", {}).get("locale", "pt_BR") != self.locale:
             raise GoogleError("GOOGLE_LOCALE")
         current = {x["properties"]["sheetId"]: x["properties"] for x in meta.get("sheets", [])}
         for e in data.get("expect", []):

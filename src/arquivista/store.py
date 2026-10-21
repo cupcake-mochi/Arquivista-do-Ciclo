@@ -45,7 +45,8 @@ SCHEMA = '''
 # Colunas acrescentadas depois da primeira versão do banco; ALTER TABLE preserva o que já existe.
 COLUMNS = {"guilds": (("sheet_url", "TEXT"), ("sheet_key", "TEXT"), ("sheet_error", "TEXT"), ("sheet_ok", "TEXT"),
                       ("backup_channel", "TEXT"), ("backup_hours", "INTEGER"), ("backup_next", "REAL"), ("backup_error", "TEXT"),
-                      ("sheet_note", "TEXT"))}
+                      ("sheet_note", "TEXT"), ("language", "TEXT NOT NULL DEFAULT 'pt-BR'")),
+           "managed_sheets": (("language", "TEXT NOT NULL DEFAULT 'pt-BR'"),)}
 
 SHEET_FIELDS = ("id", "owner_id", "appearance", "work", "server_name", "status", "justification", "image_url", "date", "revision")
 
@@ -80,15 +81,17 @@ class Store:
             return {"guild_id": str(guild_id), "staff_roles": [], "log_channel": None, "image_channel": None,
                     "sheet_url": None, "sheet_key": None, "sheet_error": None, "sheet_ok": None,
                     "backup_channel": None, "backup_hours": None, "backup_next": None, "backup_error": None,
-                    "sheet_note": None}
+                    "sheet_note": None, "language": "pt-BR"}
         data = dict(row)
         data["staff_roles"] = [str(x) for x in json.loads(data["staff_roles"])]
         return data
     def set_guild(self, guild_id: int | str, **fields) -> None:
         allowed = {"staff_roles", "log_channel", "image_channel", "sheet_url", "sheet_key", "sheet_error", "sheet_ok",
-                   "backup_channel", "backup_hours", "backup_next", "backup_error", "sheet_note"}
+                   "backup_channel", "backup_hours", "backup_next", "backup_error", "sheet_note", "language"}
         if not fields or set(fields) - allowed:
             raise ValueError("campo de servidor desconhecido")
+        if "language" in fields and fields["language"] not in ("pt-BR", "en"):
+            raise ValueError("invalid language")
         if "staff_roles" in fields:
             fields["staff_roles"] = json.dumps(sorted({str(x) for x in fields["staff_roles"]}))
         now = time.time()
@@ -193,10 +196,12 @@ class Store:
     def managed_sheet(self, guild_id):
         row = self.db.execute("SELECT * FROM managed_sheets WHERE guild_id=?", (str(guild_id),)).fetchone()
         return dict(row) if row else None
-    def begin_managed_sheet(self, guild_id, request_id, editor):
+    def begin_managed_sheet(self, guild_id, request_id, editor, language="pt-BR"):
+        if language not in ("pt-BR", "en"):
+            raise ValueError("invalid language")
         with self.db:
-            self.db.execute("INSERT OR IGNORE INTO managed_sheets(guild_id,request_id,editor,updated) VALUES(?,?,?,?)",
-                            (str(guild_id), request_id, editor, time.time()))
+            self.db.execute("INSERT OR IGNORE INTO managed_sheets(guild_id,request_id,editor,updated,language) VALUES(?,?,?,?,?)",
+                            (str(guild_id), request_id, editor, time.time(), language))
         return self.managed_sheet(guild_id)
     def update_managed_sheet(self, guild_id, **fields):
         if not fields or set(fields) - {"state", "file_id", "url", "editor"}:

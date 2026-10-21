@@ -40,7 +40,11 @@ SHORT = {
     "planilha": ("planilha", "planilhas"),
     "configurar": ("configurar", "config", "cfg", "registrarhistorico", "desativarhistorico", "registrarimagens", "desativarimagens"),
 }
+ENGLISH_ALIASES={"guide":"guia","appearances":"aparencias","list":"aparencias","mine":"minhas","gallery":"galeria","search":"consultar","register":"registrar","edit":"editar","status_change":"situacao","transfer":"transferir","work":"obra","alias":"apelido","remove":"remover","clear":"limpar","history":"historico","diagnostics":"diagnostico","restore":"restaurar","spreadsheet":"planilha","settings":"configurar"}
+for name,action in ENGLISH_ALIASES.items():
+    SHORT[action]=(*SHORT[action],name)
 ALIASES = {name: action for action, names in SHORT.items() for name in names}
+
 STAFF_ACTIONS = frozenset(("situacao", "transferir", "limpar", "apelido", "historico", "diagnostico"))
 
 ERRORS = {

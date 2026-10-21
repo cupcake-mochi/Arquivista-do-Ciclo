@@ -7,6 +7,7 @@ Cadastro com mudança esperando ir para a planilha fica de fora: a versão do bo
 Edição que o bot recusa (aparência repetida, situação que não existe...) é desfeita na planilha.
 """
 from __future__ import annotations
+from .sheet_language import status_in
 import datetime as dt
 import re
 
@@ -31,6 +32,10 @@ def _date(v):
             return (EPOCH + dt.timedelta(days=int(v))).isoformat()
         except OverflowError:
             return False
+    try:
+        return dt.date.fromisoformat(str(v).strip()).isoformat()
+    except ValueError:
+        pass
     m = re.fullmatch(r"(\d{1,2})/(\d{1,2})/(\d{4})", str(v).strip())
     try:
         return dt.date(int(m[3]), int(m[2]), int(m[1])).isoformat() if m else False
@@ -48,7 +53,7 @@ def row_values(b: layout.Block, n: int) -> dict:
     row = b.row(n)
     line = b.tab.grid[row - 1]
     return {"appearance": _text(line[layout.APPEARANCE - 1]), "server_name": _text(line[layout.SERVER_NAME - 1]),
-            "work": _text(line[layout.WORK - 1]), "status": _text(line[layout.STATUS - 1]),
+            "work": _text(line[layout.WORK - 1]), "status": status_in(_text(line[layout.STATUS - 1]),b.tab.language),
             "justification": _text(b.tab.grid[row + 1][layout.APPEARANCE - 1]),
             "image_url": _text(line[layout.URL - 1]), "date": _date(line[layout.DATE - 1])}
 

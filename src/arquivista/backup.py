@@ -5,6 +5,7 @@ O .xlsx é montado à mão (zip + XML) para não depender de biblioteca. É uma 
 dos dados; a formatação da planilha conectada (blocos, visor, cores) não vai junto.
 """
 from __future__ import annotations
+from .sheet_language import label
 import io
 import json
 import re
@@ -60,7 +61,7 @@ def _sheet_xml(rows: list[list]) -> str:
             f'<cols>{cols}</cols><sheetData>{"".join(body)}</sheetData></worksheet>')
 
 
-def workbook(records: list[dict], names: dict[str, str]) -> bytes:
+def workbook(records: list[dict], names: dict[str, str], language="pt-BR") -> bytes:
     """Uma guia por membro (nome de usuário), na ordem dos cadastros. names: owner_id -> nome."""
     by_owner: dict[str, list[dict]] = {}
     for r in records:
@@ -68,13 +69,14 @@ def workbook(records: list[dict], names: dict[str, str]) -> bytes:
     taken: set[str] = set()
     sheets = []
     for owner, items in by_owner.items():
-        rows = [[c[0] for c in COLUMNS]]
+        rows = [[label(c[0],language) for c in COLUMNS]]
         for r in items:
             line = []
             for _, key, _ in COLUMNS:
                 v = r.get(key) or ""
                 if key == "date" and v:
-                    v = date.fromisoformat(v).strftime("%d/%m/%Y")
+                    v = date.fromisoformat(v).strftime("%Y-%m-%d" if language=="en" else "%d/%m/%Y")
+                if key == "status":v=label(v,language)
                 line.append(v)
             rows.append(line)
         sheets.append((_sheet_name(names.get(owner) or f"Membro {owner}", taken), rows))

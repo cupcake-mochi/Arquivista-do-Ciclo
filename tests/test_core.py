@@ -453,7 +453,7 @@ class FilesTests(unittest.TestCase):
         self.assertEqual(names,[n for n in SLASH if n!='planilha'])  # o grupo é conferido na construção real
         # Todo comando de chat cai num comando de barra ou numa consulta pública.
         self.assertTrue(set(ALIASES.values())<=set(SLASH)|PUBLIC)
-        self.assertEqual(len(names),15)
+        self.assertEqual(len(names),17)  # idioma e language são configurações somente por barra
 
 
 class SetupTests(unittest.TestCase):
@@ -509,7 +509,7 @@ class DiscordImportTests(unittest.IsolatedAsyncioTestCase):
         with tempfile.TemporaryDirectory() as d:
             cfg=Config('FAKE',Path(d)/'t.sqlite')
             bot=Arquivista(cfg)
-            self.assertEqual(len(bot.tree.get_commands()),16)
+            self.assertEqual(len(bot.tree.get_commands()),18)  # inclui os dois nomes do comando de idioma
             # Um método do bot com nome de método do discord.py derrubava o login (dispatch).
             from discord.ext import commands
             mine={n for n in vars(Arquivista) if not n.startswith('__')}

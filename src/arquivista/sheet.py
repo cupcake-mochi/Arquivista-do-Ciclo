@@ -45,7 +45,7 @@ async def read_sheet(bridge: Bridge, actor: Actor) -> tuple[layout.Model, list[d
     marks = await read([layout.a1(x["title"], f"K1:K{x['rows']}") for x in sheets], 400)
     members = [x for x, k in zip(sheets, marks) if layout.is_member_tab(k)]
     values = await read([layout.a1(x["title"], f"A1:K{x['rows']}") for x in members], 40)
-    model = layout.load(st.get("sep") or ";", sheets, {x["sheetId"]: v for x, v in zip(members, values)})
+    model = layout.load(st.get("sep") or ";", sheets, {x["sheetId"]: v for x, v in zip(members, values)}, language=getattr(bridge,"language","pt-BR"))
     return model, [{"sheetId": x["sheetId"], "rows": x["rows"], "title": x["title"]} for x in members]
 
 def _keys(master: bytes) -> tuple[bytes, bytes]:
@@ -92,7 +92,7 @@ class SheetSync:
         managed = self.bot.store.managed_sheet(guild_id)
         if managed and cfg.get("sheet_url") == managed["url"] and managed["file_id"]:
             from .google import DirectSheet
-            return DirectSheet(self.bot.managed.api, managed["file_id"])
+            return DirectSheet(self.bot.managed.api, managed["file_id"], managed.get("language","pt-BR"))
         return Bridge(self.bot.session, cfg["sheet_url"], unseal(self.bot.config.master_key, cfg["sheet_key"]), int(guild_id))
     async def owner_name(self, guild_id: str, owner_id: str) -> str:
         key = (guild_id, owner_id)
