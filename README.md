@@ -12,6 +12,8 @@ Cada servidor tem seus próprios cadastros e configurações. O banco SQLite gua
 
 **Planilha pronta:** `/planilha criar` pede um e-mail em privado e entrega o arquivo montado, conectado e com edição para esse e-mail. A planilha pertence à conta do Arquivista. `/planilha membro` exige selecionar um membro real do servidor e prepara uma aba para preenchimento manual; cadastros pelo bot também criam as abas. Não é preciso instalar script. Para ativar na hospedagem, veja [a configuração única do mantenedor](docs/GOOGLE-MANTENEDOR.md).
 
+**Importar de outro arquivo (1.2.0, preparada nesta branch):** `/planilha importar` lê uma planilha compatível e autorizada e cria uma nova planilha independente para um servidor vazio. Somente a cópia recebe edição para o e-mail informado. O original não é alterado; IDs dos cadastros são novos, responsáveis e datas são mantidos. [Funcionamento, autorização Google e limites](docs/IMPORTAR-PLANILHA.md).
+
 **Abrir novamente:** `/planilha abrir` ou `AC:planilha` recupera o painel privado com o link do arquivo já conectado.
 
 ## Idioma por servidor

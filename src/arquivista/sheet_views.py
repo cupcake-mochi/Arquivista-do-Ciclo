@@ -72,7 +72,7 @@ class SheetPanel(GuardedView):
         status = tr('conectada') if cfg.get("sheet_url") else tr('não conectada')
         availability = tr('disponível') if self.bot.managed.ready else tr('aguardando ativação pelo mantenedor')
         return self.bot.carteiro.decorate(card(tr('Planilha do servidor'),
-            tr('**Planilha:** {0}\n**Criação automática:** {1}\n\n**Criar ou retomar** abre um formulário privado para você informar o e-mail de quem vai editar. Se a planilha já existe, abre o mesmo arquivo.\n\n`/planilha membro` prepara uma aba vazia para um @membro selecionado do servidor. Você pode preencher as fichas na planilha ou pelo bot. As edições no Sheets chegam ao bot em cerca de 5 minutos.\nDê acesso de editor só à staff: quem edita a planilha pode mudar os cadastros do servidor.\n\n').format(status, availability) + setup_link()))
+            tr('**Planilha:** {0}\n**Criação automática:** {1}\n\n**Criar ou retomar** abre um formulário privado para você informar o e-mail de quem vai editar. Se a planilha já existe, abre o mesmo arquivo.\n\n`/planilha membro` prepara uma aba vazia para um @membro selecionado do servidor. Você pode preencher as fichas na planilha ou pelo bot. As edições no Sheets chegam ao bot em cerca de 5 minutos.\nDê acesso de editor só à staff: quem edita a planilha pode mudar os cadastros do servidor.\n\n').format(status, availability) + tr("**Importar existente** copia os cadastros de um arquivo autorizado para uma planilha nova e independente. O servidor precisa estar sem cadastros e sem planilha registrada. Só a cópia recebe edição para o e-mail informado.\n\n") + setup_link()))
 
     @discord.ui.button(label="Criar ou retomar", style=discord.ButtonStyle.primary)
     async def create(self, i, button):
@@ -81,6 +81,11 @@ class SheetPanel(GuardedView):
     @discord.ui.button(label="Planilha antiga", style=discord.ButtonStyle.secondary)
     async def legacy(self, i, button):
         await i.response.send_modal(preparar_interface(SheetModal(self.bot, i.user.id, self.guild)))
+
+    @discord.ui.button(label="Importar existente", style=discord.ButtonStyle.secondary)
+    async def existing(self, i, button):
+        from .existing_views import open_existing
+        await open_existing(self.bot, i)
 
     @discord.ui.button(label="Desconectar", style=discord.ButtonStyle.secondary)
     async def disconnect(self, i, button):

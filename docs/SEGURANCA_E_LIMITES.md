@@ -18,6 +18,10 @@ Desconectar encerra a sincronização, sem apagar o arquivo ou revogar permissõ
 
 Conexões legadas por Apps Script continuam disponíveis. Cada pedido da ponte usa assinatura HMAC-SHA256, servidor, autor, timestamp e identificador; a chave não vai na URL. O script usa trava compartilhada para suas operações. O fluxo novo acessa diretamente as APIs Google e dispensa instalação de script pelo dono do servidor.
 
+## Importação para cópia independente
+
+`/planilha importar` exige gerência no destino e autorização sobre a origem. Gerência de outro servidor não concede acesso automático: é preciso gerenciar também a origem identificada pelo aplicativo ou obter a autorização no arquivo por quem já pode editá-lo. A prévia só mostra os dados depois dessa autorização. O bot não escreve na origem. O destino precisa estar vazio; novos IDs mantêm cadastros e sincronizações separados. Só o arquivo novo recebe edição por e-mail. [Proteções, retomada e limites](IMPORTAR-PLANILHA.md).
+
 ## Sincronização e concorrência
 
 Mudanças do bot entram em uma fila SQLite durável. A reconciliação procura edições manuais aproximadamente a cada cinco minutos, valida os dados e registra eventos de origem planilha, sem atribuir um autor Discord não identificado. Campos alterados manualmente podem ser conciliados com mudanças do bot; revisões antigas são recusadas. A fila usa retentativas com espera e expõe erros no diagnóstico.

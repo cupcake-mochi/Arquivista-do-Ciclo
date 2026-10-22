@@ -16,14 +16,18 @@ from configurar import write_private
 
 SCOPE = "https://www.googleapis.com/auth/drive.file"
 
-def authorization_url(client_id, redirect, state, verifier):
+def authorization_url(client_id, redirect, state, verifier, file_id=None):
     challenge = base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).decode().rstrip("=")
-    return "https://accounts.google.com/o/oauth2/v2/auth?" + urlencode({
+    params = {
         "client_id": client_id, "redirect_uri": redirect, "response_type": "code", "scope": SCOPE,
         "state": state, "access_type": "offline", "prompt": "consent", "code_challenge": challenge,
-        "code_challenge_method": "S256"})
+        "code_challenge_method": "S256"}
+    if file_id:
+        params.update(trigger_onepick="true", allow_multiple="false", file_ids=file_id,
+                      mimetypes="application/vnd.google-apps.spreadsheet")
+    return "https://accounts.google.com/o/oauth2/v2/auth?" + urlencode(params)
 
-def authorize(client):
+def authorize(client, *, file_id=None):
     result, state, verifier = {}, secrets.token_urlsafe(32), secrets.token_urlsafe(64)
     class Callback(BaseHTTPRequestHandler):
         def log_message(self, *args):
@@ -36,14 +40,14 @@ def authorize(client):
             self.send_header("Content-Type", "text/plain; charset=utf-8")
             self.end_headers()
             if valid:
-                result.update(code=code, denied=bool(query.get("error")))
+                result.update(code=code, denied=bool(query.get("error")), picked=query.get("picked_file_ids", [""])[0])
                 self.wfile.write("Autorização recebida. Volte ao terminal; esta aba pode ser fechada.".encode())
             else:
                 self.wfile.write(b"Pedido invalido.")
     with HTTPServer(("127.0.0.1", 0), Callback) as server:
         server.timeout = 1
         redirect = f"http://127.0.0.1:{server.server_port}/callback"
-        url = authorization_url(client["client_id"], redirect, state, verifier)
+        url = authorization_url(client["client_id"], redirect, state, verifier, file_id)
         print("Abra o link na conta Google dedicada ao Arquivista e conclua a autorização:")
         print(url)  # somente client_id público, state aleatório e desafio PKCE; nenhum segredo
         webbrowser.open(url)
@@ -52,11 +56,17 @@ def authorize(client):
             server.handle_request()
     if not result.get("code") or result.get("denied"):
         raise ValueError("A autorização não foi concluída em cinco minutos. Execute novamente quando estiver pronto.")
+    if file_id and result.get("picked") != file_id:
+        raise ValueError("Selecione somente a planilha indicada. Nenhuma configuração local foi alterada.")
     body = urlencode({"client_id": client["client_id"], "client_secret": client["client_secret"],
         "code": result["code"], "code_verifier": verifier, "redirect_uri": redirect, "grant_type": "authorization_code"}).encode()
     req = Request("https://oauth2.googleapis.com/token", data=body)
     with urlopen(req, timeout=30) as response:
         data = json.load(response)
+    if file_id:
+        if not data.get("access_token") or (data.get("scope") and set(data["scope"].split()) != {SCOPE}):
+            raise ValueError("O Google não confirmou o acesso restrito ao arquivo.")
+        return data["access_token"]
     if not data.get("refresh_token"):
         raise ValueError("O Google não retornou autorização permanente. Confira o consentimento e tente novamente.")
     return {"GOOGLE_CLIENT_ID": client["client_id"], "GOOGLE_CLIENT_SECRET": client["client_secret"],

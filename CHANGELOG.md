@@ -1,5 +1,11 @@
 # Histórico de versões
 
+## 1.2.0 · preparada em 22/10/2026, publicação pendente
+
+`/planilha importar` e botão **Importar existente**: importação autorizada de cadastros para uma nova planilha por servidor, com prévia privada, novos IDs e edição somente na cópia. O original e sua sincronização ficam preservados. Cancelamento, revisão do acesso e retomada usam o mesmo banco e a criação idempotente já existente.
+
+A origem precisa estar acessível ao aplicativo com `drive.file`; o mantenedor pode autorizar um arquivo específico pelo Picker oficial, sem ampliar escopos nem trocar credenciais. Registros existentes no destino não são mesclados ou substituídos. Veja `docs/IMPORTAR-PLANILHA.md`.
+
 ## 1.1.0 · 21/10/2026
 
 Idioma por servidor: português ou inglês, com autorização da gerência ou de cargos de staff cadastrados. Interface, formulários, guias e mensagens em inglês; aliases ingleses disponíveis. Dados dos membros e códigos internos permanecem canônicos.
