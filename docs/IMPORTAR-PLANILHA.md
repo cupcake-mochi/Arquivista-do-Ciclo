@@ -1,6 +1,6 @@
 # Importar uma planilha existente
 
-Recurso preparado para a versão 1.2.0. Publicação e testes reais desta nova operação ainda pendentes.
+Versão 1.2.0 instalada na Discloud para validação em 22/10/2026. Google real validado com banco isolado; teste completo pela interface do Discord e atualização dos documentos públicos ainda pendentes.
 
 ## Como usar
 
@@ -49,7 +49,7 @@ Fontes: [escopo drive.file](https://developers.google.com/workspace/drive/api/gu
 
 ## Validação e publicação
 
-Testes automáticos usam Google e Discord simulados. Não foram usados arquivos ou bancos reais nesta implementação. Antes de publicar como validado de ponta a ponta, testar o Picker real de uma origem autorizada, prévia e cancelamento, criação da cópia, permissões privadas e sincronização nos dois sentidos, com dois servidores e duas contas. Confirmar que origem e dados do outro servidor permanecem iguais.
+A suíte automática usa Google e Discord simulados. O fechamento offline abaixo foi seguido pela validação real registrada ao final desta página. Antes de publicar como validado de ponta a ponta, testar o Picker real de uma origem autorizada, prévia e cancelamento, criação da cópia, permissões privadas e sincronização nos dois sentidos, com dois servidores e duas contas. Confirmar que origem e dados do outro servidor permanecem iguais.
 
 ### Resultado offline — 22/10/2026
 
@@ -57,8 +57,8 @@ Testes automáticos usam Google e Discord simulados. Não foram usados arquivos 
 - 182 testes Python aprovados, incluindo 33 novos testes de importação e autorização Google; 29 testes JavaScript da ponte e 7 do script da planilha aprovados. O cenário gerado pelo modelo Python também foi aceito pelo script.
 - Casos novos cobrem autorização antes da prévia, direitos revogados, código incorreto ou expirado, isolamento entre servidores, original sem escritas, edição somente na cópia, mudança da origem, destino ocupado, registros sem ID, limites sem truncamento, falha com rollback, retomada após resposta Google perdida, cliques repetidos e cancelamento após confirmação.
 - Textos dos novos formulários, botões, erros e prévia conferidos em português e inglês. Catálogo dos textos novos completo.
-- ZIP regenerado com 29 arquivos, todos comparados aos fontes; sem banco, credenciais ou assistentes de autorização. `MANIFESTO_SHA256.json` descreve este pacote preparado e mantém `live_deployment_audited: false`.
-- Nenhuma chamada paga a modelos; nenhum envio ao Discord, publicação na Discloud ou modificação em arquivos Google reais nesta implementação.
+- ZIP regenerado com 29 arquivos, todos comparados aos fontes; sem banco, credenciais ou assistentes de autorização. Nesse fechamento inicial, `MANIFESTO_SHA256.json` descrevia o pacote preparado com `live_deployment_audited: false`; a auditoria posterior está registrada abaixo.
+- Até esse fechamento offline, não havia chamadas pagas a modelos, envio ao Discord, publicação na Discloud ou modificação em arquivos Google reais. As operações posteriores estão registradas abaixo.
 
 ### Retomada e critérios de liberação
 
@@ -70,3 +70,20 @@ Testes automáticos usam Google e Discord simulados. Não foram usados arquivos 
 6. Alterar um cadastro pelo bot e outro pelo Sheets da cópia; aguardar a sincronização e conferir a origem e o outro servidor sem alterações. Retirar permissão do solicitante durante uma nova prévia deve impedir a confirmação.
 7. Conferir o formulário e as mensagens em inglês, sem traduzir os dados dos membros. Se houver falha Google após a gravação local, `/planilha criar` deve retomar o único arquivo reservado.
 8. Antes de publicar, atualizar os documentos públicos do dono, privacidade e termos com as versões revisadas neste repositório. Guardar o backup da hospedagem, preservar banco e variáveis, publicar o ZIP conferido e conferir `/diagnostico` e a versão em execução. Só então registrar implantação e auditoria reais no manifesto.
+
+
+### Validação real e instalação — 22/10/2026
+
+A pedido do usuário, foi usada a sessão autenticada do Discord e da Discloud no navegador do aplicativo. A versão `1.2.0` correspondente ao runtime `4710955` foi instalada no app **Arquivista do Ciclo**, ID `1792461187549`, após backup manual baixado e verificado. Não houve merge da PR nesta etapa.
+
+**Produção conferida pelo console, somente leitura:** 29 arquivos iguais aos fontes do pacote, banco com integridade `ok`, 19 cadastros e três conexões gerenciadas idênticos à referência anterior. O ZIP não levou banco nem credenciais. O console foi desconectado ao final. O manifesto passou a registrar a auditoria física dessa instalação; isso não significa que os testes de interface pendentes foram concluídos.
+
+**Discord real:** `AC:diagnostico`, `AC:planilha`, abertura do painel privado, botão **Importar existente**, formulário e envio funcionaram. Uma tentativa no servidor `1357866906341736488` foi recusada porque existe uma planilha gerenciada anterior, embora a sincronização esteja desligada. O arquivo e a reserva anteriores foram preservados; não se deve apagar esse vínculo para destravar um teste. Um painel emitido antes da reinicialização também respondeu com a orientação de reabrir o comando.
+
+**Google real com SQLite isolado e solicitante Discord simulado:** origem sintética com três cadastros, dois responsáveis, situações diferentes e uma data vazia. A autorização sem código atual foi recusada; código correto no intervalo de célula única foi aceito. A importação gerou outro arquivo, com três IDs novos, responsáveis e datas preservados. Apenas a cópia recebeu edição para o e-mail autorizado pelo usuário, sem acesso público. Os cadastros e permissões da origem permaneceram iguais. Os cadastros não foram colocados no banco de produção.
+
+A sincronização real também foi conferida nos dois sentidos pelo código do bot: mudança no Sheets entrou no SQLite isolado, e edição pelo módulo de cadastros voltou à cópia. Nenhum modelo de linguagem foi chamado. A cópia foi aberta no navegador como o usuário autorizado e está editável.
+
+**Pendente antes de anunciar validação completa:** criação do servidor temporário `QA Arquivista - Importação - 22-10`, inclusão do bot e confirmação/cancelamento da importação pela interface. O Discord apresenta aceite das diretrizes da comunidade no botão de criação; foi pedido ao usuário o aceite específico, sem clicar nesse botão. Também permanecem pendentes teste com membro comum/segunda conta, navegação em inglês na operação real, Picker real de uma origem externa, atualização dos três documentos públicos e merge da PR.
+
+**Retomada exata:** conferir a PR e o estado remoto; manter a produção existente e a reserva de M&S; receber o aceite pendente antes de criar o servidor temporário. A aba do Discord foi deixada no formulário preenchido, sem confirmar. A origem e a cópia sintéticas, os scripts de teste, relatórios, imagens e o backup privado estão em `dados/` desta checkout, ignorados pelo Git. Não publicar credenciais, banco, código temporário de autorização ou o conteúdo dos backups. O arquivo `teste-importacao-real.json` identifica os dois arquivos sintéticos para continuar e, ao encerrar, enviá-los à lixeira pelo fluxo recuperável. Não tocar nas planilhas reais do usuário.

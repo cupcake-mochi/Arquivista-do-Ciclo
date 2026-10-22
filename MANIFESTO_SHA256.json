@@ -4,7 +4,7 @@
   "scope": "runtime files in the deployment ZIP; documentation and this manifest are excluded",
   "package": "arquivista.zip",
   "package_sha256": "f1b037ab483aed6c091178c14c7126ad1e23b25f1d3b070d05431b75bae8628d",
-  "live_deployment_audited": false,
+  "live_deployment_audited": true,
   "files": {
     "discloud.config": "4ba7396de9e0927987dfd0cf863bc3ecbb9d252f44563fb3c7400dc1d3d24933",
     "iniciar.py": "da9301a997fb9f7fb606a36785dca3ff84fa8a1e50afa120838a349dc2a16e22",
@@ -35,5 +35,17 @@
     "src/arquivista/transport.py": "60462094511c8d12406218e994efe7b40ab808c24c3f0035054b88a36d758a03",
     "src/arquivista/views.py": "56503976642bca69b093f5a876778b80eb216311ae9aabffbaab6e8a739bd6b4",
     "src/arquivista/recursos/ingles.json": "4276b682e9336643cc6a341764c16e52adcf656908c0707b1ddb77dab9ad7e9c"
+  },
+  "deployment_validation": {
+    "date": "2026-10-22",
+    "app_id": "1792461187549",
+    "runtime_commit": "47109559c83403afd568fb9211601b7c672e05f9",
+    "runtime_files_match": 29,
+    "database_integrity": "ok",
+    "existing_records_unchanged": 19,
+    "existing_managed_connections_unchanged": 3,
+    "google_live_copy_and_sync": "passed with isolated SQLite and simulated Discord requester",
+    "discord_end_to_end": "pending user confirmation to create the temporary server",
+    "public_documents": "pending update"
   }
 }

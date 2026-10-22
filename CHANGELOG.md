@@ -1,6 +1,8 @@
 # Histórico de versões
 
-## 1.2.0 · preparada em 22/10/2026, publicação pendente
+## 1.2.0 · instalada para validação em 22/10/2026
+
+Teste com Google real aprovado usando SQLite isolado e solicitante Discord simulado. Produção auditada: 29 fontes do pacote iguais, 19 cadastros e três conexões anteriores preservados. Teste completo na interface do Discord, Picker externo e atualização dos documentos públicos ainda pendentes.
 
 `/planilha importar` e botão **Importar existente**: importação autorizada de cadastros para uma nova planilha por servidor, com prévia privada, novos IDs e edição somente na cópia. O original e sua sincronização ficam preservados. Cancelamento, revisão do acesso e retomada usam o mesmo banco e a criação idempotente já existente.
 
