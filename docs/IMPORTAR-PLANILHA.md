@@ -1,6 +1,6 @@
 # Importar uma planilha existente
 
-Versão 1.2.0 instalada na Discloud para validação em 22/10/2026. Google real validado com banco isolado; teste completo pela interface do Discord e atualização dos documentos públicos ainda pendentes.
+Versão 1.2.0 instalada na Discloud para validação em 22/10/2026. Importação, cancelamento, permissões e sincronização validados na interface real do Discord e no Google. Documentos públicos atualizados. Ainda falta testar a seleção pelo Picker de uma origem externa ao aplicativo; PR sem merge.
 
 ## Como usar
 
@@ -49,7 +49,7 @@ Fontes: [escopo drive.file](https://developers.google.com/workspace/drive/api/gu
 
 ## Validação e publicação
 
-A suíte automática usa Google e Discord simulados. O fechamento offline abaixo foi seguido pela validação real registrada ao final desta página. Antes de publicar como validado de ponta a ponta, testar o Picker real de uma origem autorizada, prévia e cancelamento, criação da cópia, permissões privadas e sincronização nos dois sentidos, com dois servidores e duas contas. Confirmar que origem e dados do outro servidor permanecem iguais.
+A suíte automática usa Google e Discord simulados. O fechamento offline abaixo foi seguido pela validação real registrada ao final desta página. A operação por código de origem e a criação da cópia já passaram pela interface real; o Google Picker de uma origem não criada pelo aplicativo ainda precisa de validação própria. Não apresentar os testes com arquivos criados pelo aplicativo como prova desse caminho externo.
 
 ### Resultado offline — 22/10/2026
 
@@ -84,6 +84,24 @@ A pedido do usuário, foi usada a sessão autenticada do Discord e da Discloud n
 
 A sincronização real também foi conferida nos dois sentidos pelo código do bot: mudança no Sheets entrou no SQLite isolado, e edição pelo módulo de cadastros voltou à cópia. Nenhum modelo de linguagem foi chamado. A cópia foi aberta no navegador como o usuário autorizado e está editável.
 
-**Pendente antes de anunciar validação completa:** criação do servidor temporário `QA Arquivista - Importação - 22-10`, inclusão do bot e confirmação/cancelamento da importação pela interface. O Discord apresenta aceite das diretrizes da comunidade no botão de criação; foi pedido ao usuário o aceite específico, sem clicar nesse botão. Também permanecem pendentes teste com membro comum/segunda conta, navegação em inglês na operação real, Picker real de uma origem externa, atualização dos três documentos públicos e merge da PR.
+### Fechamento da interface real — 22/10/2026
 
-**Retomada exata:** conferir a PR e o estado remoto; manter a produção existente e a reserva de M&S; receber o aceite pendente antes de criar o servidor temporário. A aba do Discord foi deixada no formulário preenchido, sem confirmar. A origem e a cópia sintéticas, os scripts de teste, relatórios, imagens e o backup privado estão em `dados/` desta checkout, ignorados pelo Git. Não publicar credenciais, banco, código temporário de autorização ou o conteúdo dos backups. O arquivo `teste-importacao-real.json` identifica os dois arquivos sintéticos para continuar e, ao encerrar, enviá-los à lixeira pelo fluxo recuperável. Não tocar nas planilhas reais do usuário.
+Após autorização explícita do usuário para criar o servidor temporário e convidar a conta secundária, foi usado **QA Arquivista - Importação - 22-10**, com dados inteiramente fictícios. O bot foi adicionado sem Administrador. Nenhum acesso da conta secundária foi elevado.
+
+- **Autorização:** código ausente ou de um pedido anterior recusado antes da prévia; o responsável pela origem sintética colocou o código atual na célula vazia de autorização. Os cadastros e as permissões da origem ficaram iguais. Essa preparação do responsável é separada das chamadas de leitura feitas pelo bot.
+- **Português:** formulário, autorização e prévia de três cadastros de dois responsáveis; cancelar encerrou o pedido sem criar arquivo nem reservar o destino. Um pedido novo pôde prosseguir.
+- **Inglês:** preferência alterada apenas no servidor temporário. Novo pedido, código atual, validação, prévia e **Import and create copy** concluídos. A planilha nova usa localidade `en_US`, sem traduzir os dados dos membros.
+- **Dados e acesso:** um único arquivo gerenciado para o destino, três IDs novos, responsáveis e datas preservados, inclusive data desconhecida. Apenas a cópia recebeu edição para o e-mail autorizado, sem acesso público. Planilha original e sua conexão não receberam edição ou concessão de acesso.
+- **Duas contas reais:** a conta secundária entrou no servidor temporário como membro comum e recebeu **Only members with Manage Server can access this panel.** ao tentar abrir o painel. A recusa também foi vista no servidor original, em português.
+- **Discord → Sheets:** edição de nome no servidor de `QA Aparência 1`, com formulário, prévia e confirmação reais; o valor chegou à cópia.
+- **Sheets → Discord:** edição de `QA Aparência 2` diretamente na célula da cópia pelo navegador; após a sincronização normal, o formulário do bot mostrou o nome atualizado. O formulário foi cancelado, sem outra gravação.
+- **Auditoria posterior, só leitura:** versão `1.2.0`, 29 arquivos iguais ao pacote, integridade SQLite `ok`, 19 cadastros e três conexões anteriores idênticos à referência. O servidor temporário tem somente os três registros sintéticos, conexão `ready`, idioma `en` e fila de envio vazia. O console foi desconectado.
+- **Documentos públicos:** guia do dono, política de privacidade e termos receberam a descrição da importação, autorização e edição somente na cópia, em português e inglês. Conteúdo relido pela API; estrutura anterior preservada. Não foram alterados os acessos dos documentos.
+
+O ensaio da interface usou uma origem criada pelo aplicativo, porém sem autorização pelo servidor de origem: foi exigido o código de editor. Portanto, não valida o assistente Google Picker para um arquivo externo. Recusa por permissão revogada durante uma prévia, falhas Google, retomada e concorrência continuam cobertas pelos testes automatizados, sem alegação de reprodução nativa nesta rodada.
+
+**Pendente:** selecionar uma origem externa real pelo Google Picker, usando a conta dedicada e sem ampliar escopos. Depois, repetir a importação dessa origem. Revisão e merge da PR continuam pendentes. Não é necessário reinstalar o mesmo runtime por causa deste registro documental.
+
+**Retomada exata:** conferir o remoto da PR 14 e continuar `codex/conectar-planilha-existente`. O código em execução é `4710955`; a atualização posterior é documental. Preservar as três conexões e os 19 registros anteriores, inclusive a reserva desconectada de M&S. Testar o Picker com uma origem sintética criada fora do aplicativo e autorizada por seu responsável; confirmar conta dedicada, único arquivo selecionado, nenhuma ampliação de escopo e acesso pelo refresh token que o bot já usa. Não executar novas chamadas pagas.
+
+Os identificadores das três planilhas sintéticas (origem, cópia do ensaio isolado e cópia do Discord), os relatórios, imagens e o backup privado ficam em `dados/teste-importacao-real.json` e demais arquivos ignorados de `dados/`. A cópia do Discord continua conectada no servidor temporário para conferência. Não enviar esse arquivo à lixeira enquanto estiver conectado; não apagar o servidor permanentemente sem confirmação específica. As outras cópias podem ser enviadas à lixeira recuperável ao encerrar os ensaios. Não publicar banco, credenciais, código temporário ou backups; não tocar nas planilhas reais do usuário.

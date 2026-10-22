@@ -44,8 +44,12 @@
     "database_integrity": "ok",
     "existing_records_unchanged": 19,
     "existing_managed_connections_unchanged": 3,
-    "google_live_copy_and_sync": "passed with isolated SQLite and simulated Discord requester",
-    "discord_end_to_end": "pending user confirmation to create the temporary server",
-    "public_documents": "pending update"
+    "google_live_copy_and_sync": "passed with real Discord import and native Sheets edit, both directions",
+    "discord_end_to_end": "passed: Portuguese cancellation, English import, secondary non-manager denied; 3 synthetic records in temporary guild",
+    "public_documents": "owner guide, privacy policy and terms updated in place in Portuguese and English; readback verified",
+    "external_google_picker": "pending real validation of a source not created by the application",
+    "qa_records": 3,
+    "qa_sheet_state": "ready",
+    "qa_sheet_pending": 0
   }
 }

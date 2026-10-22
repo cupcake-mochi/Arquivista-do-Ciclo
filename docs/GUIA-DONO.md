@@ -50,7 +50,7 @@ A planilha fica na conta Google do Arquivista, e você recebe acesso de editor. 
 
 Se este servidor ainda não tem cadastros nem planilha registrada, use **`/planilha importar`**. Informe o link da origem e o e-mail Google que poderá editar a **cópia nova**. Confira a autorização, os totais e o destino antes de confirmar.
 
-A origem precisa ter o formato de cadastros do Arquivista e estar autorizada para o aplicativo Google. Se o bot pedir um código, quem já pode editar a origem deve colocá-lo na célula indicada pelo painel. O bot não concede edição no original. Se aparecer falta de acesso Google, peça ajuda ao mantenedor; tornar o link público não resolve essa autorização.
+A origem precisa ter o formato de cadastros do Arquivista e estar autorizada para o aplicativo Google. Se o bot pedir um código, quem já pode editar a origem deve colocá-lo em uma célula vazia e dar a esse intervalo de uma única célula o nome `ARQUIVISTA_AUTORIZACAO`. Essa pessoa deve conferir o destino antes de autorizar. O código vale por dez minutos e pode ser removido, junto com o intervalo, após a conclusão. O bot não concede edição no original. Se aparecer falta de acesso Google, peça ajuda ao mantenedor; tornar o link público não resolve essa autorização.
 
 A cópia recebe IDs novos e sincronização própria. Responsáveis, datas e campos dos cadastros são mantidos; abas extras, scripts, imagens sem link e histórico antigo não são copiados. [Passo a passo e limites](IMPORTAR-PLANILHA.md).
 

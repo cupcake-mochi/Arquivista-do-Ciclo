@@ -2,7 +2,7 @@
 
 ## 1.2.0 · instalada para validação em 22/10/2026
 
-Teste com Google real aprovado usando SQLite isolado e solicitante Discord simulado. Produção auditada: 29 fontes do pacote iguais, 19 cadastros e três conexões anteriores preservados. Teste completo na interface do Discord, Picker externo e atualização dos documentos públicos ainda pendentes.
+Importação confirmada pela interface real do Discord em servidor temporário, com três cadastros fictícios. Cancelamento em português, operação completa em inglês, recusa de conta sem Gerenciar servidor e sincronização nos dois sentidos aprovados. Produção auditada: 29 fontes do pacote iguais, 19 cadastros e três conexões anteriores preservados. Guia público, privacidade e termos atualizados em português e inglês. Picker de uma origem externa ainda não validado; PR sem merge.
 
 `/planilha importar` e botão **Importar existente**: importação autorizada de cadastros para uma nova planilha por servidor, com prévia privada, novos IDs e edição somente na cópia. O original e sua sincronização ficam preservados. Cancelamento, revisão do acesso e retomada usam o mesmo banco e a criação idempotente já existente.
 
