@@ -1,6 +1,6 @@
 # Importar uma planilha existente
 
-Versão 1.2.0 instalada na Discloud para validação em 22/10/2026. Importação, cancelamento, permissões e sincronização validados na interface real do Discord e no Google. Documentos públicos atualizados. Ainda falta testar a seleção pelo Picker de uma origem externa ao aplicativo; PR sem merge.
+Versão 1.2.0 publicada e validada em 22/10/2026. Importação, cancelamento, permissões e sincronização validados na interface real do Discord e no Google, incluindo uma origem externa selecionada pelo Picker. Documentos públicos atualizados. O fechamento e a limpeza estão registrados ao final desta página.
 
 ## Como usar
 
@@ -49,7 +49,7 @@ Fontes: [escopo drive.file](https://developers.google.com/workspace/drive/api/gu
 
 ## Validação e publicação
 
-A suíte automática usa Google e Discord simulados. O fechamento offline abaixo foi seguido pela validação real registrada ao final desta página. A operação por código de origem e a criação da cópia já passaram pela interface real; o Google Picker de uma origem não criada pelo aplicativo ainda precisa de validação própria. Não apresentar os testes com arquivos criados pelo aplicativo como prova desse caminho externo.
+A suíte automática usa Google e Discord simulados. O fechamento offline abaixo foi seguido pela validação real registrada ao final desta página. A operação por código de origem, a criação da cópia e o Google Picker de uma origem externa passaram pela interface real. Os resultados abaixo distinguem cada ensaio; o teste externo foi feito depois do primeiro fechamento.
 
 ### Resultado offline — 22/10/2026
 
@@ -100,8 +100,22 @@ Após autorização explícita do usuário para criar o servidor temporário e c
 
 O ensaio da interface usou uma origem criada pelo aplicativo, porém sem autorização pelo servidor de origem: foi exigido o código de editor. Portanto, não valida o assistente Google Picker para um arquivo externo. Recusa por permissão revogada durante uma prévia, falhas Google, retomada e concorrência continuam cobertas pelos testes automatizados, sem alegação de reprodução nativa nesta rodada.
 
-**Pendente:** selecionar uma origem externa real pelo Google Picker, usando a conta dedicada e sem ampliar escopos. Depois, repetir a importação dessa origem. Revisão e merge da PR continuam pendentes. Não é necessário reinstalar o mesmo runtime por causa deste registro documental.
+### Fechamento do Picker e limpeza — 22/10/2026
 
-**Retomada exata:** conferir o remoto da PR 14 e continuar `codex/conectar-planilha-existente`. O código em execução é `4710955`; a atualização posterior é documental. Preservar as três conexões e os 19 registros anteriores, inclusive a reserva desconectada de M&S. Testar o Picker com uma origem sintética criada fora do aplicativo e autorizada por seu responsável; confirmar conta dedicada, único arquivo selecionado, nenhuma ampliação de escopo e acesso pelo refresh token que o bot já usa. Não executar novas chamadas pagas.
+Uma cópia sintética foi criada fora do aplicativo do Arquivista, na conta do usuário. A conta dedicada recebeu **somente leitura** no original. Antes da seleção, o token que o bot já usava não conseguia abrir o arquivo (`GOOGLE_MISSING`). O usuário entrou na conta dedicada no navegador.
 
-Os identificadores das três planilhas sintéticas (origem, cópia do ensaio isolado e cópia do Discord), os relatórios, imagens e o backup privado ficam em `dados/teste-importacao-real.json` e demais arquivos ignorados de `dados/`. A cópia do Discord continua conectada no servidor temporário para conferência. Não enviar esse arquivo à lixeira enquanto estiver conectado; não apagar o servidor permanentemente sem confirmação específica. As outras cópias podem ser enviadas à lixeira recuperável ao encerrar os ensaios. Não publicar banco, credenciais, código temporário ou backups; não tocar nas planilhas reais do usuário.
+O assistente entregue abriu o Google Picker oficial com um único arquivo disponível. O arquivo foi selecionado e confirmado. A conta dedicada, o arquivo escolhido, o escopo único `drive.file` e o acesso com o refresh token anterior foram conferidos; o arquivo privado de credenciais ficou idêntico. Após o Picker, o Google retornou `isAppAuthorized: true` e permissão de copiar. A restrição de leitura permaneceu: a conta do bot não pôde listar as permissões da origem. O responsável conferiu os acessos pela própria conta, sem conceder edição ao bot.
+
+Para repetir a importação sem criar outro servidor, o ambiente temporário foi desconectado pelo painel. Um backup SQLite privado foi criado, e somente os três cadastros fictícios e a reserva daquele servidor foram removidos, com checagem dos IDs, nomes e responsáveis. Esse descarte do ambiente de QA não faz parte do comando de importação e não permite substituir uma conexão real.
+
+Pela interface do Discord, foi informado o link externo e o e-mail autorizado. O responsável pela origem colocou o código atual em uma célula vazia com intervalo nomeado de uma única célula. **Validate file** mostrou três cadastros; **Import and create copy** concluiu a operação. Conferência real confirmou três IDs novos, revisão inicial 1, responsáveis, datas e campos preservados. O original manteve seus cadastros e acessos; apenas a nova cópia recebeu edição para o e-mail informado e pertence à conta do bot. Nenhum arquivo ficou público.
+
+A suíte foi repetida: **182 testes Python e 36 JavaScript aprovados**. A revisão do diff não encontrou defeito novo que exigisse alteração do runtime. Revogação durante uma prévia, falhas Google, retomada e concorrência permanecem cobertas automaticamente, sem alegação de reprodução nativa nesta rodada.
+
+**Limpeza concluída:** as duas cópias criadas pelo Discord foram desconectadas antes do descarte. As cinco planilhas sintéticas desta bateria foram enviadas à lixeira recuperável de suas respectivas contas, com nomes e IDs conferidos; não houve exclusão permanente de planilhas. Os registros, filas, eventos e reservas do único servidor temporário foram retirados com backup e sem atingir os dados de outros servidores. O usuário confirmou especificamente a exclusão permanente do servidor temporário no botão final e concluiu a autenticação multifatorial exigida pelo Discord; sua ausência foi conferida na conta principal.
+
+**Auditoria final:** runtime `1.2.0`, 29 arquivos iguais ao pacote, SQLite íntegro, 19 cadastros e três conexões anteriores preservados. Nenhum cadastro ou conexão gerenciada do servidor temporário ficou no banco. Não houve chamada paga a modelos nem reinício adicional da aplicação nesta etapa. O runtime publicado permanece o de `4710955`; os commits seguintes registram os ensaios e a documentação. A PR 14 reúne esta entrega; consulte o GitHub para seu estado de merge.
+
+**Retomada:** conferir `main` e a PR 14 antes de editar. O escopo desta importação foi validado e encerrado; não há teste externo pendente nesta bateria. Os limites continuam valendo: destino vazio, formato Arquivista compatível, autorização do responsável e acesso do aplicativo a cada origem externa. Documentos públicos do dono, privacidade e termos estão atualizados em português e inglês.
+
+Relatórios, imagens, identificadores dos cinco arquivos descartados, códigos temporários e backups ficam nos arquivos ignorados de `dados/`; não os publicar no Git. Os backups privados de QA continuam guardados para recuperação. As planilhas reais do usuário não foram modificadas ou enviadas à lixeira.

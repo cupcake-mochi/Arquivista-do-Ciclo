@@ -1,3 +1,15 @@
+VALIDAÇÃO 1.2.0 — 22/10/2026
+
+182 testes Python, 29 JavaScript da ponte e 7 da planilha aprovados novamente.
+Discord real: autorização da origem, prévia/cancelamento PT, confirmação EN, duas contas e recusa de membro comum.
+Google real: nova cópia privada, novos IDs, responsáveis e datas preservados, edição só na cópia, sincronização nos dois sentidos.
+Picker real: origem externa inicialmente inacessível, conta dedicada e arquivo único selecionados; escopo e credenciais anteriores preservados.
+Origem externa importada pela interface real do Discord, mantendo apenas leitura para o bot no original.
+Discloud: 29 arquivos iguais ao pacote; SQLite íntegro; 19 cadastros e três conexões anteriores preservados após a limpeza.
+Cinco planilhas sintéticas na lixeira recuperável; servidor temporário excluído com confirmação específica e MFA do usuário.
+Nenhuma chamada paga a modelos. Ensaios anteriores preservados abaixo.
+Detalhes: docs/IMPORTAR-PLANILHA.md.
+
 VALIDAÇÃO 1.1.0 — 21/10/2026
 
 149 testes Python, 29 JavaScript da ponte e 7 da planilha aprovados.

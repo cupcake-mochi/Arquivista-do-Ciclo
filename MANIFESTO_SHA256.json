@@ -47,9 +47,15 @@
     "google_live_copy_and_sync": "passed with real Discord import and native Sheets edit, both directions",
     "discord_end_to_end": "passed: Portuguese cancellation, English import, secondary non-manager denied; 3 synthetic records in temporary guild",
     "public_documents": "owner guide, privacy policy and terms updated in place in Portuguese and English; readback verified",
-    "external_google_picker": "pending real validation of a source not created by the application",
-    "qa_records": 3,
-    "qa_sheet_state": "ready",
-    "qa_sheet_pending": 0
+    "external_google_picker": "passed: external source initially inaccessible, single-file selection using dedicated account, same scope and existing refresh token; import then completed through real Discord",
+    "qa_records": 0,
+    "qa_sheet_state": "removed after disconnect and scoped cleanup with backup",
+    "qa_sheet_pending": 0,
+    "qa_server": "deleted after explicit user confirmation and Discord MFA",
+    "synthetic_files_trashed": 5,
+    "post_cleanup_existing_records": 19,
+    "post_cleanup_existing_managed_connections": 3,
+    "python_tests": 182,
+    "javascript_tests": 36
   }
 }
