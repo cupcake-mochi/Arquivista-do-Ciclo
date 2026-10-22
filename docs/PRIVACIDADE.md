@@ -1,6 +1,6 @@
 # Política de privacidade do Arquivista do Ciclo
 
-Atualizada em 21/10/2026.
+Atualizada em 22/10/2026.
 
 Sou o Mizuki, mantenedor do Arquivista do Ciclo, o bot da Amiya. Para tirar dúvidas sobre seus dados ou pedir a exclusão, me chame no servidor da guilda.
 
@@ -30,6 +30,8 @@ Os cadastros, o histórico e as configurações ficam no banco do bot, na hosped
 
 Quando a criação de planilhas está ativada, `/planilha criar` prepara um arquivo na conta Google do Arquivista. O e-mail informado no formulário privado recebe edição e pode ver e mudar os cadastros internos do servidor. O arquivo é privado; planilhas conectadas pelo método antigo continuam na conta do dono original. As edições pelo Sheets e pelo bot são sincronizadas, e os arquivos seguem as regras do Google.
 
+Quando a importação está ativada, `/planilha importar` lê cadastros de uma origem compatível e autorizada e os grava no banco e em uma nova planilha independente do servidor de destino. Mantém responsáveis, datas e campos dos cadastros, gera IDs novos e registra a operação no histórico do destino. Não copia o histórico anterior. Somente a nova planilha recebe edição para o e-mail informado; o original e seus acessos não são alterados. O pedido e o código temporário de autorização ficam apenas na memória do bot, com validade de dez minutos, sem gravar o código no banco. Quem já edita a origem coloca e remove o código no arquivo Google. O e-mail do editor da cópia é guardado cifrado, como na criação normal.
+
 Desconectar só desliga a sincronização. Para retirar acessos ou excluir uma planilha criada pelo Arquivista, fale comigo.
 
 Se a staff ativar o backup, o bot envia cópias dos cadastros num canal do Discord restrito à equipe. Os arquivos incluem justificativas e nomes dos personagens no servidor. Os dados não são vendidos nem repassados a ninguém além dos serviços descritos aqui.
@@ -53,7 +55,7 @@ Quando este texto mudar, a data do começo muda junto.
 ---
 
 # Arquivista do Ciclo privacy policy — English
-Updated October 21, 2026. Maintainer: Mizuki. Contact me through the guild server for data questions or deletion requests.
+Updated October 22, 2026. Maintainer: Mizuki. Contact me through the guild server for data questions or deletion requests.
 Messages and records
 The bot processes AC: commands, mentions of Amiya and replies to her messages. Other messages are not retained or forwarded. It does not read direct messages, join voice calls or use artificial intelligence.
 For each server it stores appearance records, source works, server character names, internal statuses and staff reasons, image URLs, registration dates and responsible members’ Discord IDs. It also stores before-and-after audit events with the actor’s ID, confirmation identifiers to prevent duplicate writes, staff roles and configured channels. Managed-spreadsheet records include the file ID and URL, creation progress and the Google email supplied to receive edit access. That email is encrypted in the bot database and sent to Google to grant access.
@@ -63,6 +65,7 @@ Use /language or /idioma to choose Portuguese or English. The server owner, admi
 The bot stores the server language and each managed file’s creation language alongside its configuration. Internal record status codes and restorable JSON backups retain their canonical format; translated labels do not change record ownership or staff access.
 Services and sharing
 The bot database is held on its hosting service. Where automatic spreadsheet creation is enabled, the bot creates a private file in the Arquivista Google account. The email entered in the private form receives edit access to internal server records. Files connected through the old method remain in their original owner’s account. Bot and Sheets edits are synchronized and Google’s terms apply.
+Where import is enabled, /spreadsheet import reads records from a compatible, authorized source and stores them in the destination server’s database and a new independent spreadsheet. Owners, dates and record fields are preserved, new record IDs are assigned, and the import is logged in the destination audit history. Earlier history is not copied. Edit access is granted only to the new copy for the supplied email; the original and its sharing remain unchanged. The request and temporary authorization code are held only in bot memory with a ten-minute validity period, without storing the code in the database. An existing source editor adds and removes the code in Google Sheets. The copy editor’s email is stored encrypted, as in normal creation.
 Disconnecting stops synchronization; it does not delete the file or revoke Google access. Contact the maintainer to remove access or delete a managed file. Staff can enable backups in a staff-only Discord channel. Backup files include staff reasons and server character names. Data is not sold or shared beyond the services described here.
 Access and deletion
 Use AC:min or the appearance-list command with yourself selected to view your records. You can edit your server character name and image and remove your own record after confirmation. Other fields and other people’s records require staff. Removing a record, including through staff bulk cleanup, preserves its audit history.

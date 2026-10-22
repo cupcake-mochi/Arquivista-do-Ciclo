@@ -120,6 +120,10 @@ class GoogleAPI:
             "appProperties": {"arquivista_request": request_id, "arquivista_guild": str(guild_id)}},
             params={"fields": "id,webViewLink"})
 
+    async def file_info(self, file_id):
+        return await self.request("GET", DRIVE + "/" + quote(file_id, safe=""), params={
+            "fields": "id,name,mimeType,trashed,isAppAuthorized,capabilities(canCopy),appProperties"})
+
     async def share_editor(self, file_id, email):
         url = DRIVE + "/" + quote(file_id, safe="") + "/permissions"
         page = None

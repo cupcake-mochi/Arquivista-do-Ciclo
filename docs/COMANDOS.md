@@ -53,6 +53,7 @@ Você pode buscar pelo nome, sem decorar o ID da ficha. Antes de editar, remover
 | `AC:configurar` (`AC:cfg`) | `/configurar` | Só dono, Administrador ou quem gerencia o servidor: cargos de staff, canal de histórico, canal de imagens, planilha e backup num painel privado. |
 | `AC:planilha` | `/planilha abrir` | Só gerência: painel privado da planilha e acesso ao arquivo. |
 | Pelo painel de planilha | `/planilha criar` | Pede e-mail Google em formulário privado, cria o arquivo pronto e concede edição. Repetir reutiliza o mesmo arquivo; não substitui uma conexão antiga. Requer ativação Google única do mantenedor. |
+| Pelo painel de planilha | `/planilha importar` | Só gerência: valida uma origem autorizada e importa os cadastros para uma cópia independente em um servidor vazio. Pede e-mail em privado; edição é concedida somente à cópia nova. Veja [o roteiro](IMPORTAR-PLANILHA.md). |
 | — | `/planilha membro membro:@pessoa` | Só gerência: prepara uma aba vazia para preencher manualmente. Exige selecionar um membro real do servidor e confirma que ele ainda está presente. Texto livre, apelido e ID digitado não servem. |
 
 Os comandos de configuração exibem um botão de atendimento privado quando usados por `AC:`; abrir esse painel executa a configuração com nova checagem de permissão. Não criam/deletam canais nem alteram permissões do servidor.

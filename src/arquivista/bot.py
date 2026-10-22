@@ -66,6 +66,7 @@ STAFF_HELP = """
 `/restaurar` ou `AC:restaurar` com o arquivo de backup (.json) anexado — recupere os cadastros salvos. Confira o resumo antes de confirmar.
 `/planilha criar` — informe seu e-mail Google em privado para receber a planilha pronta, com acesso de editor. Se ela já existe, abre o mesmo arquivo.
 `/planilha abrir` ou `AC:planilha` — recupere o link e abra o painel da planilha.
+`/planilha importar` — copie os cadastros de um arquivo autorizado para uma nova planilha deste servidor, sem alterar a origem.
 `/planilha membro` — selecione um @membro do servidor para preparar a aba antes de preencher à mão.
 """ + "\n" + SETUP_LINK
 
@@ -109,6 +110,7 @@ GUIDE = (
      "• planilha para editar as fichas pelo Google Sheets;\n• backup automático num canal só da staff.\n\n"
      "Use `/planilha criar` e informe seu e-mail Google no formulário privado. Você recebe o arquivo pronto e pode editá-lo. "
      "Para abrir novamente, use `/planilha abrir` ou `AC:planilha`.\n"
+     "Para trazer cadastros de outra planilha, use `/planilha importar`. A prévia pede autorização da origem e cria uma cópia independente; somente a cópia recebe edição para o e-mail informado. O servidor de destino precisa estar vazio.\n"
      "Quer uma aba para outra pessoa? Use `/planilha membro` e selecione o @membro do servidor. "
      "Preencha as posições prontas; as edições no Sheets chegam ao bot em cerca de 5 minutos. Compartilhe edição só com a staff.\n\n"
      "Em **Backup**, escolha o canal e a frequência. **Fazer backup agora** envia uma cópia na hora. Para recuperar os cadastros, anexe o arquivo de backup `.json` ao `/restaurar`. JSON é o formato desse arquivo de dados; guarde-o sem editar o conteúdo.\n\n"
@@ -730,6 +732,10 @@ def install_slash_commands(bot):
     async def planilha_abrir(i:discord.Interaction):
         from .sheet_views import show_sheet
         await show_sheet(bot,i)
+    @planilha.command(name="importar",description="Importa os dados de uma planilha existente para uma cópia independente.")
+    async def planilha_importar(i:discord.Interaction):
+        from .existing_views import open_existing
+        await open_existing(bot,i)
     @planilha.command(name="membro",description="Prepara uma aba vazia para preencher manualmente; selecione um @membro válido.")
     @app_commands.describe(membro="Selecione um membro deste servidor pelo @; não aceita nick como texto.")
     async def planilha_membro(i:discord.Interaction,membro:discord.Member):

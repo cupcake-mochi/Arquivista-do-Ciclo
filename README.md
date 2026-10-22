@@ -1,6 +1,6 @@
 # Arquivista do Ciclo · Amiya
 
-**Versão estável 1.1.2 · publicada em 21/10/2026.** Idioma por servidor, planilhas novas em inglês e arquivos antigos preservados. [Clareza de siglas](docs/CLAREZA-SIGLAS.md). [Revisão final de apresentação](docs/REVISAO-FINAL-APRESENTACAO.md). [Validação e retomada](docs/RETOMADA-IDIOMA.md). Projeto independente das Guias do Ciclo.
+**Versão 1.2.0 publicada e validada em 22/10/2026.** Importação de origem externa pelo Google Picker, permissões e sincronização conferidas no Discord e no Google reais. Última versão estável anterior: 1.1.2, publicada em 21/10/2026. Idioma por servidor, planilhas novas em inglês e arquivos antigos preservados. [Clareza de siglas](docs/CLAREZA-SIGLAS.md). [Revisão final de apresentação](docs/REVISAO-FINAL-APRESENTACAO.md). [Validação e retomada](docs/RETOMADA-IDIOMA.md). Projeto independente das Guias do Ciclo.
 
 > **Para configurar no seu servidor:** siga o [guia público no Google Docs](https://docs.google.com/document/d/1xuehlkhU3EhMsSE4hjLIfQY9p-eEF6ynS5ikAmlqnhw/view). Para aprender a usar o bot, comece por `/guia`; `/ajuda` traz a lista de comandos.
 >
@@ -11,6 +11,8 @@ A Amiya cuida do arquivo de aparências do servidor. Os membros cadastram suas a
 Cada servidor tem seus próprios cadastros e configurações. O banco SQLite guarda os cadastros e o histórico; a planilha recebe as mudanças do bot e envia de volta as edições manuais. Backup e restauração ficam no Discord. Os testes em `tests/` rodam no GitHub Actions a cada envio.
 
 **Planilha pronta:** `/planilha criar` pede um e-mail em privado e entrega o arquivo montado, conectado e com edição para esse e-mail. A planilha pertence à conta do Arquivista. `/planilha membro` exige selecionar um membro real do servidor e prepara uma aba para preenchimento manual; cadastros pelo bot também criam as abas. Não é preciso instalar script. Para ativar na hospedagem, veja [a configuração única do mantenedor](docs/GOOGLE-MANTENEDOR.md).
+
+**Importar de outro arquivo:** `/planilha importar` lê uma planilha compatível e autorizada e cria uma nova planilha independente para um servidor vazio. Somente a cópia recebe edição para o e-mail informado. O original não é alterado; IDs dos cadastros são novos, responsáveis e datas são mantidos. [Funcionamento, autorização Google e limites](docs/IMPORTAR-PLANILHA.md).
 
 **Abrir novamente:** `/planilha abrir` ou `AC:planilha` recupera o painel privado com o link do arquivo já conectado.
 

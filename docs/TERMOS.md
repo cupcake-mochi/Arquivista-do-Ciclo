@@ -1,6 +1,6 @@
 # Termos de uso do Arquivista do Ciclo
 
-Atualizados em 21/10/2026.
+Atualizados em 22/10/2026.
 
 Sou o Mizuki, mantenedor do Arquivista do Ciclo, o bot da Amiya. Ao usar o bot, você concorda com estes termos.
 
@@ -11,6 +11,8 @@ O Arquivista registra quem usa cada aparência, junto com a obra de origem, o no
 ## Como usar
 
 Quando a criação de planilhas está ativada, a gerência pode usar `/planilha criar` e informar um e-mail Google para receber acesso de editor. O arquivo fica na conta do Arquivista e pode ser preenchido pelo Sheets ou pelo bot. Informe um e-mail autorizado a ver os dados internos do servidor e dê edição só à staff. Desconectar não apaga o arquivo nem retira os acessos no Google.
+
+Quando a importação está ativada, `/planilha importar` permite copiar cadastros de uma planilha compatível para um servidor vazio, após comprovar autorização sobre a origem e confirmar a prévia. Você deve ter autorização para levar todos esses dados ao destino, inclusive as justificativas internas. O arquivo original e seus acessos são preservados. O e-mail informado recebe edição somente na cópia nova. A operação não inclui scripts, abas extras nem o histórico anterior; confira os limites antes de confirmar.
 
 - Siga as regras do Discord e as do servidor em que você está.
 - Cadastre só aparências e imagens que você pode usar. Não envie imagem sexual, violenta ou que exponha outra pessoa.
@@ -41,12 +43,13 @@ Quando estes termos mudarem, a data do começo muda junto. Para falar comigo, me
 ---
 
 # Arquivista do Ciclo terms of use — English
-Updated October 21, 2026. I am Mizuki, maintainer of Arquivista do Ciclo, the fan bot featuring Amiya. Using the bot means agreeing to these terms.
+Updated October 22, 2026. I am Mizuki, maintainer of Arquivista do Ciclo, the fan bot featuring Amiya. Using the bot means agreeing to these terms.
 Features and language
 The bot records who uses each appearance, its source work, the server character name and an image. Members can search, list records and view galleries. Staff manages internal statuses and can transfer or remove records. Each server has a separate archive.
 Use /language or /idioma to choose Portuguese or English. The server owner, administrators, members with Manage Server and configured staff roles can change this setting. It applies only to this server and is independent of Guias do Ciclo. Native command names follow the Discord client language; replies follow the server setting. Member-written names and content are not translated. Each managed spreadsheet keeps the language assigned when it was created. Changing the server setting does not convert existing files, change sharing or require new Google permissions. Do not manually change the spreadsheet locale: synchronization will ask you to restore it.
 Google Sheets
 Where enabled, server management can request a private spreadsheet and provide an authorized Google email to receive edit access. The file belongs to the Arquivista account and can be edited through the bot or Sheets. Give editing access only to staff authorized to see internal server records. Disconnecting does not delete the file or revoke Google access.
+Where import is enabled, /spreadsheet import copies compatible records into an empty destination server after source authorization and preview confirmation. You must be authorized to bring all those records, including internal staff reasons, into the destination. The original and its sharing remain unchanged; only the new copy receives edit access for the supplied email. Scripts, custom tabs and previous history are excluded. Review the import limits before confirming.
 Responsible use
 Follow Discord and server rules. Register only appearances and images you may use. Do not upload sexual or violent images or images exposing another person. Do not harass, insult or harm others, disrupt the service or obtain another person’s or server’s private data. Server staff decides appearance availability and may edit or remove records. Misuse may lead to loss of access or removal of the bot from the server.
 Availability and data

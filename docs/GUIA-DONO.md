@@ -46,6 +46,14 @@ Você pode preencher as fichas na planilha ou pelo Discord. O que mudar em um ap
 
 A planilha fica na conta Google do Arquivista, e você recebe acesso de editor. Se usar `/planilha criar` outra vez, recebe o mesmo arquivo. Desconectar só desliga a sincronização: a planilha e os acessos continuam no Google. Para conectar novamente, use o comando de criação.
 
+### Trazer cadastros de outra planilha
+
+Se este servidor ainda não tem cadastros nem planilha registrada, use **`/planilha importar`**. Informe o link da origem e o e-mail Google que poderá editar a **cópia nova**. Confira a autorização, os totais e o destino antes de confirmar.
+
+A origem precisa ter o formato de cadastros do Arquivista e estar autorizada para o aplicativo Google. Se o bot pedir um código, quem já pode editar a origem deve colocá-lo em uma célula vazia e dar a esse intervalo de uma única célula o nome `ARQUIVISTA_AUTORIZACAO`. Essa pessoa deve conferir o destino antes de autorizar. O código vale por dez minutos e pode ser removido, junto com o intervalo, após a conclusão. O bot não concede edição no original. Se aparecer falta de acesso Google, peça ajuda ao mantenedor; tornar o link público não resolve essa autorização.
+
+A cópia recebe IDs novos e sincronização própria. Responsáveis, datas e campos dos cadastros são mantidos; abas extras, scripts, imagens sem link e histórico antigo não são copiados. [Passo a passo e limites](IMPORTAR-PLANILHA.md).
+
 Para recuperar o link depois, use **`/planilha abrir`** ou **`AC:planilha`** e clique em **Abrir planilha** no painel privado.
 
 Quer preencher uma ficha para outra pessoa? Use **`/planilha membro` e selecione o @membro do servidor**. Digitar apenas um apelido não funciona: escolha a pessoa na lista do Discord. Ela precisa estar no servidor. Se cadastrar pelo bot, a aba é criada junto com a ficha.
@@ -91,6 +99,7 @@ Use /language or /idioma to choose Portuguese or English. The server owner, admi
 Optional spreadsheet
 Use /spreadsheet create (Portuguese: /planilha criar), or the configuration panel’s spreadsheet option, then Create or resume. Enter the authorized editor’s Google email in the private form. That address receives access to internal server data. Open the supplied link: the file is already prepared and connected. If automatic creation is unavailable, contact the maintainer and continue registering through the bot.
 Repeating creation resumes or opens the same managed file. To retrieve the link, open the spreadsheet command or AC:spreadsheet. Disconnecting only stops synchronization; the file and Google access remain. Use the creation flow to reconnect.
+To import records from an existing compatible spreadsheet, use /spreadsheet import in a destination server without records or a registered file. Supply the source URL and the authorized editor’s email for the new independent copy. The source must be authorized for the Google application and by its responsible manager or existing editor. Review the destination and record totals before confirming. Only the new copy receives edit access; the original remains unchanged. Record owners and dates are preserved, IDs are new, and previous audit history, custom tabs, scripts and images without URLs are not copied. Contact the maintainer if Google application access is missing; making the source public does not authorize it.
 To prepare another member’s tab, use the spreadsheet member option and select that person from Discord’s member list. Typing a nickname alone does not select a member. Registering through the bot also creates the needed tab.
 Fill the prepared slots with appearance, source work, status and optional fields. Sheets edits reach the bot in about five minutes after validation. Check the private diagnostic panel for rejected changes. Use the remove command to delete a record: clearing a row does not remove it from the bot.
 Tabs start with 20 slots and expand by 20 when only two are free. Preserve formulas and identifier columns; do not insert or delete rows inside record blocks. English files display ISO dates. Give edit access only to staff. Previously connected Portuguese files remain compatible.

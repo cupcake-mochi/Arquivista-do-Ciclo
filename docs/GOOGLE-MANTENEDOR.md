@@ -36,6 +36,10 @@ Em instalações novas, use também uma **`AC_MASTER_KEY` estável, com pelo men
 
 Envie o pacote gerado por `python empacotar.py`. Após salvar novas variáveis no painel da Discloud, faça **rebuild ou deploy** para aplicá-las; somente reiniciar não conclui essa etapa no painel atual. Preserve o banco e confira `/diagnostico` depois. O diagnóstico informa se as três variáveis estão preenchidas; a autorização real é conferida quando uma operação Google é executada. O assistente e o JSON OAuth não vão para a hospedagem.
 
+## Autorizar uma origem para importação
+
+`drive.file` não abre qualquer planilha só pelo link. Para selecionar um arquivo específico na conta dedicada, ative Google Picker API e use `python autorizar_arquivo_google.py LINK`. O assistente preserva os tokens e escopos existentes, confirma a conta dedicada e não concede edição no original. Veja [o roteiro completo](IMPORTAR-PLANILHA.md).
+
 ## Teste real antes de anunciar
 
 1. No servidor de testes, `/planilha criar`: informe seu e-mail e confira acesso de editor e ausência de compartilhamento público.

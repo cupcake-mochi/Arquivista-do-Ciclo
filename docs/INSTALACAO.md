@@ -8,6 +8,10 @@ Após a atualização do bot e ativação da conta Google pelo mantenedor, use `
 
 O arquivo pertence à conta Google do Arquivista; o e-mail indicado recebe edição. Desconectar preserva arquivo e permissões. Quem já usa a ponte antiga pode continuar; o comando não substitui uma conexão existente.
 
+## Importar um arquivo existente
+
+Use `/planilha importar` para copiar os cadastros de uma origem autorizada para um servidor vazio. A nova planilha é independente, com edição para o e-mail informado; o original permanece inalterado. [Passo a passo, autorização Google e limites](IMPORTAR-PLANILHA.md).
+
 ## Planilha antiga conectada (compatibilidade)
 
 A planilha recebe uma cópia de tudo que é cadastrado pelo bot, e o que a staff mudar nela volta pro bot.

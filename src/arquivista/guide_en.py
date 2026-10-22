@@ -32,6 +32,7 @@ Staff may also remove other people's records. `AC:clear @member` removes all of 
 `/restore` with an attached backup data file (.json) restores records after a reviewed confirmation.
 `/spreadsheet create` privately asks for a Google editor email and delivers a ready spreadsheet. Repeating it reuses the existing file.
 `/spreadsheet open` or `AC:spreadsheet` reopens the link and private panel.
+`/spreadsheet import` copies authorized source records into a new independent spreadsheet in an empty server archive. The source stays unchanged.
 `/spreadsheet member` prepares a selected real server member's tab for manual input.
 '''+ '\n'+SETUP_LINK
 GUIDE=(
@@ -76,7 +77,7 @@ Before transferring, removing or changing status, review the selected record and
 
 Use `/spreadsheet create` and enter a Google email privately. The bot provides an editable ready-made file. Reopen it with `/spreadsheet open` or `AC:spreadsheet`. Use `/spreadsheet member` and select a server member to prepare another tab.
 
-Fill prepared slots. Sheets edits reach the bot in about 5 minutes. Share editor access only with staff. New files use the server language selected at creation; existing files keep their original language when the server setting changes.
+Use `/spreadsheet import` to copy authorized records from an existing file into a new independent spreadsheet. The destination archive must be empty. Only the new copy receives editor access for the supplied email.\n\nFill prepared slots. Sheets edits reach the bot in about 5 minutes. Share editor access only with staff. New files use the server language selected at creation; existing files keep their original language when the server setting changes.
 
 In **Backup**, select a channel and frequency. **Back up now** sends a copy immediately. Attach its backup data file (.json) to `/restore` to restore records after confirmation.
 

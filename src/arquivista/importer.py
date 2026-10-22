@@ -4,6 +4,7 @@ Preserva ID, responsável, data (inclusive vazia) e situação. Não inventa his
 cada cadastro ganha um único evento `import`, e a auditoria do banco começa aí.
 """
 from __future__ import annotations
+from contextlib import nullcontext
 import json
 import re
 import time
@@ -96,7 +97,7 @@ def summary(records: list[dict]) -> dict:
             "without_date": sum(1 for r in records if not r["date"]),
             "with_image": sum(1 for r in records if r["image_url"]), "status": by_status}
 
-def apply(store: Store, guild_id: int | str, records: list[dict], actor_id: str = "", replace: bool = False) -> int:
+def apply(store: Store, guild_id: int | str, records: list[dict], actor_id: str = "", replace: bool = False, *, transaction: bool = True) -> int:
     """Grava tudo numa transação. Sem replace, recusa servidor que já tem cadastros, pra não misturar fontes.
     Com replace (restaurar backup pelo Discord), apaga os cadastros atuais do servidor no mesmo commit;
     a auditoria deles fica, com um evento de remoção cada, e a planilha conectada recebe a limpeza."""
@@ -115,7 +116,7 @@ def apply(store: Store, guild_id: int | str, records: list[dict], actor_id: str 
     at = datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
     rid = "import-" + str(uuid.uuid4())
     connected = bool(store.guild(guild).get("sheet_url"))
-    with db:
+    with db if transaction else nullcontext():
         if replace:
             fields = ("id", "owner_id", "appearance", "work", "server_name", "status", "justification", "image_url",
                       "media_ref", "date", "revision")

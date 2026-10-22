@@ -325,7 +325,7 @@ class InputTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             bot = Arquivista(Config("FAKE", Path(d)/"t.sqlite"))
             group = bot.tree.get_command("planilha")
-            self.assertEqual([c.name for c in group.commands], ["criar", "abrir", "membro"])
+            self.assertEqual([c.name for c in group.commands], ["criar", "abrir", "importar", "membro"])
             option = group.get_command("membro").to_dict(bot.tree)["options"][0]
             self.assertEqual((option["name"], option["type"], option["required"]), ("membro", 6, True))
             bot.store.close()
