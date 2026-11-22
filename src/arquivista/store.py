@@ -144,6 +144,15 @@ class Store:
         rows = self.db.execute("SELECT a.guild_id,a.id,a.image_url FROM appearances a JOIN guilds g ON g.guild_id=a.guild_id "
                                "WHERE a.media_ref<>'' AND g.sheet_url IS NOT NULL").fetchall()
         return [dict(r) for r in rows]
+    def adoptable(self, guild_id=None) -> list[dict]:
+        """Cadastros com link do Discord colado à mão (sem anexo guardado), em servidores com planilha e canal de imagens."""
+        sql = ("SELECT a.guild_id,a.id,a.image_url FROM appearances a JOIN guilds g ON g.guild_id=a.guild_id "
+               "WHERE a.media_ref='' AND g.sheet_url IS NOT NULL AND g.image_channel IS NOT NULL "
+               "AND (a.image_url LIKE 'https://cdn.discordapp.com/%' OR a.image_url LIKE 'https://media.discordapp.net/%')")
+        args: tuple = ()
+        if guild_id is not None:
+            sql += " AND a.guild_id=?"; args = (str(guild_id),)
+        return [dict(r) for r in self.db.execute(sql + " ORDER BY a.created", args).fetchall()]
     def records(self, guild_id: str) -> list[dict]:
         rows = self.db.execute("SELECT * FROM appearances WHERE guild_id=? ORDER BY owner_id,created", (str(guild_id),)).fetchall()
         return [dict(r) for r in rows]

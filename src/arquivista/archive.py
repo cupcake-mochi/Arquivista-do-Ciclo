@@ -87,14 +87,23 @@ class Archive:
             fresh = url(d.get("url"))
             with self.db:
                 self.db.execute("UPDATE appearances SET image_url=? WHERE guild_id=? AND id=?", (fresh, self.guild, r["id"]))
-                if self.connected():
-                    if r["id"] in self.store.sheet_queued(self.guild):
-                        # Já tem versão esperando na fila: troca por ela com o link novo, sem perder a mudança.
-                        self.store.queue_sheet(self.guild, r["id"], r["revision"], sheet_upsert({**r, "image_url": fresh}))
-                    else:
-                        # Mesma revisão: a planilha troca só o link, sem contar como alteração.
-                        self.store.queue_sheet(self.guild, r["id"], r["revision"],
-                                               {"op": "image", "id": r["id"], "revision": r["revision"], "image_url": fresh})
+                self.queue_image(r, fresh)
+            return {}
+        if action == "adopt_image":
+            # Link do Discord colado à mão: a mesma imagem passa a morar no canal de imagens do servidor.
+            # Só troca o link e a referência (sem evento nem nova revisão), e só se o cadastro não mudou.
+            if not actor.staff: fail("FORBIDDEN")
+            r = self.record(str(d.get("id", "")))
+            if r["media_ref"] or r["image_url"] != d.get("old_url"): fail("STALE")
+            ref = d.get("media_ref")
+            m = MEDIA_REF.match(ref) if isinstance(ref, str) else None
+            if not m or m[1] != self.guild: fail("INVALID")
+            fresh = url(d.get("image_url"))
+            if not fresh: fail("INVALID")
+            with self.db:
+                self.db.execute("UPDATE appearances SET image_url=?,media_ref=? WHERE guild_id=? AND id=?",
+                                (fresh, ref, self.guild, r["id"]))
+                self.queue_image(r, fresh)
             return {}
         if action == "history":
             if not actor.staff: fail("FORBIDDEN")
@@ -331,6 +340,17 @@ class Archive:
                              self.guild, after["id"]))
     def connected(self) -> bool:
         return bool(self.store.guild(self.guild).get("sheet_url"))
+    def queue_image(self, r: dict, fresh: str) -> None:
+        """Link novo da mesma imagem para a planilha, dentro da transação de quem chamou."""
+        if not self.connected():
+            return
+        if r["id"] in self.store.sheet_queued(self.guild):
+            # Já tem versão esperando na fila: troca por ela com o link novo, sem perder a mudança.
+            self.store.queue_sheet(self.guild, r["id"], r["revision"], sheet_upsert({**r, "image_url": fresh}))
+        else:
+            # Mesma revisão: a planilha troca só o link, sem contar como alteração.
+            self.store.queue_sheet(self.guild, r["id"], r["revision"],
+                                   {"op": "image", "id": r["id"], "revision": r["revision"], "image_url": fresh})
     def sheet(self, before, after) -> None:
         """Fila para a planilha conectada, no mesmo commit da gravação."""
         if not self.connected():

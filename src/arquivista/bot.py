@@ -514,6 +514,10 @@ class Arquivista(commands.Bot):
                            tr('\n**Último envio para a planilha:** {0}').format(cfg.get('sheet_ok') or tr('ainda não realizado'))+
                            (tr('\n**Último erro da planilha:** {0}').format(tr(SHEET_ERRORS.get(cfg['sheet_error'],cfg['sheet_error']))) if cfg.get("sheet_error") else "")+
                            (tr('\n**Edição da planilha que não entrou:** {0}').format(clean(cfg['sheet_note'],900)) if cfg.get("sheet_note") else ""))
+                    waiting,failed=self.images.adopt_pending(i.guild_id)
+                    if waiting or failed:
+                        body+=(tr('\n**Imagens coladas por link do Discord:** {0} esperando cópia no canal de imagens').format(waiting)+
+                               (tr(', {0} sem conseguir copiar (o bot tenta de novo em algumas horas; se continuar, reenvie a imagem pelo /editar)').format(failed) if failed else ""))
                 else:
                     body+=tr('\n**Planilha:** não conectada')
                 body+=tr('\n**Criação automática de planilhas:** ')+(tr("ativada") if self.managed.ready else tr('aguardando ativação pelo mantenedor'))
@@ -533,9 +537,9 @@ class Arquivista(commands.Bot):
     async def worker(self):
         # Rede de segurança: cada gravação já pede o envio na hora; aqui saem as retentativas.
         # Cada etapa protegida: um erro inesperado numa não para o laço (tasks.loop morre com exceção).
-        for name,stage in (("avisos",self.deliver_events),("planilha",self.sync_sheets),("backup",self.run_backups),("imagens",self.images.renew)):
+        for name,stage in (("avisos",self.deliver_events),("planilha",self.sync_sheets),("backup",self.run_backups),("imagens",self.images.renew),("imagens coladas",self.images.adopt)):
             try:
-                if await stage() and name=="imagens":
+                if await stage() and name.startswith("imagens"):
                     self.notify_soon()
             except Exception as exc:
                 log.warning("Etapa %s: %s", name, type(exc).__name__)

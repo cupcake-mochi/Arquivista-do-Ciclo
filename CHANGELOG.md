@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 1.3.1 · 22/11/2026
+
+**Imagem colada por link do Discord deixa de sumir da planilha.** Link de anexo do Discord vale cerca de 24 horas. O app do Discord renova sozinho, por isso a imagem continuava aparecendo no bot, mas a planilha recebia o link vencido e ficava em branco. Até aqui só eram renovadas as imagens enviadas como anexo, que o bot guarda no canal de imagens. Agora, em servidor com planilha e canal de imagens, o bot também "adota" o link colado à mão, seja pelo bot ou digitado na planilha: pega um link válido (pedindo ao Discord um novo quando o colado já venceu), baixa a imagem só do próprio Discord, até 8 MB e só PNG, JPEG, GIF ou WebP, reenvia no canal de imagens e troca o link no cadastro e na planilha. Não cria revisão nem evento, igual à renovação diária. O mesmo anexo em dois cadastros sobe uma vez só. São 10 por volta, e o que não der certo volta a ser tentado em 6 horas; o `/diagnostico` mostra quantas imagens coladas esperam cópia ou não puderam ser copiadas.
+
 ## 1.3.0 · 22/11/2026
 
 **Vermelho entre abas.** A planilha pinta de vermelho a aparência quando a mesma aparência + obra já tem cadastro em outra linha, de qualquer aba, inclusive na linha digitada à mão que ainda não tem ID. A comparação segue a do bot: ignora maiúsculas e espaços extras, e Liberado não conta. A regra anterior só comparava fichas da mesma aba e só linhas com ID, por isso não pegava o caso mais comum. Uma guia escondida, "Índice (bot)", junta as chaves dos cadastros; o bot a mantém quando cria ou renomeia abas.
