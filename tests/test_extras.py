@@ -313,7 +313,7 @@ class PullTests(unittest.TestCase):
         grid.insert(20, [""] * 11); self.sheet.depths[sid].insert(20, 0)  # linha inserida à mão no meio das fichas
         asyncio.run(self.a.call("edit", Actor(U1, "m"), {"id": self.ids[0], "revision": 1, "fields": {"server_name": "x"}}))
         asyncio.run(self.sync.run())
-        self.assertEqual(len(self.sheet.meta), 1)  # não criou outra guia para a mesma pessoa
+        self.assertEqual(len([m for m in self.sheet.meta if m["title"] != "Índice (bot)"]), 1)  # não criou outra guia para a mesma pessoa
         self.s.db.execute("UPDATE sheet_outbox SET next_try=0"); self.s.db.commit()
         self.sync.next_pull.clear()
         asyncio.run(self.sync.pull(G1))

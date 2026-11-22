@@ -151,6 +151,7 @@ class ManagedSheets:
             raise UserError("A aba desse membro ganhou ou perdeu linhas. Corrija a estrutura existente antes de preparar outra.")
         if not model.block_of(str(actual.id)):
             model.new_block(str(actual.id), actual.name)
+            model.upkeep()
             await sheet.call("write", self.bot.sheets.actor(), {"requests": model.req, "expect": expect})
 
     async def prepare_member(self, guild, manager, member):

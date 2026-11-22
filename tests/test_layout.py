@@ -139,7 +139,8 @@ class LayoutTests(unittest.TestCase):
         self.assertEqual(m.tabs[0].grid[4][0], "kaltsits")
         # Mesmo registro reenviado igual (sincronização completa) ainda conserta o nome, sem regravar a linha.
         _, req, _ = self.run_ops([up(dict(r, owner_name="kaltsits2"))])
-        self.assertEqual([next(iter(q)) for q in req], ["updateCells", "updateSheetProperties"])
+        # O índice escondido regrava a fórmula, que cita a guia pelo nome novo (A1 e a impressão em K2).
+        self.assertEqual([next(iter(q)) for q in req], ["updateCells", "updateSheetProperties", "updateCells", "updateCells"])
         # Sem nome (membro saiu do servidor): mantém o que tinha.
         _, req, _ = self.run_ops([up(self.rec(A, owner_name=""))])
         self.assertFalse(any("updateSheetProperties" in q for q in req))
@@ -184,6 +185,76 @@ class LayoutTests(unittest.TestCase):
         with self.assertRaises(BridgeError) as ctx:
             asyncio.run(read_sheet(self.sheet, None))
         self.assertEqual(ctx.exception.code, "OLD_SCRIPT")
+
+    def test_index_created_once_with_rule_on_every_tab(self):
+        _, req, _ = self.run_ops([up(self.rec(A)), up(self.rec(B))])
+        added = [q["addSheet"]["properties"] for q in req if "addSheet" in q]
+        self.assertEqual([p["title"] for p in added], ["mizuki_sama", "takao", "Índice (bot)"])
+        self.assertTrue(added[-1]["hidden"])
+        rules = [q["addConditionalFormatRule"]["rule"] for q in req if "addConditionalFormatRule" in q
+                 and q["addConditionalFormatRule"]["rule"]["booleanRule"]["condition"]["type"] == "CUSTOM_FORMULA"]
+        self.assertEqual(sorted(r["ranges"][0]["sheetId"] for r in rules), [1000, 1001])  # uma regra por guia, sem repetir
+        self.assertIn("INDIRECT(\"'Índice (bot)'!A:A\")", rules[0]["booleanRule"]["condition"]["values"][0]["userEnteredValue"])
+        idx = self.sheet.grids[1002]
+        self.assertEqual(idx[0][layout.MARK - 1], layout.INDEX_MARK)
+        self.assertEqual(idx[0][0], "=ARRAYFORMULA(IFERROR(LET(x;VSTACK('mizuki_sama'!B:I;'takao'!B:I);a;LOWER(TRIM(SUBSTITUTE(CHOOSECOLS(x;1);CHAR(160);\" \")));"
+                                    "w;LOWER(TRIM(SUBSTITUTE(CHOOSECOLS(x;3);CHAR(160);\" \")));FILTER(LEN(a)&\":\"&a&\":\"&w;a<>\"\";w<>\"\";"
+                                    "LEFT(CHOOSECOLS(x;8);3)=\"AP-\";CHOOSECOLS(x;4)<>\"Liberado\"));\"\"))")
+        # Segunda rodada sem guia nova: nada de índice, regra ou fórmula de novo.
+        _, req, _ = self.run_ops([up(self.rec(A))])
+        self.assertFalse(any(k in q for q in req for k in ("addSheet", "addConditionalFormatRule")))
+        self.assertFalse(any("updateCells" in q and q["updateCells"]["start"]["sheetId"] == 1002 for q in req))
+        self.assertEqual(len(self.sheet.meta), 3)
+
+    def test_old_sheet_migrates_without_touching_records(self):
+        # Planilha feita pela versão anterior: guias com o texto de ajuda antigo e sem índice.
+        self.run_ops([up(self.rec(A, appearance="Don Quixote", work="Project Moon")), up(self.rec(B))])
+        for m in list(self.sheet.meta):
+            if m["title"] == "Índice (bot)":
+                self.sheet.meta.remove(m); del self.sheet.grids[m["sheetId"]]
+        for m in self.sheet.meta:
+            self.sheet.grids[m["sheetId"]][1][0] = layout.HELP_OLD
+        before = {m["sheetId"]: [row[:] for row in self.sheet.grids[m["sheetId"]]] for m in self.sheet.meta}
+        model, expect = asyncio.run(read_sheet(self.sheet, None))
+        self.assertIsNone(model.index)
+        model.req = []
+        model.upkeep()
+        asyncio.run(self.sheet.call("write", None, {"requests": model.req, "expect": expect}))
+        kinds = {next(iter(q)) for q in model.req}
+        self.assertLessEqual(kinds, {"addSheet", "updateCells", "addConditionalFormatRule"})
+        for sid, grid in before.items():
+            after = self.sheet.grids[sid]
+            self.assertEqual(after[1][0], layout.HELP_TEXT)
+            self.assertEqual(after[2:], grid[2:], "ficha ou estrutura mudou na migração")
+        self.assertIsNotNone(self.model().index)
+        self.assertEqual(self.model().index["print"], model.index["print"])
+
+    def test_index_tab_names_with_comma_and_quote_and_growth(self):
+        NAMES[A] = "Ana, a 'Bruxa'"
+        try:
+            self.run_ops([up(self.rec(A))])
+        finally:
+            NAMES[A] = "mizuki_sama"
+        formula = self.sheet.grids[1001][0][0]
+        self.assertIn("VSTACK('Ana, a ''Bruxa'''!B:I)", formula)
+        m = self.model()
+        m.req = []
+        m.index["rows"] = 10
+        m.upkeep()
+        grow = [q["appendDimension"] for q in m.req if "appendDimension" in q]
+        self.assertEqual(grow, [{"sheetId": 1001, "dimension": "ROWS", "length": 1 + 2 * layout.INDEX_SLACK - 10}])
+
+    def test_index_in_english_sheet(self):
+        self.sheet = FakeSheet(",")
+        model = layout.Model(",", language="en")
+        model.new_block(A, "ana")
+        model.upkeep()
+        rule = next(q["addConditionalFormatRule"]["rule"] for q in model.req if "addConditionalFormatRule" in q
+                    and q["addConditionalFormatRule"]["rule"]["booleanRule"]["condition"]["type"] == "CUSTOM_FORMULA")
+        text = rule["booleanRule"]["condition"]["values"][0]["userEnteredValue"]
+        self.assertIn('$E5<>"Released"', text)
+        self.assertIn("INDIRECT(\"'Index (bot)'!A:A\")", text)
+        self.assertIn('CHOOSECOLS(x,4)<>"Released"', model.index_formula())
 
     def test_real_sheet_scenario(self):
         # Gera o arquivo usado para conferir formatação e fórmulas numa planilha do Google.

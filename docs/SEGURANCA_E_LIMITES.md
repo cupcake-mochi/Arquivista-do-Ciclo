@@ -28,11 +28,13 @@ Mudanças do bot entram em uma fila SQLite durável. A reconciliação procura e
 
 As requisições de uma `spreadsheets.batchUpdate` são atômicas entre si; a leitura anterior e a escrita não formam uma transação com o mouse do editor. Não há garantia de capturar cada edição intermediária nem de impedir toda corrida entre uma edição humana e o envio do bot. Evite editar a mesma ficha simultaneamente nos dois lugares.
 
-Cada aba nova começa com 20 posições e cresce em blocos de 20 quando restam duas livres. Não há limite fixo de 100 membros/200 posições do modelo antigo no fluxo novo. Continuam valendo limites e cotas dos serviços. Não foram feitos testes de carga em grande escala. Preserve fórmulas, IDs, revisões e linhas das fichas: uma estrutura quebrada interrompe as gravações daquela aba. Apagar uma ficha manualmente não a remove do bot; use `/remover`.
+Cada aba nova começa com 20 posições e cresce em blocos de 20 quando restam duas livres. Não há limite fixo de 100 membros/200 posições do modelo antigo no fluxo novo; o bot aceita até 400 cadastros por membro (Liberados contam). Continuam valendo limites e cotas dos serviços.
+
+**Teste de carga (1.3.0, 22/11/2026, Google real, planilha sintética):** uma aba com 400 cadastros (420 posições, 1.698 linhas) e mais nove com 100, total de 1.300. Gravar os 400 levou uma gravação e 10 s; os outros 900, três gravações e 24 s. A leitura que o bot faz a cada 5 minutos levou de 0,7 s a 1,0 s; uma edição com tudo cheio, 1,9 s. O índice da regra de vermelho trouxe as 975 chaves esperadas (fora os Liberados), sem erro, e o contador do bloco mostrou `400 / 420`. O arquivo inteiro ficou com 115.980 células, longe do limite de 10 milhões do Google. Não foi medida a fluidez da tela no navegador com uma planilha desse tamanho. Preserve fórmulas, IDs, revisões e linhas das fichas: uma estrutura quebrada interrompe as gravações daquela aba. Apagar uma ficha manualmente não a remove do bot; use `/remover`.
 
 ## Permissões e privacidade no Discord
 
-Consultas públicas usam uma lista explícita de campos, sem situação, justificativa ou nome interno. Formulários, confirmações e consultas internas usam interações privadas. O prefixo `AC:` abre um botão público para atendimento privado; segredos digitados na própria mensagem pública já estarão expostos.
+Consultas públicas usam uma lista explícita de campos: mostram a situação (desde a 1.3.0), mas não a justificativa nem metadados internos. Formulários, confirmações e consultas internas usam interações privadas. O prefixo `AC:` abre um botão público para atendimento privado; segredos digitados na própria mensagem pública já estarão expostos.
 
 Membros gerenciam seus próprios campos permitidos. Situação, transferência, remoção, limpeza e auditoria exigem staff. Configuração, planilha e restauração exigem dono, Administrador ou Gerenciar Servidor. As gravações reconsultam o membro no Discord; perder o cargo não mantém autorização de um painel antigo. Os painéis também conferem quem os abriu.
 

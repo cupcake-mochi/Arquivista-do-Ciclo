@@ -56,7 +56,8 @@ class DomainTests(unittest.TestCase):
               'status':'Arquivado','justification':'SEGREDO','server_name':'Kai',
               'revision':'hash','date':1,'image_url':'url','group':99}
         result=public_record(full)
-        self.assertEqual(set(result),{'id','appearance','work','server_name','owner_id','occupied'})
+        self.assertEqual(set(result),{'id','appearance','work','server_name','owner_id','occupied','status'})
+        self.assertEqual(result['status'],'Arquivado')  # situação aparece nas consultas; justificativa não
         self.assertEqual(result['server_name'],'Kai')
         self.assertNotIn('SEGREDO',json.dumps(result))
     def test_permissions(self):
@@ -158,7 +159,8 @@ class ArchiveTests(unittest.TestCase):
         r=self.create(server_name='Kai')
         self.call(self.a,'change_status',self.staff,{'id':r['id'],'revision':r['revision'],'status':'Em uso','justification':'SEGREDO'})
         records=self.call(self.a,'list',self.other)['records']
-        self.assertEqual(set(records[0]),{'id','appearance','work','server_name','owner_id','occupied'})
+        self.assertEqual(set(records[0]),{'id','appearance','work','server_name','owner_id','occupied','status'})
+        self.assertEqual(records[0]['status'],'Em uso')
         self.assertEqual(records[0]['server_name'],'Kai')
         self.assertNotIn('SEGREDO',json.dumps(records))
     def test_permissions(self):
@@ -408,7 +410,7 @@ class SheetTests(unittest.TestCase):
         _,data=sheet.calls[-1]
         names=[q['updateSheetProperties'] for q in data['requests'] if 'updateSheetProperties' in q]
         added=[q['addSheet']['properties']['title'] for q in data['requests'] if 'addSheet' in q]
-        self.assertEqual(added,['mizuki_sama'])
+        self.assertEqual(added,['mizuki_sama','Índice (bot)'])  # a guia do membro e o índice escondido da regra de vermelho
         self.assertEqual(list(self.queue()),[]);self.assertEqual(self.s.sheet_pending(G1),(1,1))  # o recusado espera bem mais
         g=self.s.guild(G1);self.assertIsNone(g['sheet_error']);self.assertEqual(g['sheet_ok'],'agora')
         # Sincronização completa: só o que faltava (o recusado, agora válido) gera gravação.
@@ -484,19 +486,22 @@ class DiscordImportTests(unittest.IsolatedAsyncioTestCase):
             async def resolve(self, *args): return ''
         bot=SimpleNamespace(images=Images(),carteiro=SimpleNamespace(decorate=lambda e:e))
         owner=SimpleNamespace(id=123456789012345678,display_name='Jogador',display_avatar=SimpleNamespace(url='https://example.com/avatar.png'))
-        r={'id':'AP-test','appearance':'Takao','work':'Azur Lane','owner_id':str(owner.id),'server_name':'Kai @everyone **nome**'}
+        r={'id':'AP-test','appearance':'Takao','work':'Azur Lane','owner_id':str(owner.id),'server_name':'Kai @everyone **nome**','status':'Arquivado'}
         for options in ({},{'owner':owner},{'title':'Obra: Azur Lane'}):
             e=await Paginator(bot,1,[r],**options).embed()
             self.assertIn('Nome no servidor: Kai',e.description)
             self.assertNotIn('@everyone',e.description)
             self.assertNotIn('**nome**',e.description)
+            self.assertIn('`Arquivado`',e.description)
+        self.assertIn('`Liberado · livre`',(await Paginator(bot,1,[{**r,'status':'Liberado'}]).embed()).description)
         e=await Paginator(bot,1,[r],'gallery').embed()
-        self.assertEqual(e.fields[0].name,'Nome no servidor')
-        self.assertIn('Kai',e.fields[0].value)
+        self.assertEqual((e.fields[0].name,e.fields[0].value),('Situação','Arquivado'))
+        self.assertEqual(e.fields[1].name,'Nome no servidor')
+        self.assertIn('Kai',e.fields[1].value)
         blank={**r,'server_name':''}
         self.assertNotIn('Nome no servidor:',(await Paginator(bot,1,[blank]).embed()).description)
-        self.assertEqual((await Paginator(bot,1,[blank],'gallery').embed()).fields[0].value,'Não informado')
-        longest={**r,'appearance':'*'*100,'work':'*'*100,'server_name':'*'*100}
+        self.assertEqual((await Paginator(bot,1,[blank],'gallery').embed()).fields[1].value,'Não informado')
+        longest={**r,'appearance':'*'*100,'work':'*'*100,'server_name':'*'*100,'status':'Em preparação'}
         for options in ({},{'owner':owner},{'title':'Obra: Azur Lane'}):
             view=Paginator(bot,1,[longest]*13,**options)
             self.assertEqual(view.pages,2)

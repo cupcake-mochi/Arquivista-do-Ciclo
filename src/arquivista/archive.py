@@ -20,7 +20,7 @@ from .store import Store, sheet_upsert
 
 FIELDS = ("id", "owner_id", "appearance", "work", "server_name", "status", "justification",
           "image_url", "media_ref", "date", "revision")
-MAX_PER_MEMBER = 200  # o mesmo teto de posições da planilha
+MAX_PER_MEMBER = 400  # a aba do membro cresce de 20 em 20 até aqui (Liberado também ocupa posição)
 MEDIA_REF = re.compile(r"^discord://(\d{17,20})/(\d{17,20})/(\d{17,20})/(\d{17,20})$")
 URL = re.compile(r"^https://([^/?#\s]+)\S*$", re.I)
 
@@ -76,8 +76,8 @@ class Archive:
             if not actor.staff and r["owner_id"] != actor.id: fail("FORBIDDEN")
             return {"record": r}
         if action == "image":
+            # Liberado também aparece nas consultas (marcado como livre), então a imagem acompanha.
             r = self.record(str(d.get("id", "")))
-            if r["status"] == "Liberado" and not actor.staff and actor.id != r["owner_id"]: fail("NOT_FOUND")
             return {"url": r["image_url"], "media_ref": r["media_ref"]}
         if action == "refresh_image":
             # Link de anexo do Discord expira; só troca a URL, sem evento nem nova revisão.
