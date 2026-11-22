@@ -10,6 +10,8 @@ Planilhas já existentes recebem o índice e a regra na primeira leitura depois 
 
 **Até 400 cadastros por membro** (antes 200). Liberados continuam contando, porque ocupam posição na planilha.
 
+Publicada na Discloud em 22/11/2026, às 17:58 (horário de Brasília), pelo commit do ZIP de 29 arquivos, sem banco nem credenciais. Na planilha real do Era da Revolução, a migração rodou sozinha na primeira leitura: texto de ajuda novo em todas as abas, fichas intactas, e a linha digitada à mão que repetia "Don Quixote / Project Moon" ficou vermelha, enquanto a cadastrada continuou normal. No Discord, `AC:obra Project Moon` mostrou `Em uso` e `Em preparação`, e `AC:ap Archetto` mostrou `Liberado · livre` no fim da lista. Logs sem erro de planilha depois da subida. O backup manual da hospedagem não foi baixado antes do commit, porque o ZIP não leva o banco.
+
 ## 1.2.0 · 22/10/2026
 
 Importação confirmada pela interface real do Discord em servidor temporário, com três cadastros fictícios. Cancelamento em português, operação completa em inglês, recusa de conta sem Gerenciar servidor e sincronização nos dois sentidos aprovados. Produção auditada: 29 fontes do pacote iguais, 19 cadastros e três conexões anteriores preservados. Guia público, privacidade e termos atualizados em português e inglês. Google Picker real validado com origem externa: conta dedicada, somente o arquivo selecionado, escopo mantido e credenciais existentes preservadas. A importação dessa origem também passou pela interface do Discord; o bot tinha apenas leitura no original. Cinco planilhas sintéticas enviadas à lixeira recuperável e servidor temporário excluído após confirmação do usuário.
