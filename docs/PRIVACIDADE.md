@@ -1,6 +1,6 @@
 # Política de privacidade do Arquivista do Ciclo
 
-Atualizada em 22/10/2026.
+Atualizada em 22/11/2026.
 
 Sou o Mizuki, mantenedor do Arquivista do Ciclo, o bot da Amiya. Para tirar dúvidas sobre seus dados ou pedir a exclusão, me chame no servidor da guilda.
 
@@ -55,7 +55,7 @@ Quando este texto mudar, a data do começo muda junto.
 ---
 
 # Arquivista do Ciclo privacy policy — English
-Updated October 22, 2026. Maintainer: Mizuki. Contact me through the guild server for data questions or deletion requests.
+Updated November 22, 2026. Maintainer: Mizuki. Contact me through the guild server for data questions or deletion requests.
 Messages and records
 The bot processes AC: commands, mentions of Amiya and replies to her messages. Other messages are not retained or forwarded. It does not read direct messages, join voice calls or use artificial intelligence.
 For each server it stores appearance records, source works, server character names, internal statuses and staff reasons, image URLs, registration dates and responsible members’ Discord IDs. It also stores before-and-after audit events with the actor’s ID, confirmation identifiers to prevent duplicate writes, staff roles and configured channels. Managed-spreadsheet records include the file ID and URL, creation progress and the Google email supplied to receive edit access. That email is encrypted in the bot database and sent to Google to grant access.
