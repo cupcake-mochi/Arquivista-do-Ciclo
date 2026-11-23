@@ -1,6 +1,6 @@
 # Arquivista do Ciclo · Amiya
 
-**Versão 1.2.0 publicada e validada em 22/10/2026.** Importação de origem externa pelo Google Picker, permissões e sincronização conferidas no Discord e no Google reais. Última versão estável anterior: 1.1.2, publicada em 21/10/2026. Idioma por servidor, planilhas novas em inglês e arquivos antigos preservados. [Clareza de siglas](docs/CLAREZA-SIGLAS.md). [Revisão final de apresentação](docs/REVISAO-FINAL-APRESENTACAO.md). [Validação e retomada](docs/RETOMADA-IDIOMA.md). Projeto independente das Guias do Ciclo.
+**Versão 1.3.1 publicada em 22/11/2026:** imagem colada por link do Discord passa a ser guardada pelo bot e não some mais da planilha. **Versão 1.3.0 publicada em 22/11/2026:** vermelho de aparência repetida entre abas da planilha, situação nas consultas e até 400 cadastros por membro. **Versão 1.2.0 publicada e validada em 22/10/2026.** Importação de origem externa pelo Google Picker, permissões e sincronização conferidas no Discord e no Google reais. Última versão estável anterior: 1.1.2, publicada em 21/10/2026. Idioma por servidor, planilhas novas em inglês e arquivos antigos preservados. [Clareza de siglas](docs/CLAREZA-SIGLAS.md). [Revisão final de apresentação](docs/REVISAO-FINAL-APRESENTACAO.md). [Validação e retomada](docs/RETOMADA-IDIOMA.md). Projeto independente das Guias do Ciclo.
 
 > **Para configurar no seu servidor:** siga o [guia público no Google Docs](https://docs.google.com/document/d/1xuehlkhU3EhMsSE4hjLIfQY9p-eEF6ynS5ikAmlqnhw/view). Para aprender a usar o bot, comece por `/guia`; `/ajuda` traz a lista de comandos.
 >
@@ -34,10 +34,10 @@ A interface e os guias seguem o idioma do servidor. Os nomes no menu nativo segu
 | Permissões | Membro edita nome no servidor e imagem dos próprios registros. Só a staff muda aparência, obra ou situação após o cadastro, transfere e remove registros de outras pessoas. |
 | Histórico | Canal configurável, auditoria privada antes/depois e fila persistente de notificações. Captura de alterações manuais na planilha. |
 | Imagens | Link direto, imagem na célula consultável e anexo preservado em um canal escolhido pela staff. |
-| Planilha | Uma aba por membro, com visor, imagens e posições que crescem conforme o uso. IDs e datas ligam a ficha ao cadastro no banco. |
+| Planilha | Uma aba por membro, com visor, imagens e posições que crescem conforme o uso, até 400 por membro. IDs e datas ligam a ficha ao cadastro no banco. Aparência + obra que já tem cadastro fica em vermelho em qualquer aba, inclusive na linha digitada à mão. |
 | Instalação | Assistente `.env`, autorização Google única do mantenedor, diagnóstico sem escrita e pacote para Discloud. Apps Script mantido para conexões antigas. |
 
-O nome do personagem no servidor aparece na lista e na galeria, junto da aparência e do responsável. Situação e justificativa continuam privadas; as notificações públicas também não incluem o nome no servidor. Arquivado continua ocupado. Liberado permite reutilização. Não há aprovação obrigatória para o cadastro inicial.
+O nome do personagem no servidor e a situação aparecem na lista e na galeria, junto da aparência e do responsável; as liberadas aparecem no fim, marcadas como livres. A justificativa continua privada; as notificações públicas também não incluem o nome no servidor. Arquivado continua ocupado. Liberado permite reutilização. Não há aprovação obrigatória para o cadastro inicial.
 
 Cada membro pode editar o nome e a imagem dos próprios registros e removê-los com `/remover`, depois de confirmar. Só a staff altera cadastros de outras pessoas, muda aparência, obra ou situação, transfere e usa a limpeza em lote. A remoção preserva o histórico para a staff.
 

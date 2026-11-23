@@ -1,6 +1,6 @@
 # Política de privacidade do Arquivista do Ciclo
 
-Atualizada em 22/10/2026.
+Atualizada em 22/11/2026.
 
 Sou o Mizuki, mantenedor do Arquivista do Ciclo, o bot da Amiya. Para tirar dúvidas sobre seus dados ou pedir a exclusão, me chame no servidor da guilda.
 
@@ -18,9 +18,9 @@ Para cada servidor, o bot guarda:
 - a configuração do servidor: cargos de staff e canais escolhidos;
 - na criação automática da planilha, o identificador e o endereço do arquivo, o andamento da criação e o e-mail Google informado para receber edição. Esse e-mail fica cifrado no banco e é enviado ao Google para conceder acesso ao arquivo.
 
-O nome do personagem no servidor aparece nas listas e na galeria, junto da aparência, da obra e do responsável. O responsável pode editar esse nome no formulário privado. Situação e justificativa continuam restritas às consultas privadas da staff. Os avisos públicos não incluem o nome no servidor, a situação nem a justificativa.
+O nome do personagem no servidor aparece nas listas e na galeria, junto da aparência, da obra e do responsável. O responsável pode editar esse nome no formulário privado. Desde a versão 1.3.0, as listas e a galeria também mostram a situação (Em preparação, Em uso, Arquivado ou Liberado). A justificativa continua restrita às consultas privadas da staff. Os avisos públicos não incluem o nome no servidor, a situação nem a justificativa.
 
-Quando alguém anexa uma imagem ao cadastro, o bot reenvia o arquivo no canal de imagens que a staff escolheu, dentro do próprio servidor, e guarda o endereço dessa mensagem.
+Quando alguém anexa uma imagem ao cadastro, o bot reenvia o arquivo no canal de imagens que a staff escolheu, dentro do próprio servidor, e guarda o endereço dessa mensagem. Desde a versão 1.3.1, o mesmo vale para imagem colada como link de anexo do Discord, que venceria em um dia: em servidor com planilha, o bot baixa essa imagem do próprio Discord e a reenvia no canal de imagens.
 
 Para reconhecer quando alguém responde a uma mensagem da Amiya, o bot guarda o ID das próprias mensagens por 7 dias. Ele não guarda o texto dessas conversas.
 
@@ -55,11 +55,11 @@ Quando este texto mudar, a data do começo muda junto.
 ---
 
 # Arquivista do Ciclo privacy policy — English
-Updated October 22, 2026. Maintainer: Mizuki. Contact me through the guild server for data questions or deletion requests.
+Updated November 22, 2026. Maintainer: Mizuki. Contact me through the guild server for data questions or deletion requests.
 Messages and records
 The bot processes AC: commands, mentions of Amiya and replies to her messages. Other messages are not retained or forwarded. It does not read direct messages, join voice calls or use artificial intelligence.
 For each server it stores appearance records, source works, server character names, internal statuses and staff reasons, image URLs, registration dates and responsible members’ Discord IDs. It also stores before-and-after audit events with the actor’s ID, confirmation identifiers to prevent duplicate writes, staff roles and configured channels. Managed-spreadsheet records include the file ID and URL, creation progress and the Google email supplied to receive edit access. That email is encrypted in the bot database and sent to Google to grant access.
-Public lists and galleries show appearance, source work, responsible member and server character name. Internal statuses and reasons remain in private staff views. Public notices omit server character name, status and reason. Uploaded registration images are copied into the server’s configured image channel; the message URL is retained. IDs of the bot’s own messages are retained for seven days to recognize replies, without storing conversation text.
+Public lists and galleries show appearance, source work, responsible member, server character name and, since version 1.3.0, status. Staff reasons remain in private staff views. Public notices omit server character name, status and reason. Uploaded registration images are copied into the server’s configured image channel; the message URL is retained. Since version 1.3.1, images pasted as Discord attachment links, which expire after a day, are downloaded from Discord and copied there too in servers with a spreadsheet. IDs of the bot’s own messages are retained for seven days to recognize replies, without storing conversation text.
 Language and files
 Use /language or /idioma to choose Portuguese or English. The server owner, administrators, members with Manage Server and configured staff roles can change this setting. It applies only to this server and is independent of Guias do Ciclo. Native command names follow the Discord client language; replies follow the server setting. Member-written names and content are not translated. Each managed spreadsheet keeps the language assigned when it was created. Changing the server setting does not convert existing files, change sharing or require new Google permissions. Do not manually change the spreadsheet locale: synchronization will ask you to restore it.
 The bot stores the server language and each managed file’s creation language alongside its configuration. Internal record status codes and restorable JSON backups retain their canonical format; translated labels do not change record ownership or staff access.

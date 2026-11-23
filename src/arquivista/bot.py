@@ -47,7 +47,7 @@ HELP = """**Consultar o arquivo**
 `/remover` ou `AC:rm aparência` — remova um cadastro seu, com confirmação.
 
 Os nomes completos também valem (`AC:registrar`, `AC:galeria`...). `ac:` minúsculo funciona.
-Situação e justificativa não aparecem nas consultas públicas.""" + "\n\n" + DATA_LINKS
+As consultas mostram a situação de cada aparência; a justificativa fica só com a staff.""" + "\n\n" + DATA_LINKS
 STAFF_HELP = """
 
 **Equipe autorizada (staff)**
@@ -95,7 +95,7 @@ GUIDE = (
     ("O que cada situação significa",
      "**Em preparação** — reservada, ainda sendo montada.\n**Em uso** — sendo usada.\n"
      "**Arquivado** — fora de uso, mas continua ocupada.\n**Liberado** — livre para outra pessoa.\n\n"
-     "A situação e a justificativa ficam só nos painéis privados; as listas públicas não mostram."),
+     "A lista e a galeria mostram a situação de cada aparência; as liberadas aparecem no fim, marcadas como livres. A justificativa fica só com a staff."),
     ("Ações da equipe autorizada",
      "`AC:sit nome` — situação e justificativa. `AC:tr nome @membro` — muda o dono.\n"
      "`AC:rm nome` — remove um cadastro. `AC:limpar @membro` — apaga todos de alguém (vale o ID de quem saiu).\n"
@@ -327,7 +327,7 @@ class Arquivista(commands.Bot):
                 await self.reply_public(source,embed=card(tr("Comandos da Arquivista"),help_text))
                 return
             if action=="obra":
-                data=await self.archive(gid).call("list",actor,{"owner_id":"","include_released":False})
+                data=await self.archive(gid).call("list",actor,{"owner_id":"","include_released":True})
                 records=[public_record(r) for r in data["records"]]
                 groups=await asyncio.to_thread(work_groups,[r["work"] for r in records],self.store.aliases(gid))
                 if not query.strip():
@@ -336,15 +336,16 @@ class Arquivista(commands.Bot):
                     found=find_work(groups,query)
                     keys={k for g in found for k in g["keys"]}
                     records=sorted((r for r in records if work_key(r["work"]) in keys),
-                                   key=lambda r:(search_text(r["appearance"]),search_text(r["work"])))
+                                   key=lambda r:(r["status"]=="Liberado",search_text(r["appearance"]),search_text(r["work"])))
                     title=tr('Obra: ')+" · ".join(g["label"] for g in found[:3]) if found else tr('Obra: ')+query
                     view=Paginator(self,user.id,records,"gallery" if mode=="galeria" else "list",actor=actor,guild_id=gid,title=title)
                 await self.reply_public(source,embed=await view.embed(),view=view if view.records else None)
                 return
             owner_id=str(user.id) if action=="minhas" else (str(member_id) if member_id else "")
-            # Consultar mostra somente registros ocupados. Ausência não prova nome não padronizado.
-            data=await self.archive(gid).call("list",actor,{"owner_id":owner_id,"include_released":False})
+            # Consultas mostram a situação; Liberado aparece no fim, marcado como livre. Justificativa nunca.
+            data=await self.archive(gid).call("list",actor,{"owner_id":owner_id,"include_released":True})
             records=ranked([public_record(r) for r in data["records"]],query)
+            records.sort(key=lambda r:r["status"]=="Liberado")
             mode="gallery" if action in ("galeria","consultar") else "list"
             owner=None
             if owner_id:
@@ -513,6 +514,10 @@ class Arquivista(commands.Bot):
                            tr('\n**Último envio para a planilha:** {0}').format(cfg.get('sheet_ok') or tr('ainda não realizado'))+
                            (tr('\n**Último erro da planilha:** {0}').format(tr(SHEET_ERRORS.get(cfg['sheet_error'],cfg['sheet_error']))) if cfg.get("sheet_error") else "")+
                            (tr('\n**Edição da planilha que não entrou:** {0}').format(clean(cfg['sheet_note'],900)) if cfg.get("sheet_note") else ""))
+                    waiting,failed=self.images.adopt_pending(i.guild_id)
+                    if waiting or failed:
+                        body+=(tr('\n**Imagens coladas por link do Discord:** {0} esperando cópia no canal de imagens').format(waiting)+
+                               (tr(', {0} sem conseguir copiar (o bot tenta de novo em algumas horas; se continuar, reenvie a imagem pelo /editar)').format(failed) if failed else ""))
                 else:
                     body+=tr('\n**Planilha:** não conectada')
                 body+=tr('\n**Criação automática de planilhas:** ')+(tr("ativada") if self.managed.ready else tr('aguardando ativação pelo mantenedor'))
@@ -532,9 +537,9 @@ class Arquivista(commands.Bot):
     async def worker(self):
         # Rede de segurança: cada gravação já pede o envio na hora; aqui saem as retentativas.
         # Cada etapa protegida: um erro inesperado numa não para o laço (tasks.loop morre com exceção).
-        for name,stage in (("avisos",self.deliver_events),("planilha",self.sync_sheets),("backup",self.run_backups),("imagens",self.images.renew)):
+        for name,stage in (("avisos",self.deliver_events),("planilha",self.sync_sheets),("backup",self.run_backups),("imagens",self.images.renew),("imagens coladas",self.images.adopt)):
             try:
-                if await stage() and name=="imagens":
+                if await stage() and name.startswith("imagens"):
                     self.notify_soon()
             except Exception as exc:
                 log.warning("Etapa %s: %s", name, type(exc).__name__)

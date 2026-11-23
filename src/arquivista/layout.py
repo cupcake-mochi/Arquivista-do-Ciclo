@@ -10,10 +10,11 @@ planilha como ela vai ficar. Linhas e colunas começam em 1, como na planilha.
 from __future__ import annotations
 from .sheet_language import label, formula
 import datetime as dt
+import hashlib
 import json
 import re
 
-VERSION = "2.0.0"
+VERSION = "2.1.0"
 STEP, HEAD, WIDTH, FIRST_BLOCK = 20, 13, 11, 5
 STATUSES = ("Em preparação", "Em uso", "Arquivado", "Liberado")
 HEADERS = ("Nº", "Aparência", "Nome no servidor", "Obra de origem", "Situação", "Cadastro", "Imagem",
@@ -24,6 +25,12 @@ N, APPEARANCE, SERVER_NAME, WORK, STATUS, DATE, IMAGE, URL, ID, OWNER, MARK = ra
 RECORD_ID = re.compile(r"^AP-[0-9A-Za-z-]{8,64}$")
 SNOWFLAKE = re.compile(r"^[0-9]{17,20}$")
 BAD_TEXT = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f]")
+# Guia escondida que junta aparência + obra de todos os cadastros (com ID e fora de Liberado),
+# para a regra de vermelho enxergar repetição entre guias. K1 marca a guia; K2 guarda a impressão
+# da fórmula atual, para o bot só regravá-la quando a lista de guias de membro mudar.
+INDEX_MARK, INDEX_TITLE, INDEX_ROWS, INDEX_SLACK = "INDICE:1", "Índice (bot)", 2000, 500
+HELP_OLD = 'Edite as fichas aqui ou pelo bot. As mudanças chegam ao Discord em cerca de 5 minutos. Use + / − para ver as justificativas. Em vermelho: aparência e obra repetidas nas fichas deste membro.'
+HELP_TEXT = 'Edite as fichas aqui ou pelo bot. As mudanças chegam ao Discord em cerca de 5 minutos. Use + / − para ver as justificativas. Em vermelho: aparência e obra que já têm cadastro em outra ficha, em qualquer aba.'
 
 
 class Invalid(Exception):
@@ -44,6 +51,7 @@ STATUS_COLORS = {"Em preparação": (rgb(1, 0.953, 0.867), rgb(0.557, 0.357, 0.0
                  "Em uso": (rgb(0.91, 0.957, 0.925), rgb(0.137, 0.416, 0.282)),
                  "Arquivado": (rgb(0.922, 0.914, 0.961), rgb(0.337, 0.271, 0.475)),
                  "Liberado": (rgb(0.918, 0.937, 0.973), rgb(0.212, 0.337, 0.471))}
+RED_BG, RED_INK = rgb(0.992, 0.882, 0.882), rgb(0.6, 0.098, 0.129)
 
 
 class Tab:
@@ -69,9 +77,12 @@ class Block:
 
 class Model:
     """Planilha como o bot a enxerga: separador das fórmulas, guias de membro e nomes de todas as guias."""
-    def __init__(self, sep: str = ";", tabs: list[Tab] | None = None, names: list[str] | None = None, next_sheet_id: int = 1000, language="pt-BR"):
+    def __init__(self, sep: str = ";", tabs: list[Tab] | None = None, names: list[str] | None = None, next_sheet_id: int = 1000, language="pt-BR",
+                 index: dict | None = None):
         self.language = language
         self.sep, self.tabs, self.names, self.next_sheet_id = sep, tabs or [], names or [], next_sheet_id
+        # index: {"sheet_id", "title", "rows", "print"} da guia escondida, ou None se ainda não existe.
+        self.index = index
         self.req: list[dict] = []
 
     # ---------- utilitários ----------
@@ -176,7 +187,7 @@ class Model:
                                                   "properties": {"hiddenByUser": True}, "fields": "hiddenByUser"}})
         self.tabs.append(tab)
         self.set(tab, 1, 1, [self.label('CATÁLOGO DE APARÊNCIAS')])
-        self.set(tab, 2, 1, [self.label('Edite as fichas aqui ou pelo bot. As mudanças chegam ao Discord em cerca de 5 minutos. Use + / − para ver as justificativas. Em vermelho: aparência e obra repetidas nas fichas deste membro.')])
+        self.set(tab, 2, 1, [self.label(HELP_TEXT)])
         self.set(tab, 3, 1, [self.label('Escolha o número da ficha para vê-la no visor. A aba começa com 20 posições e ganha mais 20 quando restam duas livres.')])
         for r in (1, 2, 3):
             _merge(req, sid, r, r, 1, 10)
@@ -190,13 +201,73 @@ class Model:
             req.append({"addConditionalFormatRule": {"index": 0, "rule": {"ranges": [status], "booleanRule": {
                 "condition": {"type": "TEXT_EQ", "values": [{"userEnteredValue": self.label(s)}]},
                 "format": {"backgroundColor": bg, "textFormat": {"bold": True, "foregroundColor": ink}}}}}})
-        r = FIRST_BLOCK
-        req.append({"addConditionalFormatRule": {"index": 0, "rule": {
-            "ranges": [{"sheetId": sid, "startRowIndex": r - 1, "startColumnIndex": APPEARANCE - 1, "endColumnIndex": APPEARANCE}],
-            "booleanRule": {"condition": {"type": "CUSTOM_FORMULA", "values": [{"userEnteredValue": self.f(
-                f'=AND($I{r}<>"",$E{r}<>"Liberado",COUNTIFS($B:$B,$B{r},$D:$D,$D{r},$E:$E,"<>Liberado",$I:$I,"<>")>1)')}]},
-                "format": {"backgroundColor": rgb(0.992, 0.882, 0.882), "textFormat": {"bold": True, "foregroundColor": rgb(0.6, 0.098, 0.129)}}}}}})
+        # Sem índice ainda, o upkeep() do fim do lote cria o índice e põe a regra em todas as guias.
+        if self.index:
+            self.red_rule(tab)
         return tab
+
+    # ---------- repetição entre guias: índice escondido + regra de vermelho ----------
+    def _key(self, cell: str) -> str:
+        return f'LOWER(TRIM(SUBSTITUTE({cell},CHAR(160)," ")))'
+    def red_rule(self, tab: Tab) -> None:
+        """Pinta a aparência quando a mesma aparência + obra já está cadastrada em outra linha, de
+        qualquer guia (inclusive linha digitada à mão, ainda sem ID). Mesma chave do bot
+        (domain.exact_key): minúsculas, espaços extras fora, tamanho na frente. Liberado não conta.
+        A linha cadastrada conta a si mesma no índice, por isso o 1 do IF."""
+        r, title = FIRST_BLOCK, self.index["title"]
+        a, w = self._key(f"$B{r}"), self._key(f"$D{r}")
+        ref = "'" + title.replace("'", "''") + "'!A:A"
+        rule = (f'=AND($B{r}<>"",$D{r}<>"",$E{r}<>"Liberado",'
+                f'SUMPRODUCT(--(INDIRECT("{ref}")=LEN({a})&":"&{a}&":"&{w}))>IF(LEFT($I{r},3)="AP-",1,0))')
+        self.req.append({"addConditionalFormatRule": {"index": 0, "rule": {
+            "ranges": [{"sheetId": tab.sheet_id, "startRowIndex": r - 1, "startColumnIndex": APPEARANCE - 1, "endColumnIndex": APPEARANCE}],
+            "booleanRule": {"condition": {"type": "CUSTOM_FORMULA", "values": [{"userEnteredValue": self.f(rule)}]},
+                            "format": {"backgroundColor": RED_BG, "textFormat": {"bold": True, "foregroundColor": RED_INK}}}}}})
+    def index_formula(self) -> str:
+        """Uma coluna com a chave de cada cadastro (ID AP-...) fora de Liberado, de todas as guias de membro."""
+        if not self.tabs:
+            return '=""'
+        a, w = self._key("CHOOSECOLS(x,1)"), self._key("CHOOSECOLS(x,3)")
+        # ARRAYFORMULA: sem ele, LOWER/TRIM dentro do LET devolvem só o primeiro valor (conferido no Sheets real).
+        body = self.f(f'=ARRAYFORMULA(IFERROR(LET(x,VSTACK(@REFS@),a,{a},w,{w},FILTER(LEN(a)&":"&a&":"&w,a<>"",w<>"",'
+                      f'LEFT(CHOOSECOLS(x,8),3)="AP-",CHOOSECOLS(x,4)<>"Liberado")),""))')
+        # Nomes de guia podem ter vírgula: entram depois da conversão de separador.
+        return body.replace("@REFS@", self.sep.join(a1(t.name, "B:I") for t in self.tabs))
+    def upkeep(self) -> None:
+        """Mantém o índice: cria na primeira vez (com a regra em todas as guias existentes e o texto
+        de ajuda novo), regrava a fórmula quando as guias mudam e aumenta as linhas quando faltam.
+        Só acrescenta formatação e a guia escondida; não mexe em nenhuma ficha."""
+        text = self.index_formula()
+        mark = hashlib.sha1(text.encode("utf-8")).hexdigest()[:16]
+        need = self.records() + INDEX_SLACK
+        if not self.index:
+            sid, title, i = self.next_sheet_id, self.label(INDEX_TITLE), 2
+            self.next_sheet_id += 1
+            while any(x.lower() == title.lower() for x in self.names):
+                title, i = f"{self.label(INDEX_TITLE)} {i}", i + 1
+            rows = max(INDEX_ROWS, need + INDEX_SLACK)
+            self.req.append({"addSheet": {"properties": {"sheetId": sid, "title": title, "hidden": True,
+                "gridProperties": {"rowCount": rows, "columnCount": WIDTH}}}})
+            self.names.append(title)
+            self.index = {"sheet_id": sid, "title": title, "rows": rows, "print": ""}
+            self.req.append({"updateCells": {"start": {"sheetId": sid, "rowIndex": 0, "columnIndex": 2}, "rows": [{"values": [_cell(self.label(
+                'Guia do bot: lista os cadastros para a regra de vermelho. Não edite.'))]}], "fields": "userEnteredValue"}})
+            self.req.append({"updateCells": {"start": {"sheetId": sid, "rowIndex": 0, "columnIndex": MARK - 1},
+                                             "rows": [{"values": [_cell(INDEX_MARK)]}], "fields": "userEnteredValue"}})
+            for tab in self.tabs:
+                self.red_rule(tab)
+                if tab.grid and str(tab.grid[1][0] if len(tab.grid) > 1 else "") == self.label(HELP_OLD):
+                    self.set(tab, 2, 1, [self.label(HELP_TEXT)])
+        elif self.index["rows"] < need:
+            self.req.append({"appendDimension": {"sheetId": self.index["sheet_id"], "dimension": "ROWS", "length": need + INDEX_SLACK - self.index["rows"]}})
+            self.index["rows"] = need + INDEX_SLACK
+        if self.index["print"] != mark:
+            sid = self.index["sheet_id"]
+            self.req.append({"updateCells": {"start": {"sheetId": sid, "rowIndex": 0, "columnIndex": 0},
+                                             "rows": [{"values": [{"userEnteredValue": {"formulaValue": text}}]}], "fields": "userEnteredValue"}})
+            self.req.append({"updateCells": {"start": {"sheetId": sid, "rowIndex": 1, "columnIndex": MARK - 1},
+                                             "rows": [{"values": [_cell(mark)]}], "fields": "userEnteredValue"}})
+            self.index["print"] = mark
     def slots(self, tab: Tab, first: int, start_n: int, count: int) -> None:
         req, sid = self.req, tab.sheet_id
         for i in range(count):
@@ -395,6 +466,7 @@ class Model:
                 counted = len(self.req)
                 if size >= budget:
                     break
+        self.upkeep()
         return self.req, results
 
 
@@ -409,9 +481,18 @@ def record(r) -> dict:
             "justification": _text(r.get("justification") or "", 2000), "image_url": _url(r.get("image_url") or ""),
             "date": _serial(r.get("date")), "revision": r["revision"]}
 
-def load(sep: str, sheets: list[dict], values: dict[int, list[list]], language="pt-BR") -> Model:
-    """Monta o modelo a partir do que o script devolveu: todas as guias e os valores A:K das guias de membro."""
-    m = Model(sep, language=language, names=[s["title"] for s in sheets], next_sheet_id=max([1000] + [s["sheetId"] + 1 for s in sheets]))
+def load(sep: str, sheets: list[dict], values: dict[int, list[list]], language="pt-BR", marks: dict[int, list[list]] | None = None) -> Model:
+    """Monta o modelo a partir do que o script devolveu: todas as guias, os valores A:K das guias de membro
+    e (marks) a coluna K de cada guia, onde fica a marca do índice escondido."""
+    index = None
+    for s in sheets:
+        k = (marks or {}).get(s["sheetId"]) or []
+        first = str(k[0][0] if k and k[0] else "")
+        if first == INDEX_MARK and index is None:
+            second = str(k[1][0] if len(k) > 1 and k[1] else "")
+            index = {"sheet_id": s["sheetId"], "title": s["title"], "rows": s["rows"], "print": second}
+    m = Model(sep, language=language, names=[s["title"] for s in sheets], next_sheet_id=max([1000] + [s["sheetId"] + 1 for s in sheets]),
+              index=index)
     for s in sheets:
         if s["sheetId"] not in values:
             continue

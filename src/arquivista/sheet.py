@@ -45,7 +45,8 @@ async def read_sheet(bridge: Bridge, actor: Actor) -> tuple[layout.Model, list[d
     marks = await read([layout.a1(x["title"], f"K1:K{x['rows']}") for x in sheets], 400)
     members = [x for x, k in zip(sheets, marks) if layout.is_member_tab(k)]
     values = await read([layout.a1(x["title"], f"A1:K{x['rows']}") for x in members], 40)
-    model = layout.load(st.get("sep") or ";", sheets, {x["sheetId"]: v for x, v in zip(members, values)}, language=getattr(bridge,"language","pt-BR"))
+    model = layout.load(st.get("sep") or ";", sheets, {x["sheetId"]: v for x, v in zip(members, values)}, language=getattr(bridge,"language","pt-BR"),
+                        marks={x["sheetId"]: k for x, k in zip(sheets, marks)})
     return model, [{"sheetId": x["sheetId"], "rows": x["rows"], "title": x["title"]} for x in members]
 
 def _keys(master: bytes) -> tuple[bytes, bytes]:
@@ -137,7 +138,18 @@ class SheetSync:
             # Primeiro a fila do bot vai para a planilha (inclusive a que está esperando outra tentativa);
             # ler antes importaria de novo uma linha digitada cujo ID ainda não foi gravado.
             return 0
-        model, _ = await read_sheet(self.bridge(guild_id), self.actor())
+        bridge = self.bridge(guild_id)
+        model, expect = await read_sheet(bridge, self.actor())
+        # Índice escondido da regra de vermelho: cria na primeira leitura (planilhas antigas também)
+        # e acompanha guias novas ou renomeadas. Só acrescenta formatação; nenhuma ficha é regravada.
+        model.req = []
+        model.upkeep()
+        if model.req:
+            try:
+                await bridge.call("write", self.actor(), {"requests": model.req, "expect": expect})
+            except BridgeError as exc:
+                if exc.code != "CHANGED":
+                    raise
         archive = self.bot.archive(int(guild_id))
         records = {r["id"]: r for r in store.records(guild_id)}
         found, lost = await asyncio.to_thread(pull.changes, model, records, store.sheet_queued(guild_id))

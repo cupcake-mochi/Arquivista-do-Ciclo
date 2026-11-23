@@ -170,7 +170,7 @@ class ManagedTests(unittest.IsolatedAsyncioTestCase):
         self.api.fail_share = False
         await self.managed.create(self.guild, self.owner, "corrigido@example.com")
         self.assertEqual(len(self.api.files), 1)
-        self.assertEqual(len(self.api.sheets["file_1"].meta), 2)
+        self.assertEqual(len(self.api.sheets["file_1"].meta), 3)  # COMECE AQUI, membro e índice escondido
         self.assertEqual(self.api.shares["file_1"], {"corrigido@example.com"})
         self.assertFalse(any(method == "POST" and url.startswith(SHEETS)
                              for method, url, _, _ in self.api.calls[calls:]))

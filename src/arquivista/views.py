@@ -16,6 +16,11 @@ def clean(value, limit=1000):
     # Conteúdo de usuários nunca produz pings, links mascarados ou formatação de staff.
     return discord.utils.escape_markdown(discord.utils.escape_mentions(str(value or "")))[:limit]
 
+def status_tag(record) -> str:
+    """Situação nas consultas públicas; Liberado avisa que a aparência pode ser cadastrada de novo."""
+    status = record.get("status") or ""
+    return tr('Liberado · livre') if status == "Liberado" else (tr(status) if status else "—")
+
 def card(title: str, description: str = "") -> discord.Embed:
     return discord.Embed(title=title, description=description, colour=0x559EA6)
 
@@ -131,6 +136,7 @@ class Paginator(GuardedView):
         elif self.mode == "gallery":
             r = self.records[self.page]
             e = card(clean(r["appearance"], 200), tr('**Obra:** {0}\n**Responsável:** <@{1}>').format(clean(r['work'],200), r['owner_id']))
+            e.add_field(name=tr('Situação'), value=status_tag(r), inline=False)
             e.add_field(name=tr('Nome no servidor'), value=clean(r.get("server_name"),100) or tr('Não informado'), inline=False)
             url = await self.bot.images.resolve(r["id"], self.actor, self.guild_id)
             if url:
@@ -140,15 +146,15 @@ class Paginator(GuardedView):
         else:
             chunk = self.records[self.page*self.per_page:(self.page+1)*self.per_page]
             if self.title and not self.owner:
-                lines = [f"**{self.page*self.per_page+j+1}. {clean(r['appearance'],100)}** · {clean(r['work'],50)} · <@{r['owner_id']}>"
+                lines = [f"**{self.page*self.per_page+j+1}. {clean(r['appearance'],100)}** · {clean(r['work'],50)} · <@{r['owner_id']}> · `{status_tag(r)}`"
                          + (tr('\nNome no servidor: {0}').format(clean(r['server_name'],100)) if r.get('server_name') else "") for j,r in enumerate(chunk)]
                 e = card(clean(self.title, 200), "\n\n".join(lines))
             elif self.owner:
-                lines = [f"**{self.page*self.per_page+j+1}. {clean(r['appearance'],110)}** · {clean(r['work'],60)}"
+                lines = [f"**{self.page*self.per_page+j+1}. {clean(r['appearance'],110)}** · {clean(r['work'],60)} · `{status_tag(r)}`"
                          + (tr('\nNome no servidor: {0}').format(clean(r['server_name'],100)) if r.get('server_name') else "") for j,r in enumerate(chunk)]
                 e = card(tr('Aparências de ') + clean(self.owner.display_name, 80), f"<@{self.owner.id}>\n\n" + "\n\n".join(lines))
             else:
-                lines = [f"**{self.page*self.per_page+j+1}. {clean(r['appearance'],110)}** · <@{r['owner_id']}>"
+                lines = [f"**{self.page*self.per_page+j+1}. {clean(r['appearance'],110)}** · <@{r['owner_id']}> · `{status_tag(r)}`"
                          + (tr('\nNome no servidor: {0}').format(clean(r['server_name'],100)) if r.get('server_name') else "") for j,r in enumerate(chunk)]
                 e = card(tr('Arquivo de aparências'), "\n\n".join(lines))
         if self.owner and self.mode != "history":

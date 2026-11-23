@@ -15,7 +15,7 @@ HELP='''**Browse the archive**
 `AC:edit appearance` or `/edit` — change your server character name or image.
 `AC:remove appearance` or `/remove` — remove your own record after confirmation.
 
-Portuguese commands and short names still work. The prefix is case-insensitive. Native slash-menu names follow your Discord client's language; server settings control responses. Status and notes are never shown in public searches.'''+ '\n\n'+LINKS
+Portuguese commands and short names still work. The prefix is case-insensitive. Native slash-menu names follow your Discord client's language; server settings control responses. Searches show each appearance's status; notes stay with staff.'''+ '\n\n'+LINKS
 STAFF_HELP='''
 
 **Staff**
@@ -64,7 +64,7 @@ Only staff can change appearance, source work or status after registration. Edit
 **Archived:** no longer in use, but still occupied.
 **Released:** available for someone else.
 
-Status and notes appear only in private panels, never public lists. Stored status codes stay unchanged internally so language changes do not alter ownership or availability.'''),
+Lists and the gallery show each appearance's status; released ones appear last, marked as available. Notes stay with staff. Stored status codes stay unchanged internally so language changes do not alter ownership or availability.'''),
 ('Staff review and actions', '''`AC:status_change name` changes internal status and notes. `AC:transfer name @member` changes ownership.
 `AC:remove name` removes one record. `AC:clear @member` removes all of a person's records; a former member's ID is accepted.
 `AC:alias JJK = Jujutsu Kaisen` adds a work-search alias.

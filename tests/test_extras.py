@@ -1,6 +1,7 @@
 """Renovação dos links de imagem, limpeza de membro e busca por obra."""
 from __future__ import annotations
 import asyncio
+import json
 from pathlib import Path
 import sys
 import tempfile
@@ -313,7 +314,7 @@ class PullTests(unittest.TestCase):
         grid.insert(20, [""] * 11); self.sheet.depths[sid].insert(20, 0)  # linha inserida à mão no meio das fichas
         asyncio.run(self.a.call("edit", Actor(U1, "m"), {"id": self.ids[0], "revision": 1, "fields": {"server_name": "x"}}))
         asyncio.run(self.sync.run())
-        self.assertEqual(len(self.sheet.meta), 1)  # não criou outra guia para a mesma pessoa
+        self.assertEqual(len([m for m in self.sheet.meta if m["title"] != "Índice (bot)"]), 1)  # não criou outra guia para a mesma pessoa
         self.s.db.execute("UPDATE sheet_outbox SET next_try=0"); self.s.db.commit()
         self.sync.next_pull.clear()
         asyncio.run(self.sync.pull(G1))
@@ -417,6 +418,201 @@ class AmiyaPhotoTests(unittest.TestCase):
         self.assertEqual(sent[0]["avatar_url"], "https://cdn.discordapp.com/avatars/9/abc.png")
         self.assertEqual(sent[0]["username"], "Amiya")
         self.assertEqual(sent[0]["embed"].author.icon_url, "https://cdn.discordapp.com/avatars/9/abc.png")
+
+
+PNG = b"\x89PNG\r\n\x1a\n" + b"0" * 32
+IMG_CH = "6" * 18
+SHEET = "https://script.google.com/macros/s/" + "a" * 30 + "/exec"
+
+
+def pasted(att: int, ex: float, host="media.discordapp.net", extra="&format=webp&width=270") -> str:
+    return (f"https://{host}/attachments/1366643353520705566/{att}/f.png"
+            f"?ex={int(ex):x}&is=0&hm=abc{extra}")
+
+
+class FakeResp:
+    def __init__(self, status, data):
+        self.status, self.data, self.content_length = status, data, len(data)
+        self.content = self
+    async def iter_chunked(self, n):
+        for i in range(0, len(self.data), n):
+            yield self.data[i:i + n]
+    async def __aenter__(self): return self
+    async def __aexit__(self, *a): return False
+
+
+class AdoptTests(unittest.TestCase):
+    """Link do Discord colado à mão: o bot guarda a imagem no canal de imagens e passa a renovar."""
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.s = Store(Path(self.tmp.name) / "d.sqlite")
+        self.s.set_guild(G1, sheet_url=SHEET, sheet_key="x", image_channel=IMG_CH)
+        self.a = Archive(self.s, G1)
+        self.staff = Actor("5" * 18, "staff", True)
+        self.fetched, self.refresh_asked, self.sent = [], [], []
+        self.refresh_fail = False
+        self.files = {}  # url -> (status, bytes)
+        test = self
+        store = self.s
+
+        class Message:
+            def __init__(self, n):
+                self.id = 900000000000000000 + n
+                url = f"https://cdn.discordapp.com/attachments/{IMG_CH}/{800000000000000000 + n}/aparencia.png?ex={int(time.time() + 86400):x}&is=0&hm=f"
+                self.attachments = [type("A", (), {"url": url, "id": 800000000000000000 + n})()]
+
+        class Channel:
+            guild = type("G", (), {"id": int(G1)})()
+            id = int(IMG_CH)
+            async def send(self, content, file=None, allowed_mentions=None):
+                test.sent.append(file.filename)
+                return Message(len(test.sent))
+
+        class Http:
+            async def request(self, route, json=None):
+                test.refresh_asked.append(list(json["attachment_urls"]))
+                if test.refresh_fail:
+                    raise media.discord.HTTPException(type("R", (), {"status": 403, "reason": "x"})(), "no")
+                out = []
+                for u in json["attachment_urls"]:
+                    p = media.discord_file(u)
+                    out.append({"original": u, "refreshed": f"https://cdn.discordapp.com/attachments/{p[1]}/{p[2]}/{p[3]}?ex={int(time.time() + 86400):x}&is=1&hm=new"})
+                return {"refreshed_urls": out}
+
+        class Session:
+            def get(self, url, allow_redirects=True, timeout=None):
+                assert allow_redirects is False
+                test.fetched.append(url)
+                status, data = test.files.get(url.split("?")[0], (404, b""))
+                return FakeResp(status, data)
+
+        class Bot:
+            def service_actor(self): return Actor("9" * 18, "svc", True)
+            def get_guild(self, _): return object()
+            def get_channel(self, cid): return Channel() if cid == int(IMG_CH) else None
+            async def fetch_channel(self, cid): return self.get_channel(cid)
+            def archive(self, gid): return Archive(store, gid)
+        self.bot = Bot()
+        self.bot.store, self.bot.http, self.bot.session = store, Http(), Session()
+        self.images = media.Images(self.bot)
+
+    def tearDown(self):
+        self.s.close(); self.tmp.cleanup()
+
+    def make(self, name, url):
+        return asyncio.run(self.a.call("create", self.staff, {"owner": {"id": U1, "name": "x"},
+            "fields": {"appearance": name, "work": "Azur Lane", "image_url": url}}))["record"]
+
+    def test_expired_pasted_links_are_refreshed_downloaded_and_kept(self):
+        att = 1366772409897582742
+        self.files[f"https://cdn.discordapp.com/attachments/1366643353520705566/{att}/f.png"] = (200, PNG)
+        url = pasted(att, time.time() - 3600)
+        a, b = self.make("Takao", url), self.make("Atago", url)  # o mesmo link em dois cadastros
+        other = self.make("Kaga", "https://i.pinimg.com/a.jpg")
+        self.s.db.execute("DELETE FROM sheet_outbox"); self.s.db.commit()
+        self.assertEqual(asyncio.run(self.images.adopt()), 2)
+        self.assertEqual(len(self.sent), 1)  # sobe uma vez só
+        self.assertEqual(len(self.refresh_asked), 1)
+        self.assertNotIn("format=", self.refresh_asked[0][0])  # pede o original, sem redimensionar
+        self.assertTrue(self.fetched[0].startswith("https://cdn.discordapp.com/attachments/1366643353520705566/"))
+        for rid, rev in ((a["id"], a["revision"]), (b["id"], b["revision"])):
+            r = self.a.record(rid)
+            self.assertTrue(r["media_ref"].startswith(f"discord://{G1}/{IMG_CH}/"))
+            self.assertIn(f"/attachments/{IMG_CH}/", r["image_url"])
+            self.assertEqual(r["revision"], rev)  # sem nova revisão nem evento
+        self.assertEqual(self.a.record(other["id"])["image_url"], "https://i.pinimg.com/a.jpg")
+        ops = [json.loads(x["payload"]) for x in self.s.sheet_batch(G1)]
+        self.assertEqual(sorted(o["op"] for o in ops), ["image", "image"])
+        self.assertEqual(self.images.adopt_pending(G1), (0, 0))
+        # Agora é anexo guardado: entra na renovação comum.
+        self.assertEqual(len(self.s.renewable()), 2)
+        self.assertEqual(self.s.adoptable(), [])
+
+    def test_valid_link_is_used_without_refresh(self):
+        att = 1500901576926302259
+        self.files[f"https://cdn.discordapp.com/attachments/1366643353520705566/{att}/f.png"] = (200, PNG)
+        r = self.make("Takao", pasted(att, time.time() + 20 * 3600, host="cdn.discordapp.com", extra=""))
+        self.assertEqual(asyncio.run(self.images.adopt()), 1)
+        self.assertEqual(self.refresh_asked, [])
+        self.assertTrue(self.a.record(r["id"])["media_ref"])
+
+    def test_resized_copy_is_used_when_original_fails(self):
+        att = 1500901576926302260
+        url = pasted(att, time.time() + 20 * 3600)
+        self.files[url.split("?")[0]] = (200, PNG)  # só o endereço redimensionado responde
+        r = self.make("Takao", url)
+        self.assertEqual(asyncio.run(self.images.adopt()), 1)
+        self.assertEqual(len(self.fetched), 2)
+        self.assertTrue(self.a.record(r["id"])["media_ref"])
+
+    def test_refused_refresh_is_reported_and_retried_later(self):
+        self.refresh_fail = True
+        r = self.make("Takao", pasted(1366772409897582743, time.time() - 3600))
+        self.assertEqual(asyncio.run(self.images.adopt()), 0)
+        self.assertEqual(self.sent, [])
+        self.assertEqual(self.images.adopt_pending(G1), (0, 1))
+        self.assertEqual(self.a.record(r["id"])["media_ref"], "")
+        self.images.next_adopt = 0
+        self.refresh_asked.clear()
+        asyncio.run(self.images.adopt())
+        self.assertEqual(self.refresh_asked, [])  # não insiste a cada volta
+        self.images.adopt_failed = {k: (0, v[1]) for k, v in self.images.adopt_failed.items()}
+        self.refresh_fail = False
+        self.files["https://cdn.discordapp.com/attachments/1366643353520705566/1366772409897582743/f.png"] = (200, PNG)
+        self.images.next_adopt = 0
+        self.assertEqual(asyncio.run(self.images.adopt()), 1)
+        self.assertEqual(self.images.adopt_pending(G1), (0, 0))
+
+    def test_rejects_files_that_are_not_images(self):
+        att = 1366772409897582744
+        self.files[f"https://cdn.discordapp.com/attachments/1366643353520705566/{att}/f.png"] = (200, b"<html>no</html>")
+        self.make("Takao", pasted(att, time.time() + 20 * 3600))
+        self.assertEqual(asyncio.run(self.images.adopt()), 0)
+        self.assertEqual(self.sent, [])
+        self.assertIn("não é PNG", next(iter(self.images.adopt_failed.values()))[1])
+
+    def test_never_downloads_outside_discord(self):
+        with self.assertRaises(media.AdoptError):
+            asyncio.run(self.images.download("https://evil.example/attachments/1/2/a.png"))
+        self.assertIsNone(media.discord_file("https://cdn.discordapp.com.evil.net/attachments/1366643353520705566/1366772409897582742/f.png"))
+        self.assertIsNone(media.discord_file("https://cdn.discordapp.com/avatars/1/abc.png"))
+        self.assertEqual(self.fetched, [])
+
+    def test_only_servers_with_sheet_and_image_channel(self):
+        self.make("Takao", pasted(1366772409897582745, time.time() + 3600))
+        self.assertEqual(len(self.s.adoptable()), 1)
+        self.s.set_guild(G1, image_channel=None)
+        self.assertEqual(self.s.adoptable(), [])
+
+    def test_link_changed_meanwhile_is_left_alone(self):
+        att = 1366772409897582746
+        self.files[f"https://cdn.discordapp.com/attachments/1366643353520705566/{att}/f.png"] = (200, PNG)
+        r = self.make("Takao", pasted(att, time.time() + 20 * 3600))
+        real = self.images.save_bytes
+        async def save_and_edit(data, gid):
+            out = await real(data, gid)
+            self.s.db.execute("UPDATE appearances SET image_url='https://i.pinimg.com/b.jpg' WHERE id=?", (r["id"],)); self.s.db.commit()
+            return out
+        self.images.save_bytes = save_and_edit
+        self.assertEqual(asyncio.run(self.images.adopt()), 0)
+        self.assertEqual(self.a.record(r["id"])["image_url"], "https://i.pinimg.com/b.jpg")
+        self.assertEqual(self.a.record(r["id"])["media_ref"], "")
+
+    def test_adopt_image_action_rules(self):
+        r = self.make("Takao", pasted(1366772409897582747, time.time() + 3600))
+        ref = f"discord://{G1}/{IMG_CH}/{'7' * 18}/{'8' * 18}"
+        data = {"id": r["id"], "old_url": r["image_url"], "image_url": "https://cdn.discordapp.com/attachments/6/7/a.png", "media_ref": ref}
+        member = Actor(U1, "m", False)
+        with self.assertRaises(Exception) as ctx:
+            asyncio.run(self.a.call("adopt_image", member, data))
+        self.assertIn("FORBIDDEN", str(getattr(ctx.exception, "code", ctx.exception)))
+        with self.assertRaises(Exception) as ctx:
+            asyncio.run(self.a.call("adopt_image", self.staff, {**data, "media_ref": f"discord://{'2' * 18}/1/2/3"}))
+        self.assertIn("INVALID", str(getattr(ctx.exception, "code", ctx.exception)))
+        asyncio.run(self.a.call("adopt_image", self.staff, data))
+        with self.assertRaises(Exception) as ctx:  # já adotado: não troca de novo
+            asyncio.run(self.a.call("adopt_image", self.staff, data))
+        self.assertIn("STALE", str(getattr(ctx.exception, "code", ctx.exception)))
 
 
 if __name__ == "__main__":
