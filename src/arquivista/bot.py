@@ -506,7 +506,8 @@ class Arquivista(commands.Bot):
                 body=(tr('**Versão do Arquivista:** {0}\n**Cadastros:** {1} ({2} ocupando aparência)\n**Membros com cadastro:** {3}\n**Eventos na auditoria:** {4}\n**Avisos esperando envio:** {5}\n**Canal de histórico:** {6}\n**Canal de imagens:** {7}\n**Cargos de staff:** {8}\n**Último envio de avisos:** {9}\n**Funcionamento:** {10}').format(__version__, data['records'], data['occupied'], data['members'], data['events'], data['pending_notices'], channel(cfg['log_channel']), channel(cfg['image_channel']), ', '.join(f'<@&{r}>' for r in cfg['staff_roles']) or tr('só dono e quem gerencia o servidor'), self.last_sync or tr('ainda não realizado'), self.sync_problem or tr('sem erro registrado nesta sessão')))
                 me=getattr(i.guild,"me",None);here=i.channel
                 hooks=bool(me and here is not None and hasattr(here,"permissions_for") and here.permissions_for(me).manage_webhooks)
-                body+=tr('\n**Amiya neste canal:** ')+(tr('com a foto dela') if hooks else tr('sai com o ícone do bot; dê ao bot a permissão Gerenciar Webhooks'))
+                body+=tr('\n**Amiya neste canal:** ')+(tr('sai com o ícone do bot; dê ao bot a permissão Gerenciar Webhooks') if not hooks
+                    else tr('a última mensagem saiu com o ícone do bot: {0}').format(problem) if (problem:=self.carteiro.problem(here)) else tr('com a foto dela'))
                 if cfg.get("sheet_url"):
                     queued,bad=self.store.sheet_pending(i.guild_id)
                     body+=(tr('\n**Planilha:** conectada · envios pendentes: {0}').format(queued)+(tr(', recusados pela planilha: {0}').format(bad) if bad else "")+

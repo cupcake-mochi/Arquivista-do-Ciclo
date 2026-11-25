@@ -7,6 +7,7 @@ import sys
 import tempfile
 import time
 import unittest
+from types import SimpleNamespace
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
@@ -427,7 +428,7 @@ class AmiyaPhotoTests(unittest.TestCase):
         class Avatar:
             def __init__(self, url): self.url = url
         class Hook:
-            name, token, application_id, avatar = "Arquivista do Ciclo", "t", 5, None
+            name, token, avatar = "Arquivista do Ciclo", "t", None
             class user: id = 1
             display_avatar = Avatar("https://cdn.discordapp.com/embed/avatars/0.png")
             async def edit(self, **kw):
@@ -443,7 +444,7 @@ class AmiyaPhotoTests(unittest.TestCase):
             id = 3
             async def webhooks(self): return [hook]
         class Bot:
-            store = s; application_id = 5
+            store = s
             class user:
                 id = 1
                 class display_avatar: url = "https://cdn.discordapp.com/avatars/1/portal.png"
@@ -455,6 +456,87 @@ class AmiyaPhotoTests(unittest.TestCase):
         self.assertEqual(sent[0]["avatar_url"], "https://cdn.discordapp.com/avatars/9/abc.png")
         self.assertEqual(sent[0]["username"], "Amiya")
         self.assertEqual(sent[0]["embed"].author.icon_url, "https://cdn.discordapp.com/avatars/9/abc.png")
+
+
+class WebhookTests(unittest.TestCase):
+    """Usa o discord.Webhook de verdade: só a rede é falsa. Um webhook inventado já escondeu um campo inexistente."""
+    ME, OTHER = "111111111111111111", "222222222222222222"
+
+    def hook(self, id, user, name="Arquivista do Ciclo", token="t"):
+        import discord
+        from unittest.mock import MagicMock
+        data = {"id": id, "type": 1, "name": name, "token": token, "channel_id": "3", "guild_id": "1", "avatar": "abc", "application_id": self.ME}
+        if user:
+            data["user"] = {"id": user, "username": "x", "discriminator": "0", "avatar": None}
+        state = MagicMock(); state.http = MagicMock(proxy=None, proxy_auth=None); state.allowed_mentions = None
+        return discord.Webhook.from_state(data, state=state)
+
+    def run_send(self, hooks, *, view=True, error=None):
+        """Devolve (mensagem, chamada à API do webhook, envio pela conta do bot, criação, carteiro, canal)."""
+        import discord
+        from unittest.mock import AsyncMock, MagicMock, patch
+        from arquivista.transport import Carteiro
+        async def run():
+            tmp = tempfile.TemporaryDirectory(); self.addCleanup(tmp.cleanup)
+            s = Store(Path(tmp.name) / "d.sqlite"); self.addCleanup(s.close)
+            bot = SimpleNamespace(store=s, config=SimpleNamespace(persona_name="Amiya"),
+                                  user=SimpleNamespace(id=int(self.ME), display_avatar=SimpleNamespace(url="https://x/y.png")))
+            channel = MagicMock(spec=discord.TextChannel); channel.id = 3
+            channel.webhooks = AsyncMock(return_value=hooks)
+            channel.create_webhook = AsyncMock(side_effect=lambda **k: self.hook("99", self.ME))
+            channel.send = AsyncMock(return_value=SimpleNamespace(id=500))
+            adapter = MagicMock(); adapter.execute_webhook = AsyncMock(side_effect=error, return_value={})
+            v = None
+            if view:
+                v = discord.ui.View(); v.add_item(discord.ui.Button(label="Próxima", custom_id="x"))
+            c = Carteiro(bot)
+            with patch("discord.webhook.async_.async_context") as ctx, \
+                 patch.object(discord.Webhook, "_create_message", lambda self, data, thread=None: SimpleNamespace(id=600)):
+                ctx.get.return_value = adapter
+                message = await c.send(channel, embed=discord.Embed(title="x"), view=v)
+            return message, adapter.execute_webhook, channel.send, channel.create_webhook, c, channel
+        return asyncio.run(run())
+
+    def test_buttons_leave_through_amiya_webhook(self):
+        for view in (True, False):
+            message, webhook, direct, created, c, channel = self.run_send([self.hook("9", self.ME)], view=view)
+            self.assertEqual(message.id, 600)
+            self.assertEqual((webhook.await_count, direct.await_count, created.await_count), (1, 0, 0))
+            self.assertEqual(webhook.await_args.kwargs["payload"]["username"], "Amiya")
+            self.assertEqual(bool(webhook.await_args.kwargs["payload"].get("components")), view)
+            self.assertIsNone(c.problem(channel))
+
+    def test_webhook_of_someone_else_is_not_used(self):
+        for stranger in (self.hook("8", self.OTHER), self.hook("8", None), self.hook("8", self.ME, token=None), self.hook("8", self.ME, name="Guias")):
+            _, webhook, direct, created, _, _ = self.run_send([stranger])
+            self.assertEqual((created.await_count, direct.await_count), (1, 0))
+            self.assertEqual(webhook.await_args.args[0], 99)
+
+    def test_refusal_falls_back_and_diagnostic_says_why(self):
+        import discord
+        def http(kind, status, code):
+            return kind(SimpleNamespace(status=status, reason="x"), {"code": code, "message": "https://discord.com/api/webhooks/9/segredo"})
+        for error, says in ((http(discord.Forbidden, 403, 50013), "negou a permissão"), (http(discord.HTTPException, 400, 30007), "limite de webhooks"),
+                            (http(discord.HTTPException, 400, 50035), "400/50035"), (http(discord.NotFound, 404, 10015), "404/10015"),
+                            (AttributeError("campo"), "AttributeError")):
+            with self.assertLogs("arquivista.transport", "WARNING") as logs:
+                message, _, direct, _, c, channel = self.run_send([self.hook("9", self.ME)], error=error)
+            self.assertEqual((message.id, direct.await_count), (500, 1))
+            self.assertIn(says, c.problem(channel))
+            self.assertNotIn("segredo", c.problem(channel) + "".join(logs.output))
+
+    def test_good_message_clears_the_problem_and_thread_uses_its_channel(self):
+        import discord
+        from unittest.mock import AsyncMock, MagicMock
+        _, _, _, _, c, channel = self.run_send([self.hook("9", self.ME)])
+        c.failed[3] = AttributeError("x")
+        self.assertIsNone(c.problem(SimpleNamespace(id=4)))
+        thread = MagicMock(spec=discord.Thread); thread.parent = channel
+        self.assertIn("AttributeError", c.problem(thread))
+        c.cache[3] = SimpleNamespace(send=AsyncMock(return_value=SimpleNamespace(id=1)))
+        c.bot.store = SimpleNamespace(get=lambda k: None, remember=lambda m: None)
+        asyncio.run(c.send(channel, content="x"))
+        self.assertIsNone(c.problem(channel))
 
 
 PNG = b"\x89PNG\r\n\x1a\n" + b"0" * 32

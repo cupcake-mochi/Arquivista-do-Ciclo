@@ -1,19 +1,19 @@
 {
   "project": "Arquivista do Ciclo",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "scope": "runtime files in the deployment ZIP; documentation and this manifest are excluded",
   "package": "arquivista.zip",
-  "package_sha256": "5c0086aa0a8c1261932ca1787f5a5ebbeec67d9e39bee1d96313a25f2dcc7fce",
+  "package_sha256": "9eefab2ede65ac8f37ea46ce464458224393809d1cd7c5215c020e59dd0bd269",
   "live_deployment_audited": false,
   "files": {
     "discloud.config": "1d06b022b8a2ecdedd403e184045234140091f18ef56de4537257586a7d94778",
     "iniciar.py": "6d9f5d187130485e89ba2fbf3a4d3f5fabd9e3a6d892eb47c64877160166db15",
     "requirements.txt": "4734e82f635cac60ca615654177f8ca13febdff0f07ddcab5712971ddf02c049",
     "assets/amiya.png": "ead1584952f7bcbf0bfc979cce1a141b74bf5e98094552e075fb3153832be8d0",
-    "src/arquivista/__init__.py": "74c04088aa2256fce729ab373bfcf5c400a42bc52b352dfc1a40e2139190e853",
+    "src/arquivista/__init__.py": "0ebc674a94ea343f2c701ad066c534d1fb5b8f20f01fa9ce2fd8d09b03c9b475",
     "src/arquivista/archive.py": "88f8a26783b7a536a411831e84e9da2aff5a8ca5210b8353a01eb3addb39bbff",
     "src/arquivista/backup.py": "2d88868f4078dcc94281caea7bc33e298b21bfc12dc620d70e7828a795d4749c",
-    "src/arquivista/bot.py": "46fda27db05074c32a2d5cd7d76c45173261776943649954340322672d2a6d5c",
+    "src/arquivista/bot.py": "43cb2e98f64224dee7de813ec74afea10cdcdd9b73e0d20dd71d4263ba035872",
     "src/arquivista/bridge.py": "bf0fe32f842d37f64816dade2bf0f537aceb971d5737ba2049fce836f2e5bc62",
     "src/arquivista/config.py": "a1e443bdc3717e70aeada94508c916a0ba0542d4ced58850e0192ee3d259da79",
     "src/arquivista/docs.py": "9e46dc96a7eb74defb710a34d6335a96d3702219e4808518b7c96e0c15c1dc10",
@@ -32,9 +32,9 @@
     "src/arquivista/sheet_language.py": "17431fe1f0d508fd699ea5621112823db339b77c906f00649ce86a248fc8893f",
     "src/arquivista/sheet_views.py": "5a42d0177fe41f50fe294aeba0ffe02b00b4f1f0380745c4ce5f481abb07c240",
     "src/arquivista/store.py": "6cf64d38c665218f8f4115e86ee3e62f337986f4619e16a3aab8410d9ff659c3",
-    "src/arquivista/transport.py": "61d44d5916bbc9295516e139dcf8f789c1a57ae2c8d85b7ffe93e0e00cd1d150",
+    "src/arquivista/transport.py": "af787970b3fb78798763ed12187f9bebf1b604cc4b9054934e0edb72938fa933",
     "src/arquivista/views.py": "f174250a10196162460395ee72b8f7d971d20e15182915155930c048b24adedc",
-    "src/arquivista/recursos/ingles.json": "0b4ffe794252c2ae24107f0a6459a382fabcce7c8b0d730aa521a7f0add3fa64"
+    "src/arquivista/recursos/ingles.json": "04a090762791d10d74e8d527599d63765f1d48b182e16c10e0b446682cfa62a9"
   },
   "deployment_validation": {
     "date": "2026-10-22",
