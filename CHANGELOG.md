@@ -1,5 +1,13 @@
 # Histórico de versões
 
+## 1.4.1 · 25/11/2026
+
+**Mensagens com botões saem como Amiya.** Desde a 0.2.0, listas, galerias e guias públicos com botões saíam pela conta do bot, em qualquer canal: o código lia `application_id` no webhook, campo que o discord.py não tem, e tratava o erro como webhook indisponível. Agora o bot reconhece o webhook pelo criador.
+
+O registro diz o motivo quando uma mensagem sai pela conta do bot, e o `/diagnostico` mostra se isso aconteceu na última mensagem do canal; antes ele só conferia a permissão. Os testes passaram a usar o webhook do discord.py, com a rede simulada.
+
+Publicada na Discloud em 25/11/2026 e conferida no Era: a lista saiu como Amiya, e os botões de galeria e de próxima página responderam.
+
 ## 1.4.0 · 25/11/2026
 
 **Pesquisa por nome refeita.** Vale para `/aparencias`, `AC:consultar`, galeria e para a escolha do cadastro em `/editar`, `/situacao`, `/transferir` e `/remover`. Quando existe o nome exato, vêm só ele e os nomes que o contêm inteiro ("Skadi" e "Skadi Alter"); parecido só aparece quando ninguém tem o nome pesquisado. O exato Liberado não vai mais para o fim da lista. A pesquisa deixa de procurar pedaços dentro do ID (o ID inteiro ou o começo dele, com `AP-`, continua valendo), passa a achar pelo nome no servidor e ignora acento, apóstrofo e ordem das palavras. A lista mostra a obra. Nos 811 cadastros do Era da Revolução, pesquisando cada nome exato, a média caiu de 7,8 para 1,1 resultado, e 197 de 200 nomes com uma letra faltando continuaram sendo achados.
