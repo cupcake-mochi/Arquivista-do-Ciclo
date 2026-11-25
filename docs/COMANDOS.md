@@ -66,7 +66,7 @@ Os comandos de configuração exibem um botão de atendimento privado quando usa
 
 **Planilha pronta:** cadastro e edição funcionam pelo Discord e diretamente no Sheets. As edições do Sheets entram no bot em cerca de cinco minutos, passam pela mesma validação e as recusas aparecem no `/diagnostico`. Começa com 20 posições por membro e ganha mais 20 quando faltam duas livres. Preserve as fórmulas e colunas de identificação; não insira/apague linhas no meio das fichas. Para remover um cadastro, use `/remover` ou `/limpar`. Compartilhe edição apenas com a staff. Desconectar só desliga a sincronização, preservando arquivo e permissões.
 
-**Em preparação**, **Em uso** e **Arquivado** mantêm a aparência ocupada. **Liberado** permite que outro cadastro a utilize. Cada membro pode remover os próprios cadastros; só a staff remove cadastros de outras pessoas, muda situação, aparência ou obra e usa `/limpar`.
+**Em preparação**, **Em uso** e **Arquivado** mantêm a aparência ocupada; Arquivado só não entra no aviso de parecida. **Liberado** permite que outro cadastro a utilize. Cada membro pode remover os próprios cadastros; só a staff remove cadastros de outras pessoas, muda situação, aparência ou obra e usa `/limpar`.
 
 A duplicidade usa aparência + obra normalizadas, ignorando maiúsculas e excesso de espaços. Não faz fusão automática de apelidos nem pressupõe que dois desenhos da mesma pessoa sejam referências diferentes.
 

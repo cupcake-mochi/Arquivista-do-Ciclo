@@ -94,7 +94,7 @@ GUIDE = (
      "Depois do cadastro, só a staff pode mudar a aparência, a obra ou a situação. Editar ou remover cadastros de outras pessoas também exige staff."),
     ("O que cada situação significa",
      "**Em preparação** — reservada, ainda sendo montada.\n**Em uso** — sendo usada.\n"
-     "**Arquivado** — fora de uso, mas continua ocupada.\n**Liberado** — livre para outra pessoa.\n\n"
+     "**Arquivado** — fora de uso, mas continua ocupada; não entra no aviso de parecida.\n**Liberado** — livre para outra pessoa.\n\n"
      "A lista e a galeria mostram a situação de cada aparência; as liberadas aparecem no fim, marcadas como livres. A justificativa fica só com a staff."),
     ("Ações da equipe autorizada",
      "`AC:sit nome` — situação e justificativa. `AC:tr nome @membro` — muda o dono.\n"

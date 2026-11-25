@@ -381,18 +381,29 @@ def same_work(a: Any, b: Any, aliases: dict[str, str] | None = None) -> bool:
     a, b = names.get(work_key(a), a), names.get(work_key(b), b)
     return normalized(a) == normalized(b) or related_works(a, b)
 
+# Fora de uso: não entra no aviso de parecida. Arquivado continua ocupando a aparência idêntica.
+IDLE = ("Arquivado", "Liberado")
+
 def similar_to(record: dict, records: list[dict], aliases: dict[str, str] | None = None) -> list[dict]:
-    """Cadastros ocupados que parecem ser a mesma aparência deste."""
-    return [r for r in records if r["id"] != record.get("id") and r["status"] != "Liberado"
+    """Cadastros em uso que parecem ser a mesma aparência deste. O idêntico entra mesmo Arquivado, porque
+    o bot vai recusar."""
+    if record.get("status") == "Liberado":
+        return []
+    key = exact_key(record.get("appearance"), record.get("work"))
+    def counts(r):
+        if exact_key(r["appearance"], r["work"]) == key:
+            return r["status"] != "Liberado"
+        return r["status"] not in IDLE and record.get("status") not in IDLE
+    return [r for r in records if r["id"] != record.get("id") and counts(r)
             and near_names(record.get("appearance"), r["appearance"]) and same_work(record.get("work"), r["work"], aliases)]
 
 def similar_pairs(records: list[dict], aliases: dict[str, str] | None = None) -> tuple[list[tuple[dict, dict]], list[tuple[dict, dict]]]:
-    """(possíveis repetidos, vale olhar) entre os cadastros ocupados do servidor.
+    """(possíveis repetidos, vale olhar) entre os cadastros do servidor que não estão em IDLE.
 
     Possível repetido: near_names + obra parecida. Vale olhar: o nome de um está inteiro dentro do nome
     do outro, em obra parecida e com donos diferentes ("Vergil" e "Vergil (Genderbend)").
     Separa por iniciais e por palavra antes de comparar, para não cruzar todos com todos."""
-    rows = [r for r in records if r["status"] != "Liberado"]
+    rows = [r for r in records if r["status"] not in IDLE]
     words = [tuple(sorted(name_words(r["appearance"] or ""))) for r in rows]
     buckets: dict[tuple, list[int]] = {}
     holders: dict[str, list[int]] = {}
