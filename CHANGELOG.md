@@ -1,5 +1,11 @@
 # Histórico de versões
 
+## 1.4.2 · 25/11/2026
+
+**Arquivado sai do aviso de parecida.** Cadastro Arquivado não conta mais para o laranja da planilha, para "Possíveis repetidos" e "Vale olhar" do `/diagnostico`, nem para o "Parece repetida" do formulário. A regra não muda: Arquivado continua ocupando a aparência, e o cadastro idêntico continua recusado e avisado antes de salvar (em vermelho, na planilha). Liberado já não contava.
+
+Publicada na Discloud em 25/11/2026 e conferida no Era: o laranja saiu dos pares com Arquivado e ficou só no par em uso, igual ao `/diagnostico`.
+
 ## 1.4.1 · 25/11/2026
 
 **Mensagens com botões saem como Amiya.** Desde a 0.2.0, listas, galerias e guias públicos com botões saíam pela conta do bot, em qualquer canal: o código lia `application_id` no webhook, campo que o discord.py não tem, e tratava o erro como webhook indisponível. Agora o bot reconhece o webhook pelo criador.

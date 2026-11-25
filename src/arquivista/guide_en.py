@@ -61,7 +61,7 @@ Review the private preview, select a status, then choose **Confirm and save**. T
 Only staff can change appearance, source work or status after registration. Editing or removing another person's record also requires staff access.'''),
 ('Understand statuses', '''**In preparation:** reserved while being prepared.
 **In use:** currently used.
-**Archived:** no longer in use, but still occupied.
+**Archived:** no longer in use, but still occupied; left out of the look-alike warning.
 **Released:** available for someone else.
 
 Lists and the gallery show each appearance's status; released ones appear last, marked as available. Notes stay with staff. Stored status codes stay unchanged internally so language changes do not alter ownership or availability.'''),

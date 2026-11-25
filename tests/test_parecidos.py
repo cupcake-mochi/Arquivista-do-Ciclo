@@ -105,6 +105,20 @@ class SimilarTests(unittest.TestCase):
         self.assertEqual([r["id"] for r in similar_to(rec("99", "don quixote", "project moon"), R)], ["AP-1", "AP-2"])
         self.assertEqual([r["id"] for r in similar_to(R[0], R)], ["AP-2"])  # não aponta para si mesmo
 
+    def test_archived_leaves_the_warning_but_identical_still_warns(self):
+        R = [rec("1", "Evanescia", "Star Rail"), rec("2", "Evanescia", "honkai star rail", "2", "Arquivado"),
+             rec("3", "Vergil", "Devil May Cry", "1", "Arquivado"), rec("4", "Vergil (Genderbend)", "Devil May Cry", "2")]
+        self.assertEqual(similar_pairs(R), ([], []))
+        ids = lambda r, rs: [x["id"] for x in similar_to(r, rs)]
+        self.assertEqual(ids(rec("9", "Evanescia!", "Star Rail"), R), ["AP-1"])
+        self.assertEqual(ids(R[0], R), [])
+        self.assertEqual(ids(R[1], R), [])  # o próprio arquivado também não avisa
+        # Idêntico a um arquivado: continua recusado, então avisa antes.
+        self.assertEqual(ids(rec("9", "vergil", "devil  may cry"), R), ["AP-3"])
+        R[1]["status"] = R[2]["status"] = "Em uso"  # voltou a usar: volta o aviso
+        self.assertEqual([len(x) for x in similar_pairs(R)], [1, 1])
+        self.assertEqual(ids(rec("9", "Vergil", "Devil May Cry", status="Liberado"), R), [])
+
     def test_big_server_is_quick(self):
         R = [rec(str(n), f"Pessoa{chr(97 + n % 26)}{chr(97 + n // 26 % 26)} Nome{chr(97 + n // 676)}", owner=str(n % 9)) for n in range(1600)]
         t = time.time()
@@ -128,8 +142,8 @@ class SimilarTests(unittest.TestCase):
                 store = Store(Path(tmp) / "a.db")
                 try:
                     archive = Archive(store, "1" * 18, "America/Sao_Paulo")
-                    for n, (name, work) in enumerate((("Takao", "Azur Lane"), ("Yamashiro", "Azur Lane"))):
-                        await archive.call("create", Actor("7" * 18, "Ana", True), {"fields": {"appearance": name, "work": work}, "owner": {"id": "7" * 18, "name": "Ana"}})
+                    for name, work, state in (("Takao", "Azur Lane", "Em uso"), ("Yamashiro", "Azur Lane", "Em uso"), ("Shigure", "Azur Lane", "Arquivado")):
+                        await archive.call("create", Actor("7" * 18, "Ana", True), {"fields": {"appearance": name, "work": work}, "status": state, "owner": {"id": "7" * 18, "name": "Ana"}})
                     rows = (await archive.call("list", Actor("7" * 18, "Ana", True), {"owner_id": "", "include_released": True}))["records"]
                     mine = next((r for r in rows if r["appearance"] == record), None)
                     if mine: mine = {**mine, "revision": 1}
@@ -157,6 +171,8 @@ class SimilarTests(unittest.TestCase):
         self.assertIn("Parece repetida", self.submit("create", appearance="Takaoo", work="Azur Lane"))
         self.assertIn("já estão ocupadas", self.submit("create", staff=False, appearance="takao", work="azur lane"))
         self.assertNotIn("⚠️", self.submit("create", appearance="Belfast", work="Azur Lane"))
+        self.assertNotIn("⚠️", self.submit("create", appearance="Shiguree", work="Azur Lane"))
+        self.assertIn("já estão ocupadas", self.submit("create", appearance="shigure", work="azur lane"))
         # Editar só o nome no servidor não avisa; mudar a aparência avisa, sem apontar o próprio cadastro.
         self.assertNotIn("⚠️", self.submit("edit", "Takao", server_name="Rin"))
         self.assertNotIn("⚠️", self.submit("edit", "Takao", appearance="Takaoo"))
