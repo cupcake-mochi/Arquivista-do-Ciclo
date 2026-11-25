@@ -115,24 +115,67 @@ def parse_prefix(content: str) -> tuple[str, str, str | None] | None:
 def public_record(record: dict[str, Any]) -> dict[str, Any]:
     return {k: record[k] for k in PUBLIC_FIELDS if k in record}
 
+# ---------------- pesquisa por nome
+NAME_MARKS = re.compile("['’‘`´]")
+
+@lru_cache(maxsize=8192)
+def name_words(text: Any) -> tuple[str, ...]:
+    """Palavras do nome sem acento nem apóstrofo ("Ch'en" = "chen"); ponto e hífen separam palavras.
+    Vale para qualquer escrita; nome só de símbolos ou emoji vira uma palavra só."""
+    plain = search_text(text)
+    return tuple(re.findall(r"[^\W_]+", NAME_MARKS.sub("", plain))) or tuple(plain.split())
+
+def _typo(a: str, b: str) -> bool:
+    """Erro de digitação numa pesquisa."""
+    if min(len(a), len(b)) < 4 or abs(len(a) - len(b)) > 2:
+        return False
+    return _close(a, b, .8 if a[0] == b[0] else .85)
+
+def _starts(words: tuple[str, ...], query: tuple[str, ...]) -> bool:
+    return all(any(w.startswith(x) for w in words) for x in query)
+
+def search_level(query: tuple[str, ...], raw: str, r: dict) -> int:
+    """Quanto o cadastro combina com a pesquisa; 0 = não combina. raw: a pesquisa inteira, para o ID."""
+    rid = search_text(r.get("id"))
+    if rid and (raw == rid or (raw.startswith("ap-") and len(raw) >= 7 and rid.startswith(raw))):
+        return 9  # ID inteiro ou o começo dele, com o AP-; nunca um pedaço no meio do ID
+    joined, asked = "".join(query), set(query)
+    name, alias, work = (name_words(r.get(k) or "") for k in ("appearance", "server_name", "work"))
+    whole = "".join(name)
+    if whole == joined:
+        return 8
+    if asked <= set(name):
+        return 7
+    if "".join(alias) == joined:
+        return 6
+    if _starts(name, query) or (len(joined) >= 3 and whole.startswith(joined)):
+        return 5
+    if asked <= set(alias) or (asked & set(name) and asked <= set(name) | set(work)):
+        return 4
+    if (len(joined) >= 4 and joined in whole) or (len(joined) >= 3 and _starts(alias, query)):
+        return 3
+    near = [x in name or any(_typo(x, w) for w in name) for x in query]
+    if (any(near) and all(n or x in work or any(_typo(x, w) for w in work) for n, x in zip(near, query))) or _typo(joined, whole):
+        return 2
+    if work and asked <= set(work):
+        return 1
+    return 0
+
 def ranked(records: list[dict], query: str, limit: int | None = None) -> list[dict]:
-    q = search_text(query)
-    if not q:
-        result = sorted(records, key=lambda r: (search_text(r.get("appearance")), search_text(r.get("work"))))
+    """Cadastros que combinam com a pesquisa, do melhor para o pior; Liberado depois, dentro do mesmo nível.
+    Achou o nome exato: vêm só ele e os nomes que o contêm inteiro ("Skadi" e "Skadi Alter").
+    Parecido só aparece quando ninguém tem o nome pesquisado."""
+    order = lambda r: (r.get("status") == "Liberado", search_text(r.get("appearance")), search_text(r.get("work")))
+    words = name_words(query or "")
+    if not words:
+        result = sorted(records, key=order)
     else:
-        scores = []
-        for r in records:
-            names = [search_text(r.get("appearance")), search_text(r.get("id"))]
-            full = search_text(f"{r.get('appearance','')} {r.get('work','')}")
-            if q in names:
-                score = 3.0
-            elif any(q in n for n in names + [full]):
-                score = 2.0
-            else:
-                score = max(SequenceMatcher(None, q, n).ratio() for n in names + [full])
-            if score >= .54:
-                scores.append((score, search_text(r.get("appearance")), r))
-        result = [r for _, _, r in sorted(scores, key=lambda t: (-t[0], t[1]))]
+        raw = search_text(query)
+        found = [(level, r) for r in records if (level := search_level(words, raw, r))]
+        best = max((level for level, _ in found), default=0)
+        floor = 9 if best == 9 else 6 if best == 8 else 3 if best >= 3 else best
+        result = [r for _, r in sorted(((level, r) for level, r in found if level >= floor),
+                                       key=lambda t: (-t[0], *order(t[1])))]
     return result if limit is None else result[:limit]
 
 # ---------------- obras com grafias diferentes
@@ -316,3 +359,62 @@ def can_manage(actor: Actor, owner_id: str, action: str) -> bool:
     if action in STAFF_ACTIONS:
         return actor.staff
     return actor.staff or actor.id == owner_id
+
+# ---------------- aparências parecidas (aviso, nunca bloqueio)
+def _near_word(a: str, b: str) -> bool:
+    # Número precisa bater ("Android17" e "Android18" são diferentes), e a primeira letra também.
+    return a == b or (a[0] == b[0] and re.sub(r"\D", "", a) == re.sub(r"\D", "", b) and _same_word(a, b))
+
+def near_names(a: Any, b: Any) -> bool:
+    """Mesmo nome com acento, pontuação, espaço, ordem ou um erro de digitação diferente."""
+    wa, wb = name_words(a or ""), name_words(b or "")
+    if not wa or not wb:
+        return False
+    if "".join(wa) == "".join(wb):
+        return True
+    return len(wa) == len(wb) and all(_near_word(x, y) for x, y in zip(sorted(wa), sorted(wb)))
+
+def same_work(a: Any, b: Any, aliases: dict[str, str] | None = None) -> bool:
+    if normalized(a) == normalized(b):
+        return True
+    names = {work_key(k): v for k, v in (aliases or {}).items()}
+    a, b = names.get(work_key(a), a), names.get(work_key(b), b)
+    return normalized(a) == normalized(b) or related_works(a, b)
+
+def similar_to(record: dict, records: list[dict], aliases: dict[str, str] | None = None) -> list[dict]:
+    """Cadastros ocupados que parecem ser a mesma aparência deste."""
+    return [r for r in records if r["id"] != record.get("id") and r["status"] != "Liberado"
+            and near_names(record.get("appearance"), r["appearance"]) and same_work(record.get("work"), r["work"], aliases)]
+
+def similar_pairs(records: list[dict], aliases: dict[str, str] | None = None) -> tuple[list[tuple[dict, dict]], list[tuple[dict, dict]]]:
+    """(possíveis repetidos, vale olhar) entre os cadastros ocupados do servidor.
+
+    Possível repetido: near_names + obra parecida. Vale olhar: o nome de um está inteiro dentro do nome
+    do outro, em obra parecida e com donos diferentes ("Vergil" e "Vergil (Genderbend)").
+    Separa por iniciais e por palavra antes de comparar, para não cruzar todos com todos."""
+    rows = [r for r in records if r["status"] != "Liberado"]
+    words = [tuple(sorted(name_words(r["appearance"] or ""))) for r in rows]
+    buckets: dict[tuple, list[int]] = {}
+    holders: dict[str, list[int]] = {}
+    for n, w in enumerate(words):
+        if not w:
+            continue
+        buckets.setdefault(("iniciais", *(x[0] for x in w)), []).append(n)
+        buckets.setdefault(("junto", "".join(name_words(rows[n]["appearance"]))), []).append(n)
+        for x in set(w):
+            holders.setdefault(x, []).append(n)
+    sure: set[tuple[int, int]] = set()
+    for group in buckets.values():
+        for k, j in enumerate(group):
+            for i in group[:k]:
+                if near_names(rows[i]["appearance"], rows[j]["appearance"]) and same_work(rows[i]["work"], rows[j]["work"], aliases):
+                    sure.add((i, j))
+    look: set[tuple[int, int]] = set()
+    for n, w in enumerate(words):
+        mine = set(w)
+        if len("".join(mine)) < 4:
+            continue
+        for m in holders[min(mine, key=lambda x: len(holders[x]))]:
+            if rows[m]["owner_id"] != rows[n]["owner_id"] and mine < set(words[m]) and same_work(rows[n]["work"], rows[m]["work"], aliases):
+                look.add((min(n, m), max(n, m)))
+    return [(rows[i], rows[j]) for i, j in sorted(sure)], [(rows[i], rows[j]) for i, j in sorted(look - sure)]

@@ -192,7 +192,8 @@ class LayoutTests(unittest.TestCase):
         self.assertEqual([p["title"] for p in added], ["mizuki_sama", "takao", "Índice (bot)"])
         self.assertTrue(added[-1]["hidden"])
         rules = [q["addConditionalFormatRule"]["rule"] for q in req if "addConditionalFormatRule" in q
-                 and q["addConditionalFormatRule"]["rule"]["booleanRule"]["condition"]["type"] == "CUSTOM_FORMULA"]
+                 and q["addConditionalFormatRule"]["rule"]["booleanRule"]["condition"]["type"] == "CUSTOM_FORMULA"
+                 and "!A:A" in str(q)]
         self.assertEqual(sorted(r["ranges"][0]["sheetId"] for r in rules), [1000, 1001])  # uma regra por guia, sem repetir
         self.assertIn("INDIRECT(\"'Índice (bot)'!A:A\")", rules[0]["booleanRule"]["condition"]["values"][0]["userEnteredValue"])
         idx = self.sheet.grids[1002]

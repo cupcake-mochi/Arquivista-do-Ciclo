@@ -17,7 +17,7 @@ import time
 
 from . import layout, pull
 from .bridge import Bridge
-from .domain import Actor, BridgeError, ERRORS
+from .domain import Actor, BridgeError, ERRORS, similar_pairs
 from .store import sheet_upsert
 
 log = logging.getLogger(__name__)
@@ -142,8 +142,10 @@ class SheetSync:
         model, expect = await read_sheet(bridge, self.actor())
         # Índice escondido da regra de vermelho: cria na primeira leitura (planilhas antigas também)
         # e acompanha guias novas ou renomeadas. Só acrescenta formatação; nenhuma ficha é regravada.
+        # Vão também os IDs das aparências parecidas, que a planilha pinta de laranja.
+        sure, _ = await asyncio.to_thread(similar_pairs, store.records(guild_id), store.aliases(guild_id))
         model.req = []
-        model.upkeep()
+        model.upkeep(flagged=sorted({r["id"] for pair in sure for r in pair}))
         if model.req:
             try:
                 await bridge.call("write", self.actor(), {"requests": model.req, "expect": expect})
@@ -161,7 +163,17 @@ class SheetSync:
                 continue
             if result in ("same", "STALE", "NOT_FOUND"):
                 continue  # mudou no Discord no meio da leitura: a versão do bot vai por cima
-            notes.append(f"{change.get('appearance') or 'linha sem nome'} (guia {change['tab']}): {REFUSED.get(result, result)}")
+            text = f"{change.get('appearance') or 'linha sem nome'} (guia {change['tab']}): {REFUSED.get(result, result)}"
+            notes.append(text)
+            if change["id"]:
+                text += f"; a ficha voltou para {records[change['id']]['appearance']}"
+            place = change["id"] or f"{change['owner_id']}/{change['slot']}"
+            key = hashlib.sha1(json.dumps([place, result, *(change.get(k) for k in pull.FIELDS)],
+                                          ensure_ascii=False).encode("utf-8")).hexdigest()
+            # A nota some quando a planilha é corrigida; a recusa fica uma semana e avisa uma vez no histórico.
+            if store.refusal(guild_id, key, text[:400]):
+                with store.db:
+                    archive.notice({"kind": "refused", "text": text[:400]})
             if change["id"]:
                 # Desfaz na planilha: regrava a linha com o que está no banco, na mesma revisão.
                 r = archive.record(change["id"])
