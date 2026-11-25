@@ -246,6 +246,43 @@ class PullTests(unittest.TestCase):
         self.assertIn("já ocupadas", self.s.guild(G1)["sheet_note"])
         self.assertEqual(self.rec(self.ids[1])["revision"], 1)
 
+    def test_refusal_stays_a_week_and_warns_history_once(self):
+        from arquivista import layout
+        self.s.set_guild(G1, log_channel="8" * 18)
+        self.s.db.execute("UPDATE notices SET sent=1"); self.s.db.commit()
+        refused = lambda: [json.loads(n["data"])["text"] for n in self.s.pending() if json.loads(n["data"])["kind"] == "refused"]
+        self.cell(self.ids[1], layout.APPEARANCE, "Takao")
+        self.pull()
+        self.assertEqual(len(refused()), 1)
+        self.assertIn("a ficha voltou para Atago", refused()[0])
+        first = next(n for n in self.s.pending() if json.loads(n["data"])["kind"] == "refused")
+        self.s.delivered(first["event_id"])
+        self.assertEqual(self.s.db.execute("SELECT COUNT(*) FROM notices WHERE event_id=?", (first["event_id"],)).fetchone()[0], 0)
+        self.pull(); self.pull()
+        self.assertIsNone(self.s.guild(G1)["sheet_note"])  # a planilha já foi corrigida...
+        self.assertEqual(len(self.s.refusals(G1)), 1)      # ...mas o /diagnostico ainda mostra
+        # Linha nova repetida fica na planilha e é recusada a cada leitura: um aviso só.
+        grid = self.grid()
+        row = next(i for i, line in enumerate(grid) if line[layout.ID - 1] == self.ids[1]) + 4
+        grid[row][layout.APPEARANCE - 1] = "Takao"; grid[row][layout.WORK - 1] = "Azur Lane"
+        self.pull(); self.pull()
+        self.assertEqual(len(refused()), 1)
+        self.assertIn("já ocupadas", self.s.guild(G1)["sheet_note"])
+        self.s.db.execute("UPDATE sheet_refusals SET last=last-8*86400"); self.s.db.commit()
+        self.s.prune_refusals()
+        self.assertEqual(self.s.db.execute("SELECT COUNT(*) FROM sheet_refusals").fetchone()[0], 0)
+
+    def test_similar_row_enters_and_is_flagged_in_sheet(self):
+        from arquivista import layout
+        grid = self.grid()
+        row = next(i for i, line in enumerate(grid) if line[layout.ID - 1] == self.ids[1]) + 4
+        grid[row][layout.APPEARANCE - 1] = "Takaoo"; grid[row][layout.WORK - 1] = "Azur Lane"
+        self.assertEqual(self.pull(), 1)  # parecido só avisa, não bloqueia
+        self.pull()
+        index = next(g for g in self.sheet.grids.values() if g[0][layout.MARK - 1] == layout.INDEX_MARK)
+        flagged = {line[1] for line in index if line[1]}
+        self.assertEqual(flagged, {r["id"] for r in self.s.records(G1) if r["appearance"].startswith("Takao")})
+
     def test_row_typed_in_empty_slot_becomes_record_there(self):
         from arquivista import layout
         grid = self.grid()

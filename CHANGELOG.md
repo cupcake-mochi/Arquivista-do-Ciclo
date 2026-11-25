@@ -1,5 +1,17 @@
 # Histórico de versões
 
+## 1.4.0 · 25/11/2026
+
+**Pesquisa por nome refeita.** Vale para `/aparencias`, `AC:consultar`, galeria e para a escolha do cadastro em `/editar`, `/situacao`, `/transferir` e `/remover`. Quando existe o nome exato, vêm só ele e os nomes que o contêm inteiro ("Skadi" e "Skadi Alter"); parecido só aparece quando ninguém tem o nome pesquisado. O exato Liberado não vai mais para o fim da lista. A pesquisa deixa de procurar pedaços dentro do ID (o ID inteiro ou o começo dele, com `AP-`, continua valendo), passa a achar pelo nome no servidor e ignora acento, apóstrofo e ordem das palavras. A lista mostra a obra. Nos 811 cadastros do Era da Revolução, pesquisando cada nome exato, a média caiu de 7,8 para 1,1 resultado, e 197 de 200 nomes com uma letra faltando continuaram sendo achados.
+
+**Aviso de aparência parecida.** O bot aponta cadastros ocupados com o mesmo nome (acento, pontuação, espaço, ordem ou um erro de digitação diferente) em obra parecida, usando também os apelidos de obra do servidor. O aviso aparece no `/diagnostico` com os donos, na revisão antes de salvar em `/registrar` e `/editar`, e em laranja na planilha. É só aviso: continua sendo recusada apenas a combinação idêntica, que também passa a ser avisada na revisão. Nomes contidos em outro, de donos diferentes ("Vergil" e "Vergil (Genderbend)"), aparecem no `/diagnostico` como "vale olhar".
+
+**Edição recusada não some mais.** Quando o bot desfazia uma edição da planilha, o motivo sumia do `/diagnostico` na leitura seguinte, cerca de 5 minutos depois. Agora a recusa fica 7 dias no `/diagnostico` e sai uma vez no canal de histórico.
+
+Planilhas existentes recebem a regra de laranja na primeira leitura, num pedido que só acrescenta formatação, a lista de IDs na guia escondida e o texto de ajuda novo. Nenhuma ficha é regravada. A migração foi ensaiada numa planilha sintética do Google criada pela 1.3.0: laranja nos quatro cadastros parecidos, vermelho preservado e nenhuma gravação quando nada muda.
+
+Publicada na Discloud em 25/11/2026 e conferida no Era: `/diagnostico` com 3 pares repetidos e 3 para olhar, laranja nas 6 fichas desses pares entre 811, nenhuma ficha alterada na planilha além da renovação normal de links de imagem, `/aparencias Sage` com 1 resultado (eram 16) e aviso de parecida no `/registrar`, cancelado sem salvar.
+
 ## 1.3.1 · 22/11/2026
 
 **Imagem colada por link do Discord deixa de sumir da planilha.** Link de anexo do Discord vale cerca de 24 horas. O app do Discord renova sozinho, por isso a imagem continuava aparecendo no bot, mas a planilha recebia o link vencido e ficava em branco. Até aqui só eram renovadas as imagens enviadas como anexo, que o bot guarda no canal de imagens. Agora, em servidor com planilha e canal de imagens, o bot também "adota" o link colado à mão, seja pelo bot ou digitado na planilha: pega um link válido (pedindo ao Discord um novo quando o colado já venceu), baixa a imagem só do próprio Discord, até 8 MB e só PNG, JPEG, GIF ou WebP, reenvia no canal de imagens e troca o link no cadastro e na planilha. Não cria revisão nem evento, igual à renovação diária. O mesmo anexo em dois cadastros sobe uma vez só. São 10 por volta, e o que não der certo volta a ser tentado em 6 horas; o `/diagnostico` mostra quantas imagens coladas esperam cópia ou não puderam ser copiadas.

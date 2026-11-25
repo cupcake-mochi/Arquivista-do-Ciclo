@@ -5,7 +5,7 @@ import time
 import uuid
 from typing import Callable, Awaitable
 import discord
-from .domain import Actor, UserError, BridgeError, STAFF_ACTIONS, STATUSES, safe_image_url
+from .domain import Actor, UserError, BridgeError, STAFF_ACTIONS, STATUSES, exact_key, safe_image_url, similar_to
 from .transport import MENTIONS
 from .idiomas import atual, definir, preparar_interface, tr
 from .docs import setup_link
@@ -15,6 +15,27 @@ log = logging.getLogger(__name__)
 def clean(value, limit=1000):
     # Conteúdo de usuários nunca produz pings, links mascarados ou formatação de staff.
     return discord.utils.escape_markdown(discord.utils.escape_mentions(str(value or "")))[:limit]
+
+def field_list(lines, limit=1020) -> str:
+    """Linhas que cabem num campo do Discord, com a conta do que ficou de fora."""
+    out=""
+    for n,line in enumerate(lines):
+        if len(out)+len(line)+30>limit:
+            return out+tr('\n… e mais {0}').format(len(lines)-n)
+        out+=("\n" if out else "")+line
+    return out
+
+def similar_warning(record, found) -> str:
+    """Aviso antes de salvar: já existe uma aparência igual ou parecida. Só o igual é recusado."""
+    if not found:
+        return ""
+    exact=lambda r:exact_key(r["appearance"],r["work"])==exact_key(record.get("appearance"),record.get("work"))
+    lines=[f"• **{clean(r['appearance'],80)}** · {clean(r['work'],60)} · <@{r['owner_id']}> · `{status_tag(r)}`" for r in found[:5]]
+    if any(exact(r) for r in found):
+        text=tr('\n\n⚠️ **Essa aparência e obra já estão ocupadas.** O cadastro vai ser recusado:')
+    else:
+        text=tr('\n\n⚠️ **Parece repetida.** Se for outro personagem ou outra versão, pode confirmar:')
+    return text+"\n"+field_list(lines,900)
 
 def status_tag(record) -> str:
     """Situação nas consultas públicas; Liberado avisa que a aparência pode ser cadastrada de novo."""
@@ -154,8 +175,8 @@ class Paginator(GuardedView):
                          + (tr('\nNome no servidor: {0}').format(clean(r['server_name'],100)) if r.get('server_name') else "") for j,r in enumerate(chunk)]
                 e = card(tr('Aparências de ') + clean(self.owner.display_name, 80), f"<@{self.owner.id}>\n\n" + "\n\n".join(lines))
             else:
-                lines = [f"**{self.page*self.per_page+j+1}. {clean(r['appearance'],110)}** · <@{r['owner_id']}> · `{status_tag(r)}`"
-                         + (tr('\nNome no servidor: {0}').format(clean(r['server_name'],100)) if r.get('server_name') else "") for j,r in enumerate(chunk)]
+                lines = [f"**{self.page*self.per_page+j+1}. {clean(r['appearance'],90)}** · {clean(r['work'],50)} · <@{r['owner_id']}> · `{status_tag(r)}`"
+                         + (tr('\nNome no servidor: {0}').format(clean(r['server_name'],90)) if r.get('server_name') else "") for j,r in enumerate(chunk)]
                 e = card(tr('Arquivo de aparências'), "\n\n".join(lines))
         if self.owner and self.mode != "history":
             e.set_thumbnail(url=self.owner.display_avatar.url)
@@ -310,12 +331,16 @@ class RecordModal(LocalizedModal):
             view = Confirm(self.bot,self.author_id,self.mode,payload,attachment=self.attachment)
             title = tr('Revisar antes de salvar')
             display = {**self.record,**fields}
+            warning = ""
+            if self.mode=="create" or "appearance" in fields or "work" in fields:
+                data = await self.bot.archive(i.guild_id).call("list",actor,{"owner_id":"","include_released":False})
+                warning = similar_warning(display,similar_to(display,data["records"],self.bot.store.aliases(str(i.guild_id))))
             body = tr('**Aparência:** {0}\n**Obra:** {1}\n**Nome no servidor:** {2}').format(clean(display.get('appearance')), clean(display.get('work')), clean(display.get('server_name') or tr('não informado')))
             if self.mode=="create":
                 body += tr('\nEscolha a situação abaixo. Sem escolher, fica **Em preparação**.')
             if self.attachment:
                 body += tr('\nA imagem anexada será preservada no canal configurado ao confirmar.')
-            await private_reply(i,embed=self.bot.carteiro.decorate(card(title,body)),view=view)
+            await private_reply(i,embed=self.bot.carteiro.decorate(card(title,body+warning)),view=view)
         except UserError as exc:
             await private_reply(i,content=str(exc))
     async def on_error(self,i,error):

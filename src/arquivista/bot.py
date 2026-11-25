@@ -17,7 +17,7 @@ from . import backup, __version__
 from .archive import Archive
 from .config import Config, ROOT
 from .docs import DATA_LINKS, SETUP_LINK, SCRIPT_UPDATE
-from .domain import Actor, UserError, STAFF_ACTIONS, find_work, parse_prefix, ranked, public_record, search_text, work_groups, work_key
+from .domain import Actor, UserError, STAFF_ACTIONS, find_work, parse_prefix, ranked, public_record, search_text, similar_pairs, work_groups, work_key
 from .importer import apply, check
 from .media import Images
 from .sheet import SheetSync
@@ -28,7 +28,7 @@ from .idiomas import preparar_interface, arvore_e_tradutor, preparar, definir, a
 
 ArvoreLocalizada, Tradutor = arvore_e_tradutor()
 from .transport import Carteiro, MENTIONS
-from .views import Confirm, Gate, Guide, RestoreConfirm, Picker, Paginator, RecordModal, Settings, backup_problem, private_reply, card, clean
+from .views import Confirm, Gate, Guide, RestoreConfirm, Picker, Paginator, RecordModal, Settings, backup_problem, private_reply, card, clean, field_list
 
 log = logging.getLogger(__name__)
 PUBLIC = frozenset(("ajuda", "guia", "aparencias", "minhas", "galeria", "consultar", "obra"))
@@ -58,7 +58,7 @@ STAFF_HELP = """
 `/limpar` ou `AC:limpar @membro` — apagar todos os cadastros de alguém (vale o ID de quem já saiu; só `AC:limpar` lista quem saiu).
 `/apelido` ou `AC:apelido JJK = Jujutsu Kaisen` — apelido de obra para a busca por obra. `AC:apelido -JJK` tira; `AC:apelido` lista.
 `/historico` ou `AC:hist [aparência]` — histórico privado, inclusive removidos.
-`/diagnostico` ou `AC:diag` — estado do arquivo, dos canais e da planilha.
+`/diagnostico` ou `AC:diag` — estado do arquivo, dos canais e da planilha, possíveis repetidos e edições recusadas.
 
 **Gerência do servidor**
 `/configurar` ou `AC:cfg` — escolha os cargos de staff, os canais e a frequência do backup; conecte a planilha.
@@ -100,7 +100,7 @@ GUIDE = (
      "`AC:sit nome` — situação e justificativa. `AC:tr nome @membro` — muda o dono.\n"
      "`AC:rm nome` — remove um cadastro. `AC:limpar @membro` — apaga todos de alguém (vale o ID de quem saiu).\n"
      "`AC:apelido JJK = Jujutsu Kaisen` — apelido de obra para a busca.\n"
-     "`AC:hist` — mudanças recentes, inclusive de cadastros removidos. `AC:diag` — veja se o bot e a planilha estão funcionando.\n\n"
+     "`AC:hist` — mudanças recentes, inclusive de cadastros removidos. `AC:diag` — veja se o bot e a planilha estão funcionando, possíveis repetidos e edições recusadas.\n\n"
      "**ID** é o número ou código que identifica um cadastro ou uma conta do Discord. "
      "**Staff** é a equipe autorizada a cuidar dos cadastros.\n\n"
      "Antes de transferir, remover ou mudar a situação, confira a ficha selecionada e confirme. O histórico do cadastro fica guardado."),
@@ -345,7 +345,6 @@ class Arquivista(commands.Bot):
             # Consultas mostram a situação; Liberado aparece no fim, marcado como livre. Justificativa nunca.
             data=await self.archive(gid).call("list",actor,{"owner_id":owner_id,"include_released":True})
             records=ranked([public_record(r) for r in data["records"]],query)
-            records.sort(key=lambda r:r["status"]=="Liberado")
             mode="gallery" if action in ("galeria","consultar") else "list"
             owner=None
             if owner_id:
@@ -528,11 +527,28 @@ class Arquivista(commands.Bot):
                            (tr('\n**Último erro do backup:** {0}').format(cfg['backup_error']) if cfg.get("backup_error") else ""))
                 else:
                     body+=tr('\n**Backup:** desligado')
-                await private_reply(i,embed=self.carteiro.decorate(card(tr('Diagnóstico privado'),body)))
+                e=card(tr('Diagnóstico privado'),body[:2800])
+                await self.diagnose_names(e,i.guild_id,cfg)
+                await private_reply(i,embed=self.carteiro.decorate(e))
             else:
                 raise UserError(tr('Operação não reconhecida.'))
         except Exception as exc:
             await self.failure(i,exc)
+    async def diagnose_names(self, e, guild_id, cfg):
+        """Acrescenta ao /diagnostico os possíveis repetidos, os que vale olhar e as edições recusadas na semana."""
+        sure,look=await asyncio.to_thread(similar_pairs,self.store.records(str(guild_id)),self.store.aliases(str(guild_id)))
+        side=lambda r:f"**{clean(r['appearance'],60)}** ({clean(r['work'],40)}) <@{r['owner_id']}>"
+        pair=lambda p:f"• {side(p[0])} × {side(p[1])}"
+        e.add_field(name=tr('Possíveis repetidos: {0}').format(len(sure)),
+            value=field_list([pair(p) for p in sure]) or tr('Nenhum.'),inline=False)
+        if look:
+            e.add_field(name=tr('Vale olhar: {0}').format(len(look)),
+                value=tr('-# O nome de um está dentro do nome do outro.')+"\n"+field_list([pair(p) for p in look],950),inline=False)
+        # A recusa que ainda está na planilha já aparece em "Edição da planilha que não entrou".
+        refused=[r for r in self.store.refusals(str(guild_id)) if r["text"] not in (cfg.get("sheet_note") or "")]
+        if refused:
+            e.add_field(name=tr('Edições da planilha recusadas em 7 dias: {0}').format(len(refused)),
+                value=field_list([f"• <t:{int(r['last'])}:R> {clean(r['text'],220)}" for r in refused]),inline=False)
     @tasks.loop(seconds=90)
     async def worker(self):
         # Rede de segurança: cada gravação já pede o envio na hora; aqui saem as retentativas.
@@ -557,6 +573,7 @@ class Arquivista(commands.Bot):
         if self.sheet_lock.locked():
             return  # o envio em andamento pega o que entrou na fila
         async with self.sheet_lock:
+            self.store.prune_refusals()
             await self.sheets.run()
             if await self.sheets.pull_due():
                 # Edição vinda da planilha: aviso no histórico e a linha regravada com a nova revisão.
@@ -638,6 +655,8 @@ class Arquivista(commands.Bot):
                     if event["kind"]=="purged":
                         e=card(tr('Cadastros de um membro apagados'),
                             tr('**Membro:** <@{0}>\n**Cadastros apagados:** {1}\n**Registro da alteração:** {2}').format(event['owner_id'], event['count'], actor))
+                    elif event["kind"]=="refused":
+                        e=card(tr('Edição da planilha recusada'),clean(event['text'],500)+tr('\n-# Nada mudou no arquivo. A recusa fica 7 dias no /diagnostico.'))
                     else:
                         e=card(tr(titles.get(event["kind"],"Cadastro atualizado")),
                             tr('**Aparência:** {0}\n**Obra:** {1}\n**Responsável:** <@{2}>\n**Registro da alteração:** {3}').format(clean(event['appearance'],200), clean(event['work'],200), event['owner_id'], actor))

@@ -24,7 +24,7 @@ STAFF_HELP='''
 `AC:transfer appearance @member` transfers ownership, preserving the record identifier (ID) and original date.
 Staff may also remove other people's records. `AC:clear @member` removes all of a person's records; a former member's ID is accepted. With no target it lists former members with records.
 `AC:alias JJK = Jujutsu Kaisen` adds a work alias; `AC:alias -JJK` removes it; no arguments lists aliases.
-`AC:history [appearance]` opens private history, including removed records. `AC:diagnostics` shows archive, channel and spreadsheet health.
+`AC:history [appearance]` opens private history, including removed records. `AC:diagnostics` shows archive, channel and spreadsheet health, possible duplicates and refused edits.
 `/language` or `/idioma` sets this server's language. Manage Server or a configured staff role is required. New spreadsheets use the selected language; existing files keep theirs.
 
 **Server management**
@@ -68,7 +68,7 @@ Lists and the gallery show each appearance's status; released ones appear last, 
 ('Staff review and actions', '''`AC:status_change name` changes internal status and notes. `AC:transfer name @member` changes ownership.
 `AC:remove name` removes one record. `AC:clear @member` removes all of a person's records; a former member's ID is accepted.
 `AC:alias JJK = Jujutsu Kaisen` adds a work-search alias.
-`AC:history` shows recent changes, including removed records. `AC:diagnostics` checks the bot and spreadsheet.
+`AC:history` shows recent changes, including removed records. `AC:diagnostics` checks the bot and spreadsheet and lists possible duplicates and refused edits.
 
 Before transferring, removing or changing status, review the selected record and confirm. History is preserved.
 

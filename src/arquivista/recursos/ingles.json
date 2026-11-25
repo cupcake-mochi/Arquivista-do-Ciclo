@@ -422,5 +422,14 @@
   "É preciso confirmar a autorização para copiar os cadastros. Peça ao responsável que já pode editar o arquivo original para:\n\n1. Escolher uma célula vazia e colar o código abaixo.\n2. Em **Dados → Intervalos nomeados**, nomear apenas essa célula como **ARQUIVISTA_AUTORIZACAO**.\n3. Conferir o ID do servidor de destino no código antes de autorizar a cópia dos cadastros.\n\n```\n{0}\n```\nO código vale por 10 minutos e apenas para este arquivo, servidor e solicitante. Depois, escolha **Validar arquivo**. Não vou alterar o original nem seus acessos. O e-mail informado receberá edição apenas na nova cópia.": "The source still needs authorization. Ask a person who already has editor access to:\n\n1. Choose an empty cell and paste the code below.\n2. Under **Data → Named ranges**, name that single cell **ARQUIVISTA_AUTORIZACAO**.\n3. Check the destination server identifier in the code before authorizing the record copy.\n\n```\n{0}\n```\nThe code lasts 10 minutes and is tied to this file, server and requester. Then choose **Validate file**. The original and its permissions stay unchanged. The supplied email receives editor access only to the new copy.",
   "Liberado · livre": "Released · available",
   "\n**Imagens coladas por link do Discord:** {0} esperando cópia no canal de imagens": "\n**Images pasted as Discord links:** {0} waiting to be copied to the image channel",
-  ", {0} sem conseguir copiar (o bot tenta de novo em algumas horas; se continuar, reenvie a imagem pelo /editar)": ", {0} could not be copied (the bot retries in a few hours; if it persists, upload the image again with /editar)"
+  ", {0} sem conseguir copiar (o bot tenta de novo em algumas horas; se continuar, reenvie a imagem pelo /editar)": ", {0} could not be copied (the bot retries in a few hours; if it persists, upload the image again with /editar)",
+  "Possíveis repetidos: {0}": "Possible duplicates: {0}",
+  "Nenhum.": "None.",
+  "Vale olhar: {0}": "Worth checking: {0}",
+  "-# O nome de um está dentro do nome do outro.": "-# One name is contained in the other.",
+  "Edições da planilha recusadas em 7 dias: {0}": "Spreadsheet edits refused in 7 days: {0}",
+  "Edição da planilha recusada": "Spreadsheet edit refused",
+  "\n-# Nada mudou no arquivo. A recusa fica 7 dias no /diagnostico.": "\n-# Nothing changed in the archive. The refusal stays in /diagnostico for 7 days.",
+  "\n\n⚠️ **Essa aparência e obra já estão ocupadas.** O cadastro vai ser recusado:": "\n\n⚠️ **This appearance and work are already taken.** The record will be refused:",
+  "\n\n⚠️ **Parece repetida.** Se for outro personagem ou outra versão, pode confirmar:": "\n\n⚠️ **Possible duplicate.** If it is another character or version, you can confirm:"
 }

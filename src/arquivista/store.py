@@ -39,6 +39,9 @@ SCHEMA = '''
   -- Apelidos de obra que a staff cadastra ("JJK" = "Jujutsu Kaisen"); a chave é o apelido normalizado.
   CREATE TABLE IF NOT EXISTS work_aliases(guild_id TEXT NOT NULL,alias_key TEXT NOT NULL,alias TEXT NOT NULL,
     work TEXT NOT NULL,PRIMARY KEY(guild_id,alias_key));
+  -- Edição da planilha que o bot recusou: fica uma semana no /diagnostico, mesmo depois de desfeita.
+  CREATE TABLE IF NOT EXISTS sheet_refusals(guild_id TEXT NOT NULL,key TEXT NOT NULL,text TEXT NOT NULL,
+    last REAL NOT NULL,PRIMARY KEY(guild_id,key));
   CREATE TABLE IF NOT EXISTS managed_sheets(guild_id TEXT PRIMARY KEY,request_id TEXT UNIQUE NOT NULL,
     editor TEXT NOT NULL,state TEXT NOT NULL DEFAULT 'pending',file_id TEXT,url TEXT,updated REAL NOT NULL);
 '''
@@ -47,6 +50,9 @@ COLUMNS = {"guilds": (("sheet_url", "TEXT"), ("sheet_key", "TEXT"), ("sheet_erro
                       ("backup_channel", "TEXT"), ("backup_hours", "INTEGER"), ("backup_next", "REAL"), ("backup_error", "TEXT"),
                       ("sheet_note", "TEXT"), ("language", "TEXT NOT NULL DEFAULT 'pt-BR'")),
            "managed_sheets": (("language", "TEXT NOT NULL DEFAULT 'pt-BR'"),)}
+
+REFUSAL_KEEP = 7 * 86400   # quanto tempo a recusa fica no /diagnostico
+REFUSAL_AGAIN = 1800       # sem reaparecer por esse tempo, a mesma recusa conta como nova (a leitura é de 5 em 5 minutos)
 
 SHEET_FIELDS = ("id", "owner_id", "appearance", "work", "server_name", "status", "justification", "image_url", "date", "revision")
 
@@ -114,6 +120,8 @@ class Store:
     def delivered(self, event_id: str, message_id: str = "", channel_id: str = "") -> None:
         with self.db:
             self.db.execute("UPDATE notices SET sent=1,message_id=?,channel_id=? WHERE event_id=?", (message_id, channel_id, event_id))
+            # Recusa não é auditoria: o texto só existe pelos 7 dias de sheet_refusals.
+            self.db.execute("DELETE FROM notices WHERE event_id=? AND json_extract(data,'$.kind')='refused'", (event_id,))
     def attempt(self, event_id: str) -> None:
         # Persistir ANTES da chamada externa permite reconhecer uma tentativa interrompida.
         with self.db:
@@ -193,6 +201,21 @@ class Store:
         return {r[0] for r in self.db.execute("SELECT record_id FROM sheet_outbox WHERE guild_id=?", (str(guild_id),))}
     def sheet_guilds(self) -> list[str]:
         return [r[0] for r in self.db.execute("SELECT guild_id FROM guilds WHERE sheet_url IS NOT NULL")]
+    def refusal(self, guild_id: str, key: str, text: str) -> bool:
+        """Guarda uma edição recusada. True se é novidade (a linha que continua errada na planilha é recusada
+        de novo a cada leitura; isso só atualiza a hora)."""
+        now = time.time()
+        with self.db:
+            row = self.db.execute("SELECT last FROM sheet_refusals WHERE guild_id=? AND key=?", (str(guild_id), key)).fetchone()
+            self.db.execute("INSERT OR REPLACE INTO sheet_refusals VALUES(?,?,?,?)", (str(guild_id), key, text, now))
+        return row is None or now - row[0] > REFUSAL_AGAIN
+    def refusals(self, guild_id: str) -> list[dict]:
+        """Recusas da última semana, da mais recente para a mais antiga."""
+        self.prune_refusals()
+        return [dict(r) for r in self.db.execute("SELECT * FROM sheet_refusals WHERE guild_id=? ORDER BY last DESC,key", (str(guild_id),))]
+    def prune_refusals(self) -> None:
+        with self.db:
+            self.db.execute("DELETE FROM sheet_refusals WHERE last<?", (time.time() - REFUSAL_KEEP,))
     def sheet_pending(self, guild_id: str) -> tuple[int, int]:
         """(na fila, com erro de dado que não vai resolver sozinho)."""
         total = self.db.execute("SELECT COUNT(*) FROM sheet_outbox WHERE guild_id=?", (str(guild_id),)).fetchone()[0]
@@ -201,6 +224,7 @@ class Store:
     def drop_sheet(self, guild_id: str) -> None:
         with self.db:
             self.db.execute("DELETE FROM sheet_outbox WHERE guild_id=?", (str(guild_id),))
+            self.db.execute("DELETE FROM sheet_refusals WHERE guild_id=?", (str(guild_id),))
             self.db.execute("UPDATE guilds SET sheet_url=NULL,sheet_key=NULL,sheet_error=NULL,sheet_ok=NULL,sheet_note=NULL WHERE guild_id=?", (str(guild_id),))
     def managed_sheet(self, guild_id):
         row = self.db.execute("SELECT * FROM managed_sheets WHERE guild_id=?", (str(guild_id),)).fetchone()
