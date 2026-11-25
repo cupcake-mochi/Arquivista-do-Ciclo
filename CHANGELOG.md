@@ -8,7 +8,9 @@
 
 **Edição recusada não some mais.** Quando o bot desfazia uma edição da planilha, o motivo sumia do `/diagnostico` na leitura seguinte, cerca de 5 minutos depois. Agora a recusa fica 7 dias no `/diagnostico` e sai uma vez no canal de histórico.
 
-Planilhas existentes recebem a regra de laranja na primeira leitura, num pedido que só acrescenta formatação, a lista de IDs na guia escondida e o texto de ajuda novo. Nenhuma ficha é regravada. A migração foi ensaiada numa planilha sintética do Google criada pela 1.3.0: laranja nos quatro cadastros parecidos, vermelho preservado e nenhuma gravação quando nada muda. Ainda não publicada.
+Planilhas existentes recebem a regra de laranja na primeira leitura, num pedido que só acrescenta formatação, a lista de IDs na guia escondida e o texto de ajuda novo. Nenhuma ficha é regravada. A migração foi ensaiada numa planilha sintética do Google criada pela 1.3.0: laranja nos quatro cadastros parecidos, vermelho preservado e nenhuma gravação quando nada muda.
+
+Publicada na Discloud em 25/11/2026 e conferida no Era: `/diagnostico` com 3 pares repetidos e 3 para olhar, laranja nas 6 fichas desses pares entre 811, nenhuma ficha alterada na planilha além da renovação normal de links de imagem, `/aparencias Sage` com 1 resultado (eram 16) e aviso de parecida no `/registrar`, cancelado sem salvar.
 
 ## 1.3.1 · 22/11/2026
 
